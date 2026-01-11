@@ -18,13 +18,21 @@ type tokenEnvData struct {
 const (
 	// tokenEnv is the environment variable for providing a token directly
 	tokenEnv = "TWENTY_TOKEN" //nolint:gosec // env var name, not a credential
+	// profileEnv is the environment variable for specifying which profile to use
+	profileEnv = "TWENTY_PROFILE"
 )
 
-// ResolveProfile returns the profile to use, honoring the active default profile if set.
+// ResolveProfile returns the profile to use, honoring the primary account if set.
+// Priority: explicit -> env var -> primary account -> first available -> "default"
 func ResolveProfile(explicit string) (string, error) {
 	explicit = strings.TrimSpace(explicit)
 	if explicit != "" {
 		return explicit, nil
+	}
+
+	// Check environment variable
+	if envProfile := strings.TrimSpace(os.Getenv(profileEnv)); envProfile != "" {
+		return envProfile, nil
 	}
 
 	s, err := getStore()
@@ -32,12 +40,21 @@ func ResolveProfile(explicit string) (string, error) {
 		return "default", nil
 	}
 
-	defaultProfile, err := s.GetDefaultAccount()
+	// Check for primary (default) account
+	primaryProfile, err := s.GetDefaultAccount()
 	if err != nil {
 		return "", err
 	}
-	if defaultProfile != "" {
-		return defaultProfile, nil
+	if primaryProfile != "" {
+		return primaryProfile, nil
+	}
+
+	// Fallback to first available profile
+	tokens, err := s.ListTokens()
+	if err == nil && len(tokens) > 0 {
+		// Set first as primary for future use
+		_ = s.SetDefaultAccount(tokens[0].Profile)
+		return tokens[0].Profile, nil
 	}
 
 	return "default", nil
@@ -91,7 +108,7 @@ func RequireToken() (string, string, error) {
 				}
 			}
 		}
-		return profile, "", fmt.Errorf("not logged in. Run: twenty auth login --token <your-token>")
+		return profile, "", fmt.Errorf("not logged in, run: twenty auth login (or set TWENTY_PROFILE to specify a profile)")
 	}
 
 	return profile, token, nil
