@@ -37,7 +37,7 @@ var switchCmd = &cobra.Command{
 			return fmt.Errorf("failed to set default profile: %w", err)
 		}
 
-		fmt.Printf("Default profile set to %s\n", profile)
+		fmt.Printf("Primary profile set to: %s\n", profile)
 		return nil
 	},
 }
