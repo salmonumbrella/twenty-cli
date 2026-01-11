@@ -195,20 +195,23 @@ func (s *SetupServer) handleValidate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Normalize URL first (add https:// if missing, upgrade http to https)
+	normalizedURL := normalizeBaseURL(req.BaseURL)
+
 	// Validate URL format
-	if err := validateBaseURL(req.BaseURL); err != nil {
+	if err := validateBaseURL(normalizedURL); err != nil {
 		writeJSON(w, http.StatusBadRequest, validateResponse{Error: err.Error()})
 		return
 	}
 
 	// Test the connection by making an API call
-	client := rest.NewClient(req.BaseURL, req.Token, false)
+	client := rest.NewClient(normalizedURL, req.Token, false)
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
 
-	// Try to get current user/workspace info
+	// Try to list companies (lightweight endpoint to validate token)
 	var result interface{}
-	err := client.Get(ctx, "/rest/api-keys", &result)
+	err := client.Get(ctx, "/rest/companies?limit=1", &result)
 	if err != nil {
 		writeJSON(w, http.StatusOK, validateResponse{
 			Valid: false,
@@ -264,19 +267,19 @@ func (s *SetupServer) handleSubmit(w http.ResponseWriter, r *http.Request) {
 		CreatedAt:    time.Now().UTC(),
 	}
 
+	// Check if we need to set as primary BEFORE saving (to minimize keyring operations)
+	shouldSetPrimary := false
+	if primary, err := s.store.GetDefaultAccount(); err == nil && primary == "" {
+		shouldSetPrimary = true
+	}
+
 	if err := s.store.SetToken(profile, tok); err != nil {
 		writeJSON(w, http.StatusInternalServerError, submitResponse{Error: "Failed to save token: " + err.Error()})
 		return
 	}
 
-	// Check if this is the first profile - if so, set it as primary
-	tokens, err := s.store.ListTokens()
-	if err == nil && len(tokens) == 1 {
-		_ = s.store.SetDefaultAccount(profile)
-	}
-
-	// Also set as primary if no primary is set
-	if primary, err := s.store.GetDefaultAccount(); err == nil && primary == "" {
+	// Set as primary if needed (single keyring write)
+	if shouldSetPrimary {
 		_ = s.store.SetDefaultAccount(profile)
 	}
 
@@ -321,6 +324,31 @@ func validateBaseURL(rawURL string) error {
 	}
 
 	return nil
+}
+
+// normalizeBaseURL adds https:// if missing, upgrades http to https, and removes trailing slashes
+func normalizeBaseURL(rawURL string) string {
+	rawURL = strings.TrimSpace(rawURL)
+
+	// Add https:// if no scheme present
+	if !strings.HasPrefix(rawURL, "http://") && !strings.HasPrefix(rawURL, "https://") {
+		rawURL = "https://" + rawURL
+	}
+
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+
+	// Upgrade http to https (most Twenty instances require HTTPS)
+	if u.Scheme == "http" {
+		u.Scheme = "https"
+	}
+
+	// Remove trailing slash
+	u.Path = strings.TrimSuffix(u.Path, "/")
+
+	return u.String()
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {

@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -95,6 +96,11 @@ func runBrowserLogin(ctx context.Context) error {
 
 	fmt.Printf("\nLogged in successfully (profile: %s)\n", result.Profile)
 	fmt.Printf("Base URL: %s\n", result.BaseURL)
+
+	// Keep server running so browser can show success page
+	// (defer server.Close() will run after this sleep)
+	time.Sleep(30 * time.Second)
+
 	return nil
 }
 

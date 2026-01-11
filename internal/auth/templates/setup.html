@@ -349,10 +349,10 @@
 
                 <div class="form-group">
                     <label for="base_url">Base URL</label>
-                    <input type="url" id="base_url" name="base_url"
-                           placeholder="https://app.twenty.com"
+                    <input type="text" id="base_url" name="base_url"
+                           placeholder="app.twenty.com"
                            required>
-                    <p class="hint">Your Twenty instance URL</p>
+                    <p class="hint">Your Twenty instance URL (https:// added automatically)</p>
                 </div>
 
                 <div class="form-group">
@@ -378,7 +378,7 @@
                     <button type="button" id="test-btn" class="btn-secondary">
                         Test Connection
                     </button>
-                    <button type="submit" id="save-btn" class="btn-primary" disabled>
+                    <button type="submit" id="save-btn" class="btn-primary">
                         Save &amp; Connect
                     </button>
                 </div>
@@ -392,6 +392,7 @@
 
         <footer class="footer">
             <p>Or use: <code>twenty auth login --no-browser</code></p>
+            <p style="margin-top: 8px;"><a href="https://github.com/salmonumbrella/twenty-cli" target="_blank" style="color: var(--text-muted); text-decoration: none; transition: color var(--transition);" onmouseover="this.style.color='var(--text)'" onmouseout="this.style.color='var(--text-muted)'">View on GitHub</a></p>
         </footer>
     </div>
 
@@ -410,15 +411,17 @@
         // Update settings link based on base URL
         baseUrlInput.addEventListener('input', () => {
             connectionTested = false;
-            saveBtn.disabled = true;
             updateSettingsLink();
             clearStatus();
         });
 
         tokenInput.addEventListener('input', () => {
             connectionTested = false;
-            saveBtn.disabled = true;
             clearStatus();
+        });
+
+        profileInput.addEventListener('input', () => {
+            setInputState(profileInput, null);
         });
 
         function updateSettingsLink() {
@@ -491,9 +494,19 @@
                     saveBtn.disabled = false;
                     setInputState(baseUrlInput, 'success');
                     setInputState(tokenInput, 'success');
+                    // Also highlight profile name if user entered one
+                    if (profileInput.value.trim()) {
+                        setInputState(profileInput, 'success');
+                    }
                     showStatus('success', 'Connection successful!');
                 } else {
-                    setInputState(tokenInput, 'error');
+                    const errorMsg = (data.error || 'Invalid credentials').toLowerCase();
+                    // Highlight the appropriate field based on error type
+                    if (errorMsg.includes('url') || errorMsg.includes('connect') || errorMsg.includes('host')) {
+                        setInputState(baseUrlInput, 'error');
+                    } else {
+                        setInputState(tokenInput, 'error');
+                    }
                     showStatus('error', data.error || 'Invalid credentials');
                 }
             } catch (err) {
@@ -506,11 +519,6 @@
 
         async function saveCredentials(e) {
             e.preventDefault();
-
-            if (!connectionTested) {
-                showStatus('error', 'Please test the connection first');
-                return;
-            }
 
             const baseUrl = baseUrlInput.value.trim();
             const token = tokenInput.value.trim();

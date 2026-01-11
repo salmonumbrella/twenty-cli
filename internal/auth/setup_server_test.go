@@ -188,6 +188,8 @@ func TestSetupServer_HandleValidate_InvalidBaseURL(t *testing.T) {
 	}
 	defer server.Close()
 
+	// "not-a-url" gets normalized to "https://not-a-url" which passes URL validation
+	// but fails on API call (DNS/connection error), returning 200 with valid=false
 	body := `{"base_url":"not-a-url","token":"test"}`
 	req := httptest.NewRequest(http.MethodPost, "/validate", bytes.NewBufferString(body))
 	req.Header.Set("Content-Type", "application/json")
@@ -196,8 +198,9 @@ func TestSetupServer_HandleValidate_InvalidBaseURL(t *testing.T) {
 
 	server.handleValidate(w, req)
 
-	if w.Code != http.StatusBadRequest {
-		t.Errorf("Expected status 400, got %d", w.Code)
+	// URL normalization passes, so we get 200 with validation result
+	if w.Code != http.StatusOK {
+		t.Errorf("Expected status 200, got %d", w.Code)
 	}
 
 	var resp validateResponse
@@ -205,8 +208,12 @@ func TestSetupServer_HandleValidate_InvalidBaseURL(t *testing.T) {
 		t.Fatalf("Failed to parse response: %v", err)
 	}
 
+	if resp.Valid {
+		t.Error("Expected valid=false for unreachable URL")
+	}
+
 	if resp.Error == "" {
-		t.Error("Expected error message for invalid URL")
+		t.Error("Expected error message for unreachable URL")
 	}
 }
 
