@@ -219,6 +219,9 @@ func TestErrorMessages_DoNotExposeTokenValues(t *testing.T) {
 	// Try to save token, which should fail due to store opener error
 	loginToken = sensitiveToken
 	loginBaseURL = "https://twenty.example.com"
+	loginProfile = ""
+	loginNoBrowser = true
+	defer func() { loginNoBrowser = false }()
 
 	cmd := loginCmd
 	var buf bytes.Buffer
@@ -260,6 +263,9 @@ func TestLoginCmd_DoesNotLogTokenInOutput(t *testing.T) {
 	sensitiveToken := "login-test-secret-token-value-xyz"
 	loginToken = sensitiveToken
 	loginBaseURL = "https://twenty.example.com"
+	loginProfile = ""
+	loginNoBrowser = true
+	defer func() { loginNoBrowser = false }()
 
 	// Capture stdout
 	oldStdout := os.Stdout

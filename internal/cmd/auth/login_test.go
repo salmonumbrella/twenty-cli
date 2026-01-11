@@ -10,16 +10,19 @@ import (
 	"github.com/spf13/viper"
 )
 
-func TestLoginCmd_MissingToken(t *testing.T) {
+func TestLoginCmd_CLIMode_MissingToken(t *testing.T) {
 	setupMockStore(t)
 
 	// Reset viper
 	viper.Reset()
 	viper.Set("profile", "")
 
-	// Clear flags
+	// Set flags for CLI mode
 	loginToken = ""
 	loginBaseURL = "https://twenty.example.com"
+	loginProfile = ""
+	loginNoBrowser = true
+	defer func() { loginNoBrowser = false }()
 
 	cmd := loginCmd
 	var buf bytes.Buffer
@@ -31,21 +34,25 @@ func TestLoginCmd_MissingToken(t *testing.T) {
 		t.Error("Expected error when token is missing")
 	}
 
-	if err.Error() != "--token is required. Get your API token from Twenty Settings -> APIs & Webhooks" {
-		t.Errorf("Unexpected error message: %v", err)
+	expected := "--token is required with --no-browser. Get your API token from Twenty Settings -> APIs & Webhooks"
+	if err.Error() != expected {
+		t.Errorf("Unexpected error message: got %q, want %q", err.Error(), expected)
 	}
 }
 
-func TestLoginCmd_MissingBaseURL(t *testing.T) {
+func TestLoginCmd_CLIMode_MissingBaseURL(t *testing.T) {
 	setupMockStore(t)
 
 	// Reset viper
 	viper.Reset()
 	viper.Set("profile", "")
 
-	// Set token but not base URL
+	// Set token but not base URL in CLI mode
 	loginToken = "test-token"
 	loginBaseURL = ""
+	loginProfile = ""
+	loginNoBrowser = true
+	defer func() { loginNoBrowser = false }()
 
 	cmd := loginCmd
 	var buf bytes.Buffer
@@ -57,12 +64,13 @@ func TestLoginCmd_MissingBaseURL(t *testing.T) {
 		t.Error("Expected error when base URL is missing")
 	}
 
-	if err.Error() != "--base-url is required. Example: --base-url https://twenty.example.com" {
-		t.Errorf("Unexpected error message: %v", err)
+	expected := "--base-url is required with --no-browser. Example: --base-url https://twenty.example.com"
+	if err.Error() != expected {
+		t.Errorf("Unexpected error message: got %q, want %q", err.Error(), expected)
 	}
 }
 
-func TestLoginCmd_Success(t *testing.T) {
+func TestLoginCmd_CLIMode_Success(t *testing.T) {
 	mock := setupMockStore(t)
 
 	// Create temp config file
@@ -75,9 +83,12 @@ func TestLoginCmd_Success(t *testing.T) {
 	viper.Reset()
 	viper.Set("profile", "")
 
-	// Set valid inputs
+	// Set valid inputs in CLI mode
 	loginToken = "test-api-token"
 	loginBaseURL = "https://twenty.example.com"
+	loginProfile = ""
+	loginNoBrowser = true
+	defer func() { loginNoBrowser = false }()
 
 	cmd := loginCmd
 	var buf bytes.Buffer
@@ -99,7 +110,7 @@ func TestLoginCmd_Success(t *testing.T) {
 	}
 }
 
-func TestLoginCmd_WithProfile(t *testing.T) {
+func TestLoginCmd_CLIMode_WithProfile(t *testing.T) {
 	mock := setupMockStore(t)
 
 	// Create temp config file
@@ -108,13 +119,18 @@ func TestLoginCmd_WithProfile(t *testing.T) {
 	os.Setenv("HOME", tmpDir)
 	defer os.Setenv("HOME", originalHome)
 
-	// Reset viper and set profile
+	// Reset viper
 	viper.Reset()
-	viper.Set("profile", "work")
 
-	// Set valid inputs
+	// Set valid inputs with profile in CLI mode
 	loginToken = "work-api-token"
 	loginBaseURL = "https://work.twenty.example.com"
+	loginProfile = "work"
+	loginNoBrowser = true
+	defer func() {
+		loginNoBrowser = false
+		loginProfile = ""
+	}()
 
 	cmd := loginCmd
 	var buf bytes.Buffer
@@ -136,7 +152,7 @@ func TestLoginCmd_WithProfile(t *testing.T) {
 	}
 }
 
-func TestLoginCmd_TokenWithWhitespace(t *testing.T) {
+func TestLoginCmd_CLIMode_TokenWithWhitespace(t *testing.T) {
 	mock := setupMockStore(t)
 
 	// Create temp config file
@@ -149,9 +165,12 @@ func TestLoginCmd_TokenWithWhitespace(t *testing.T) {
 	viper.Reset()
 	viper.Set("profile", "")
 
-	// Set inputs with whitespace
+	// Set inputs with whitespace in CLI mode
 	loginToken = "   test-token-with-spaces   "
 	loginBaseURL = "   https://twenty.example.com   "
+	loginProfile = ""
+	loginNoBrowser = true
+	defer func() { loginNoBrowser = false }()
 
 	cmd := loginCmd
 	var buf bytes.Buffer
@@ -242,7 +261,7 @@ func TestSaveBaseURL_UpdatesExistingConfig(t *testing.T) {
 	}
 }
 
-func TestLoginCmd_SaveTokenError(t *testing.T) {
+func TestLoginCmd_CLIMode_SaveTokenError(t *testing.T) {
 	mock := setupMockStore(t)
 	mock.SetSetError(errors.New("save token error"))
 
@@ -256,9 +275,12 @@ func TestLoginCmd_SaveTokenError(t *testing.T) {
 	viper.Reset()
 	viper.Set("profile", "")
 
-	// Set valid inputs
+	// Set valid inputs in CLI mode
 	loginToken = "test-api-token"
 	loginBaseURL = "https://twenty.example.com"
+	loginProfile = ""
+	loginNoBrowser = true
+	defer func() { loginNoBrowser = false }()
 
 	cmd := loginCmd
 	var buf bytes.Buffer
@@ -272,5 +294,56 @@ func TestLoginCmd_SaveTokenError(t *testing.T) {
 
 	if !bytes.Contains([]byte(err.Error()), []byte("failed to save token")) {
 		t.Errorf("Expected 'failed to save token' error, got: %v", err)
+	}
+}
+
+func TestLoginCmd_CLIMode_SetsPrimaryOnFirstProfile(t *testing.T) {
+	mock := setupMockStore(t)
+
+	// Create temp config file
+	tmpDir := t.TempDir()
+	originalHome := os.Getenv("HOME")
+	os.Setenv("HOME", tmpDir)
+	defer os.Setenv("HOME", originalHome)
+
+	// Reset viper
+	viper.Reset()
+
+	// Set valid inputs in CLI mode
+	loginToken = "test-api-token"
+	loginBaseURL = "https://twenty.example.com"
+	loginProfile = "myprofile"
+	loginNoBrowser = true
+	defer func() {
+		loginNoBrowser = false
+		loginProfile = ""
+	}()
+
+	cmd := loginCmd
+	var buf bytes.Buffer
+	cmd.SetOut(&buf)
+	cmd.SetErr(&buf)
+
+	err := cmd.RunE(cmd, nil)
+	if err != nil {
+		t.Fatalf("Unexpected error: %v", err)
+	}
+
+	// Verify token was saved
+	tok, err := mock.GetToken("myprofile")
+	if err != nil {
+		t.Fatalf("Failed to get token: %v", err)
+	}
+	if tok.RefreshToken != "test-api-token" {
+		t.Errorf("Token mismatch: got %q, want %q", tok.RefreshToken, "test-api-token")
+	}
+
+	// Verify it was set as primary (first profile)
+	primary, err := mock.GetDefaultAccount()
+	if err != nil {
+		t.Fatalf("Failed to get default account: %v", err)
+	}
+	if primary != "myprofile" {
+		t.Errorf("Expected myprofile to be primary, got %q", primary)
 	}
 }
