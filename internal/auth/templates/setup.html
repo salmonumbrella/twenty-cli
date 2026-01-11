@@ -1,0 +1,557 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connect to Twenty</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Gabarito:wght@400;500;600;700&family=Inter:wght@400;500;600&family=Fragment+Mono&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            /* Twenty brand */
+            --brand-primary: #316e9d;
+            --brand-dark: #141414;
+            --brand-primary-dim: rgba(49, 110, 157, 0.12);
+            --brand-primary-glow: rgba(49, 110, 157, 0.25);
+
+            /* Status */
+            --success: #00ac30;
+            --success-dim: rgba(0, 172, 48, 0.12);
+            --error: #dc2626;
+            --error-dim: rgba(220, 38, 38, 0.12);
+
+            /* Dark theme */
+            --bg-void: #050507;
+            --bg-base: #0a0a0d;
+            --bg-surface: #111115;
+            --bg-elevated: #18181d;
+            --bg-input: #0d0d10;
+            --border: rgba(255, 255, 255, 0.06);
+            --border-focus: rgba(49, 110, 157, 0.5);
+            --text: #f4f4f5;
+            --text-secondary: #a1a1aa;
+            --text-muted: #71717a;
+            --text-dim: #52525b;
+
+            --radius: 10px;
+            --radius-lg: 14px;
+            --transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-void);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            line-height: 1.5;
+            -webkit-font-smoothing: antialiased;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        /* Subtle animated grid */
+        body::before {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(49, 110, 157, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(49, 110, 157, 0.03) 1px, transparent 1px);
+            background-size: 48px 48px;
+            pointer-events: none;
+            z-index: 0;
+        }
+
+        /* Gradient orb */
+        .orb {
+            position: fixed;
+            width: 600px;
+            height: 600px;
+            border-radius: 50%;
+            filter: blur(140px);
+            opacity: 0.4;
+            pointer-events: none;
+            background: var(--brand-primary);
+            top: -20%;
+            left: 50%;
+            transform: translateX(-50%);
+            animation: orbFloat 20s ease-in-out infinite;
+        }
+
+        @keyframes orbFloat {
+            0%, 100% { transform: translateX(-50%) translateY(0); }
+            50% { transform: translateX(-50%) translateY(30px); }
+        }
+
+        .container {
+            max-width: 440px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 32px 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        /* Header */
+        .header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+
+        .logo {
+            width: 72px;
+            height: 72px;
+            margin: 0 auto 20px;
+        }
+
+        .logo svg {
+            width: 100%;
+            height: 100%;
+            filter: drop-shadow(0 4px 24px var(--brand-primary-glow));
+        }
+
+        h1 {
+            font-family: 'Gabarito', sans-serif;
+            font-size: 26px;
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            margin-bottom: 6px;
+        }
+
+        .subtitle {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        /* Card */
+        .card {
+            background: var(--bg-surface);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-lg);
+            padding: 28px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Form */
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group:last-of-type {
+            margin-bottom: 24px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: var(--text);
+        }
+
+        input {
+            width: 100%;
+            padding: 12px 14px;
+            font-family: inherit;
+            font-size: 14px;
+            color: var(--text);
+            background: var(--bg-input);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            outline: none;
+            transition: border-color var(--transition), box-shadow var(--transition);
+        }
+
+        input::placeholder {
+            color: var(--text-dim);
+        }
+
+        input:focus {
+            border-color: var(--border-focus);
+            box-shadow: 0 0 0 3px var(--brand-primary-dim);
+        }
+
+        input.error {
+            border-color: var(--error);
+            box-shadow: 0 0 0 3px var(--error-dim);
+        }
+
+        input.success {
+            border-color: var(--success);
+            box-shadow: 0 0 0 3px var(--success-dim);
+        }
+
+        .hint {
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        .hint a {
+            color: var(--brand-primary);
+            text-decoration: none;
+            transition: opacity var(--transition);
+        }
+
+        .hint a:hover {
+            opacity: 0.8;
+        }
+
+        /* Buttons */
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+
+        button {
+            flex: 1;
+            padding: 12px 20px;
+            font-family: inherit;
+            font-size: 14px;
+            font-weight: 500;
+            border: none;
+            border-radius: var(--radius);
+            cursor: pointer;
+            transition: all var(--transition);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-secondary {
+            background: var(--bg-elevated);
+            color: var(--text);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover:not(:disabled) {
+            background: var(--bg-base);
+            border-color: var(--text-dim);
+        }
+
+        .btn-primary {
+            background: var(--brand-primary);
+            color: white;
+        }
+
+        .btn-primary:hover:not(:disabled) {
+            filter: brightness(1.1);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* Status message */
+        .status {
+            margin-top: 16px;
+            padding: 12px 14px;
+            border-radius: var(--radius);
+            font-size: 13px;
+            display: none;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .status.visible {
+            display: flex;
+        }
+
+        .status.loading {
+            background: var(--brand-primary-dim);
+            color: var(--brand-primary);
+        }
+
+        .status.success {
+            background: var(--success-dim);
+            color: var(--success);
+        }
+
+        .status.error {
+            background: var(--error-dim);
+            color: var(--error);
+        }
+
+        .status-icon {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        /* Spinner */
+        .spinner {
+            width: 18px;
+            height: 18px;
+            border: 2px solid currentColor;
+            border-top-color: transparent;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Footer */
+        .footer {
+            margin-top: 20px;
+            text-align: center;
+        }
+
+        .footer p {
+            font-size: 12px;
+            color: var(--text-dim);
+        }
+
+        .footer code {
+            font-family: 'Fragment Mono', monospace;
+            font-size: 11px;
+            background: var(--bg-elevated);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--text-muted);
+        }
+
+        @media (max-width: 480px) {
+            .container { padding: 24px 16px; }
+            .card { padding: 20px; }
+            .button-group { flex-direction: column; }
+        }
+    </style>
+</head>
+<body>
+    <div class="orb"></div>
+
+    <div class="container">
+        <header class="header">
+            <div class="logo">
+                <svg viewBox="0 0 136 136" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="136" height="136" rx="16" fill="#141414"/>
+                    <path d="M27.27 50.6401C27.27 43.2101 33.3 37.1801 40.73 37.1801H66.64C67.02 37.1801 67.37 37.4101 67.53 37.7601C67.69 38.1101 67.62 38.5201 67.36 38.8101L61.68 44.9801C60.69 46.0501 59.3 46.6701 57.84 46.6701H40.8C38.57 46.6701 36.76 48.4801 36.76 50.7101V60.8901C36.76 62.2001 35.7 63.2601 34.39 63.2601H29.65C28.34 63.2601 27.28 62.2001 27.28 60.8901V50.6401H27.27Z" fill="white"/>
+                    <path d="M107.88 85.3601C107.88 92.7901 101.85 98.82 94.42 98.82H83.41C75.98 98.82 69.95 92.7901 69.95 85.3601V66.0901C69.95 64.7801 70.44 63.5201 71.33 62.5501L77.75 55.5801C78.02 55.2901 78.44 55.1901 78.82 55.3301C79.19 55.4801 79.44 55.83 79.44 56.23V85.3001C79.44 87.5301 81.25 89.3401 83.48 89.3401H94.36C96.59 89.3401 98.4 87.5301 98.4 85.3001V50.7101C98.4 48.4801 96.59 46.6701 94.36 46.6701H81.71C80.26 46.6701 78.88 47.2801 77.89 48.3401L40.16 89.3401H62.83C64.14 89.3401 65.2 90.4001 65.2 91.7101V96.4501C65.2 97.7601 64.14 98.82 62.83 98.82H32.28C29.51 98.82 27.26 96.5701 27.26 93.8001V91.29C27.26 90.03 27.73 88.8201 28.59 87.8901L70.89 41.9401C73.69 38.9001 77.62 37.1801 81.75 37.1801H94.41C101.84 37.1801 107.87 43.2101 107.87 50.6401V85.3601H107.88Z" fill="white"/>
+                </svg>
+            </div>
+            <h1>Connect to Twenty</h1>
+            <p class="subtitle">Enter your API credentials to get started</p>
+        </header>
+
+        <div class="card">
+            <form id="setup-form">
+                <input type="hidden" name="csrf_token" value="{{.CSRFToken}}">
+
+                <div class="form-group">
+                    <label for="base_url">Base URL</label>
+                    <input type="url" id="base_url" name="base_url"
+                           placeholder="https://app.twenty.com"
+                           required>
+                    <p class="hint">Your Twenty instance URL</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="token">API Token</label>
+                    <input type="password" id="token" name="token"
+                           placeholder="Enter your API token"
+                           required>
+                    <p class="hint">
+                        Get from <a href="#" id="settings-link" target="_blank">Settings &rarr; APIs & Webhooks</a>
+                    </p>
+                </div>
+
+                <div class="form-group">
+                    <label for="profile">Profile Name <span style="color: var(--text-dim);">(optional)</span></label>
+                    <input type="text" id="profile" name="profile"
+                           placeholder="default"
+                           pattern="[a-zA-Z0-9_-]+"
+                           title="Letters, numbers, underscore, and hyphen only">
+                    <p class="hint">For managing multiple Twenty instances</p>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" id="test-btn" class="btn-secondary">
+                        Test Connection
+                    </button>
+                    <button type="submit" id="save-btn" class="btn-primary" disabled>
+                        Save &amp; Connect
+                    </button>
+                </div>
+
+                <div id="status" class="status">
+                    <span class="status-icon"></span>
+                    <span class="status-text"></span>
+                </div>
+            </form>
+        </div>
+
+        <footer class="footer">
+            <p>Or use: <code>twenty auth login --no-browser</code></p>
+        </footer>
+    </div>
+
+    <script>
+        const form = document.getElementById('setup-form');
+        const baseUrlInput = document.getElementById('base_url');
+        const tokenInput = document.getElementById('token');
+        const profileInput = document.getElementById('profile');
+        const testBtn = document.getElementById('test-btn');
+        const saveBtn = document.getElementById('save-btn');
+        const status = document.getElementById('status');
+        const settingsLink = document.getElementById('settings-link');
+
+        let connectionTested = false;
+
+        // Update settings link based on base URL
+        baseUrlInput.addEventListener('input', () => {
+            connectionTested = false;
+            saveBtn.disabled = true;
+            updateSettingsLink();
+            clearStatus();
+        });
+
+        tokenInput.addEventListener('input', () => {
+            connectionTested = false;
+            saveBtn.disabled = true;
+            clearStatus();
+        });
+
+        function updateSettingsLink() {
+            const url = baseUrlInput.value.trim();
+            if (url) {
+                try {
+                    const parsed = new URL(url);
+                    settingsLink.href = `${parsed.origin}/settings/developers`;
+                } catch {
+                    settingsLink.href = '#';
+                }
+            } else {
+                settingsLink.href = '#';
+            }
+        }
+
+        function showStatus(type, message) {
+            status.className = 'status visible ' + type;
+            const iconEl = status.querySelector('.status-icon');
+            const textEl = status.querySelector('.status-text');
+
+            if (type === 'loading') {
+                iconEl.innerHTML = '<div class="spinner"></div>';
+            } else if (type === 'success') {
+                iconEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>';
+            } else {
+                iconEl.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>';
+            }
+
+            textEl.textContent = message;
+        }
+
+        function clearStatus() {
+            status.className = 'status';
+        }
+
+        function setInputState(input, state) {
+            input.classList.remove('error', 'success');
+            if (state) input.classList.add(state);
+        }
+
+        async function testConnection() {
+            const baseUrl = baseUrlInput.value.trim();
+            const token = tokenInput.value.trim();
+
+            if (!baseUrl || !token) {
+                showStatus('error', 'Please enter both Base URL and API Token');
+                return;
+            }
+
+            testBtn.disabled = true;
+            showStatus('loading', 'Testing connection...');
+            setInputState(baseUrlInput, null);
+            setInputState(tokenInput, null);
+
+            try {
+                const resp = await fetch('/validate', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': form.csrf_token.value
+                    },
+                    body: JSON.stringify({ base_url: baseUrl, token: token })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok && data.valid) {
+                    connectionTested = true;
+                    saveBtn.disabled = false;
+                    setInputState(baseUrlInput, 'success');
+                    setInputState(tokenInput, 'success');
+                    showStatus('success', 'Connection successful!');
+                } else {
+                    setInputState(tokenInput, 'error');
+                    showStatus('error', data.error || 'Invalid credentials');
+                }
+            } catch (err) {
+                setInputState(baseUrlInput, 'error');
+                showStatus('error', 'Network error: ' + err.message);
+            } finally {
+                testBtn.disabled = false;
+            }
+        }
+
+        async function saveCredentials(e) {
+            e.preventDefault();
+
+            if (!connectionTested) {
+                showStatus('error', 'Please test the connection first');
+                return;
+            }
+
+            const baseUrl = baseUrlInput.value.trim();
+            const token = tokenInput.value.trim();
+            const profile = profileInput.value.trim() || 'default';
+
+            saveBtn.disabled = true;
+            showStatus('loading', 'Saving credentials...');
+
+            try {
+                const resp = await fetch('/submit', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-Token': form.csrf_token.value
+                    },
+                    body: JSON.stringify({
+                        base_url: baseUrl,
+                        token: token,
+                        profile: profile
+                    })
+                });
+
+                const data = await resp.json();
+
+                if (resp.ok && data.success) {
+                    window.location.href = '/success?profile=' + encodeURIComponent(profile);
+                } else {
+                    showStatus('error', data.error || 'Failed to save credentials');
+                    saveBtn.disabled = false;
+                }
+            } catch (err) {
+                showStatus('error', 'Network error: ' + err.message);
+                saveBtn.disabled = false;
+            }
+        }
+
+        testBtn.addEventListener('click', testConnection);
+        form.addEventListener('submit', saveCredentials);
+
+        // Initialize settings link
+        updateSettingsLink();
+    </script>
+</body>
+</html>
