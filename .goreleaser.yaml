@@ -1,0 +1,51 @@
+version: 2
+
+project_name: twenty
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: twenty
+    main: ./cmd/twenty
+    binary: twenty
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - darwin
+      - linux
+      - windows
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w
+      - -X main.version={{.Version}}
+      - -X main.commit={{.Commit}}
+      - -X main.date={{.Date}}
+
+archives:
+  - id: default
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+checksum:
+  name_template: "checksums.txt"
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^ci:"
+      - "^chore:"
+
+# Homebrew formula is managed by the homebrew-tap auto-update workflow
+# which generates formulas in the correct format (without def inside blocks)

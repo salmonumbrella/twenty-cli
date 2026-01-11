@@ -1,0 +1,68 @@
+version: "2"
+
+run:
+  timeout: 5m
+
+linters:
+  default: none
+  enable:
+    - errcheck
+    - govet
+    - ineffassign
+    - staticcheck
+    - unused
+    - misspell
+    - unconvert
+    - unparam
+    - prealloc
+  settings:
+    misspell:
+      locale: US
+  exclusions:
+    presets:
+      - std-error-handling
+      - common-false-positives
+    rules:
+      # Allow unchecked error returns in test files (common in test helpers)
+      - path: _test\.go
+        linters:
+          - errcheck
+      # Allow unused parameters in test files (common with testing.T)
+      - path: _test\.go
+        linters:
+          - unparam
+      # Allow unused code in test files
+      - path: _test\.go
+        linters:
+          - unused
+      # Allow various staticcheck suggestions in test files
+      - path: _test\.go
+        linters:
+          - staticcheck
+      # Allow functions that return error for API consistency (error is always nil now but may change)
+      - path: internal/api/rest/list_options\.go
+        linters:
+          - unparam
+      - path: internal/cmd/records/helpers\.go
+        linters:
+          - unparam
+      # Allow unused cmd parameter in Cobra command handlers (required by Cobra signature)
+      # Allow unused query parameter in output functions (for future jq support)
+      - path: internal/cmd/(companies|notes|opportunities|people|tasks)/get\.go
+        linters:
+          - unparam
+      - path: internal/cmd/objects/(create|update)\.go
+        linters:
+          - unparam
+
+formatters:
+  enable:
+    - gofmt
+    - goimports
+  settings:
+    goimports:
+      local-prefixes:
+        - github.com/salmonumbrella/twenty-cli
+
+output:
+  show-stats: true
