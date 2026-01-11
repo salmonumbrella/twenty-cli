@@ -45,14 +45,18 @@ var listCmd = &cobra.Command{
 
 		fmt.Println("Profiles:")
 		for _, p := range profiles {
-			marker := " "
+			marker := "  "
 			if p == defaultProfile {
-				marker = "*"
+				marker = "* "
 			}
-			fmt.Printf(" %s %s\n", marker, p)
+			fmt.Printf(" %s%s", marker, p)
+			if p == defaultProfile {
+				fmt.Print(" (primary)")
+			}
+			fmt.Println()
 		}
-		if defaultProfile == "" {
-			fmt.Println("No default profile set. Use: twenty auth switch <profile>")
+		if defaultProfile == "" && len(profiles) > 0 {
+			fmt.Println("\nNo primary profile set. Use: twenty auth switch <profile>")
 		}
 		return nil
 	},
