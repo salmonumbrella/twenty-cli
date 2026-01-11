@@ -28,4 +28,16 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+
+      - name: Update Homebrew formula
+        run: |
+          gh api repos/salmonumbrella/homebrew-tap/dispatches \
+            -f event_type=update-formula \
+            -f 'client_payload[repo]=salmonumbrella/twenty-cli' \
+            -f 'client_payload[version]=${{ github.ref_name }}' \
+            -f 'client_payload[binary_name]=twenty' \
+            -f 'client_payload[formula_name]=twenty-cli' \
+            -f 'client_payload[description]=CLI for Twenty CRM' \
+            -f 'client_payload[archive_prefix]=twenty'
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
