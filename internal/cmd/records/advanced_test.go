@@ -14,7 +14,7 @@ import (
 // ============== Merge Tests ==============
 
 func TestMergeCmd_Flags(t *testing.T) {
-	flags := []string{"data", "file"}
+	flags := []string{"data", "file", "ids", "priority", "dry-run"}
 	for _, flag := range flags {
 		if mergeCmd.Flags().Lookup(flag) == nil {
 			t.Errorf("%s flag not registered", flag)
@@ -60,16 +60,29 @@ func TestRunMerge_Success(t *testing.T) {
 			t.Errorf("unexpected path: %s", r.URL.Path)
 		}
 
-		if r.Method != "POST" {
-			t.Errorf("expected POST, got %s", r.Method)
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
 		}
 
 		body, _ := io.ReadAll(r.Body)
 		var payload map[string]interface{}
 		json.Unmarshal(body, &payload)
 
-		if payload["primaryId"] != "p1" {
-			t.Errorf("primaryId = %v, want %q", payload["primaryId"], "p1")
+		// Check for new payload format
+		ids, ok := payload["ids"].([]interface{})
+		if !ok {
+			t.Errorf("ids should be an array, got %T", payload["ids"])
+		}
+		if len(ids) != 3 {
+			t.Errorf("ids length = %d, want 3", len(ids))
+		}
+		if ids[0] != "p1" || ids[1] != "p2" || ids[2] != "p3" {
+			t.Errorf("ids = %v, want [p1, p2, p3]", ids)
+		}
+
+		priorityIdx, ok := payload["conflictPriorityIndex"].(float64)
+		if !ok || priorityIdx != 0 {
+			t.Errorf("conflictPriorityIndex = %v, want 0", payload["conflictPriorityIndex"])
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -79,7 +92,54 @@ func TestRunMerge_Success(t *testing.T) {
 	cleanup := setupTestEnv(t, handler)
 	defer cleanup()
 
-	mergeData = `{"primaryId":"p1","secondaryIds":["p2","p3"]}`
+	mergeIDs = "p1,p2,p3"
+	mergePriority = 0
+	mergeDryRun = false
+	mergeData = ""
+	mergeDataFile = ""
+	noResolve = true
+
+	err := runMerge(mergeCmd, []string{"people"})
+	if err != nil {
+		t.Fatalf("runMerge failed: %v", err)
+	}
+
+	mergeIDs = ""
+}
+
+func TestRunMerge_WithRawData(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/rest/meta/objects" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": map[string]interface{}{"objects": []interface{}{}},
+			})
+			return
+		}
+
+		if r.Method != "PATCH" {
+			t.Errorf("expected PATCH, got %s", r.Method)
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		var payload map[string]interface{}
+		json.Unmarshal(body, &payload)
+
+		// Raw data should be passed through
+		ids, ok := payload["ids"].([]interface{})
+		if !ok || len(ids) != 2 {
+			t.Errorf("ids = %v, want array of 2", payload["ids"])
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data":{"person":{"id":"p1"}}}`))
+	})
+
+	cleanup := setupTestEnv(t, handler)
+	defer cleanup()
+
+	mergeIDs = ""
+	mergeData = `{"ids":["p1","p2"],"conflictPriorityIndex":1}`
 	mergeDataFile = ""
 	noResolve = true
 
@@ -91,10 +151,93 @@ func TestRunMerge_Success(t *testing.T) {
 	mergeData = ""
 }
 
+func TestRunMerge_WithPriority(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/rest/meta/objects" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": map[string]interface{}{"objects": []interface{}{}},
+			})
+			return
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		var payload map[string]interface{}
+		json.Unmarshal(body, &payload)
+
+		priorityIdx, ok := payload["conflictPriorityIndex"].(float64)
+		if !ok || priorityIdx != 2 {
+			t.Errorf("conflictPriorityIndex = %v, want 2", payload["conflictPriorityIndex"])
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data":{"person":{"id":"p1"}}}`))
+	})
+
+	cleanup := setupTestEnv(t, handler)
+	defer cleanup()
+
+	mergeIDs = "p1,p2,p3"
+	mergePriority = 2
+	mergeDryRun = false
+	mergeData = ""
+	noResolve = true
+
+	err := runMerge(mergeCmd, []string{"people"})
+	if err != nil {
+		t.Fatalf("runMerge failed: %v", err)
+	}
+
+	mergeIDs = ""
+	mergePriority = 0
+}
+
+func TestRunMerge_WithDryRun(t *testing.T) {
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/rest/meta/objects" {
+			w.Header().Set("Content-Type", "application/json")
+			json.NewEncoder(w).Encode(map[string]interface{}{
+				"data": map[string]interface{}{"objects": []interface{}{}},
+			})
+			return
+		}
+
+		body, _ := io.ReadAll(r.Body)
+		var payload map[string]interface{}
+		json.Unmarshal(body, &payload)
+
+		dryRun, ok := payload["dryRun"].(bool)
+		if !ok || !dryRun {
+			t.Errorf("dryRun = %v, want true", payload["dryRun"])
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"data":{"person":{"id":"p1"}}}`))
+	})
+
+	cleanup := setupTestEnv(t, handler)
+	defer cleanup()
+
+	mergeIDs = "p1,p2"
+	mergePriority = 0
+	mergeDryRun = true
+	mergeData = ""
+	noResolve = true
+
+	err := runMerge(mergeCmd, []string{"people"})
+	if err != nil {
+		t.Fatalf("runMerge failed: %v", err)
+	}
+
+	mergeIDs = ""
+	mergeDryRun = false
+}
+
 func TestRunMerge_NoPayload(t *testing.T) {
 	cleanup := setupTestEnv(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {}))
 	defer cleanup()
 
+	mergeIDs = ""
 	mergeData = ""
 	mergeDataFile = ""
 	noResolve = true
