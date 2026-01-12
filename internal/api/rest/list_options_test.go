@@ -238,6 +238,70 @@ func TestAddFilterParams(t *testing.T) {
 				"filter[address][city][name][eq]": "San Francisco",
 			},
 		},
+		{
+			name:   "OR filter with []interface{}",
+			prefix: "filter",
+			filter: map[string]interface{}{
+				"or": []interface{}{
+					map[string]interface{}{
+						"name": map[string]interface{}{
+							"firstName": map[string]interface{}{
+								"ilike": "%dickinson%",
+							},
+						},
+					},
+					map[string]interface{}{
+						"name": map[string]interface{}{
+							"lastName": map[string]interface{}{
+								"ilike": "%dickinson%",
+							},
+						},
+					},
+				},
+			},
+			expectedParams: map[string]string{
+				"filter[or][0][name][firstName][ilike]": "%dickinson%",
+				"filter[or][1][name][lastName][ilike]":  "%dickinson%",
+			},
+		},
+		{
+			name:   "OR filter with []map[string]interface{}",
+			prefix: "filter",
+			filter: map[string]interface{}{
+				"or": []map[string]interface{}{
+					{
+						"name": map[string]interface{}{
+							"firstName": map[string]string{
+								"ilike": "%smith%",
+							},
+						},
+					},
+					{
+						"emails": map[string]interface{}{
+							"primaryEmail": map[string]string{
+								"ilike": "%smith%",
+							},
+						},
+					},
+				},
+			},
+			expectedParams: map[string]string{
+				"filter[or][0][name][firstName][ilike]":      "%smith%",
+				"filter[or][1][emails][primaryEmail][ilike]": "%smith%",
+			},
+		},
+		{
+			name:   "array with simple values",
+			prefix: "filter",
+			filter: map[string]interface{}{
+				"ids": []interface{}{"id1", "id2", "id3"},
+			},
+			expectedParams: map[string]string{
+				"filter[ids][0]": "id1",
+				"filter[ids][1]": "id2",
+				"filter[ids][2]": "id3",
+			},
+		},
 	}
 
 	for _, tt := range tests {

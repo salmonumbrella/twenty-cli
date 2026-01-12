@@ -75,6 +75,22 @@ func addFilterParams(params url.Values, prefix string, filter map[string]interfa
 			for op, val := range v {
 				params.Set(fmt.Sprintf("%s[%s]", newPrefix, op), val)
 			}
+		case []interface{}:
+			// Handle arrays (e.g., OR filters): filter[or][0][field][op]=value
+			for i, item := range v {
+				indexedPrefix := fmt.Sprintf("%s[%d]", newPrefix, i)
+				if m, ok := item.(map[string]interface{}); ok {
+					addFilterParams(params, indexedPrefix, m)
+				} else {
+					params.Set(indexedPrefix, fmt.Sprintf("%v", item))
+				}
+			}
+		case []map[string]interface{}:
+			// Handle typed arrays of maps (e.g., OR filters)
+			for i, item := range v {
+				indexedPrefix := fmt.Sprintf("%s[%d]", newPrefix, i)
+				addFilterParams(params, indexedPrefix, item)
+			}
 		case string:
 			params.Set(newPrefix, v)
 		default:
