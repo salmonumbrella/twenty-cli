@@ -46,8 +46,9 @@ func newListCmd() *cobra.Command {
 				}
 			}
 			if flags.name != "" {
-				filter["name"] = map[string]interface{}{
-					"firstName": map[string]string{"ilike": "%" + flags.name + "%"},
+				filter["or"] = []map[string]interface{}{
+					{"name": map[string]interface{}{"firstName": map[string]string{"ilike": "%" + flags.name + "%"}}},
+					{"name": map[string]interface{}{"lastName": map[string]string{"ilike": "%" + flags.name + "%"}}},
 				}
 			}
 			if flags.city != "" {

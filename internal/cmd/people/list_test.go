@@ -292,23 +292,45 @@ func TestListCmd_BuildFilter_Name(t *testing.T) {
 
 	filter := make(map[string]interface{})
 	if flags.name != "" {
-		filter["name"] = map[string]interface{}{
-			"firstName": map[string]string{"ilike": "%" + flags.name + "%"},
+		filter["or"] = []map[string]interface{}{
+			{"name": map[string]interface{}{"firstName": map[string]string{"ilike": "%" + flags.name + "%"}}},
+			{"name": map[string]interface{}{"lastName": map[string]string{"ilike": "%" + flags.name + "%"}}},
 		}
 	}
 
-	name, ok := filter["name"].(map[string]interface{})
+	orFilter, ok := filter["or"].([]map[string]interface{})
 	if !ok {
-		t.Fatal("filter[name] should be map[string]interface{}")
+		t.Fatal("filter[or] should be []map[string]interface{}")
 	}
 
-	firstName, ok := name["firstName"].(map[string]string)
-	if !ok {
-		t.Fatal("filter[name][firstName] should be map[string]string")
+	if len(orFilter) != 2 {
+		t.Fatalf("filter[or] should have 2 elements, got %d", len(orFilter))
 	}
 
+	// Check firstName filter
+	firstNameFilter, ok := orFilter[0]["name"].(map[string]interface{})
+	if !ok {
+		t.Fatal("filter[or][0][name] should be map[string]interface{}")
+	}
+	firstName, ok := firstNameFilter["firstName"].(map[string]string)
+	if !ok {
+		t.Fatal("filter[or][0][name][firstName] should be map[string]string")
+	}
 	if firstName["ilike"] != "%John%" {
-		t.Errorf("ilike = %q, want %q", firstName["ilike"], "%John%")
+		t.Errorf("firstName ilike = %q, want %q", firstName["ilike"], "%John%")
+	}
+
+	// Check lastName filter
+	lastNameFilter, ok := orFilter[1]["name"].(map[string]interface{})
+	if !ok {
+		t.Fatal("filter[or][1][name] should be map[string]interface{}")
+	}
+	lastName, ok := lastNameFilter["lastName"].(map[string]string)
+	if !ok {
+		t.Fatal("filter[or][1][name][lastName] should be map[string]string")
+	}
+	if lastName["ilike"] != "%John%" {
+		t.Errorf("lastName ilike = %q, want %q", lastName["ilike"], "%John%")
 	}
 }
 
@@ -362,8 +384,9 @@ func TestListCmd_BuildFilter_Empty(t *testing.T) {
 		}
 	}
 	if flags.name != "" {
-		filter["name"] = map[string]interface{}{
-			"firstName": map[string]string{"ilike": "%" + flags.name + "%"},
+		filter["or"] = []map[string]interface{}{
+			{"name": map[string]interface{}{"firstName": map[string]string{"ilike": "%" + flags.name + "%"}}},
+			{"name": map[string]interface{}{"lastName": map[string]string{"ilike": "%" + flags.name + "%"}}},
 		}
 	}
 	if flags.city != "" {
@@ -393,8 +416,9 @@ func TestListCmd_BuildFilter_AllFilters(t *testing.T) {
 		}
 	}
 	if flags.name != "" {
-		filter["name"] = map[string]interface{}{
-			"firstName": map[string]string{"ilike": "%" + flags.name + "%"},
+		filter["or"] = []map[string]interface{}{
+			{"name": map[string]interface{}{"firstName": map[string]string{"ilike": "%" + flags.name + "%"}}},
+			{"name": map[string]interface{}{"lastName": map[string]string{"ilike": "%" + flags.name + "%"}}},
 		}
 	}
 	if flags.city != "" {
