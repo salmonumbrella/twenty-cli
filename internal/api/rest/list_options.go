@@ -3,6 +3,7 @@ package rest
 import (
 	"fmt"
 	"net/url"
+	"strings"
 )
 
 // ListOptions configures list endpoints.
@@ -46,10 +47,13 @@ func applyListParams(path string, opts *ListOptions) (string, error) {
 	} else if opts.Depth > 0 {
 		params.Set("depth", fmt.Sprintf("%d", opts.Depth))
 	}
-	// Twenty REST API uses filter[field][operator]:value format
-	// e.g., filter[emails][primaryEmail][ilike]:%test%
+	// Twenty REST API uses string filter format:
+	// filter=field[op]:"value" or filter=or(field1[op]:"value1",field2[op]:"value2")
 	if len(opts.Filter) > 0 {
-		addFilterParams(params, "filter", opts.Filter)
+		filterStr := buildFilterString(opts.Filter)
+		if filterStr != "" {
+			params.Set("filter", filterStr)
+		}
 	}
 	for key, vals := range opts.Params {
 		for _, val := range vals {
@@ -63,38 +67,128 @@ func applyListParams(path string, opts *ListOptions) (string, error) {
 	return path, nil
 }
 
-// addFilterParams recursively adds filter parameters in the format:
-// filter[field][operator]:value or filter[field][subfield][operator]:value
-func addFilterParams(params url.Values, prefix string, filter map[string]interface{}) {
+// buildFilterString converts a filter map to the Twenty API string format.
+// Examples:
+//   - Simple: {"createdAt": {"gte": "2023-01-01"}} -> createdAt[gte]:"2023-01-01"
+//   - Nested: {"emails": {"primaryEmail": {"eq": "x"}}} -> emails.primaryEmail[eq]:"x"
+//   - OR: {"or": [...]} -> or(filter1,filter2,...)
+//   - NOT: {"not": {"id": {"is": "NULL"}}} -> not(id[is]:"NULL")
+func buildFilterString(filter map[string]interface{}) string {
+	var parts []string
 	for key, value := range filter {
-		newPrefix := fmt.Sprintf("%s[%s]", prefix, key)
-		switch v := value.(type) {
-		case map[string]interface{}:
-			addFilterParams(params, newPrefix, v)
-		case map[string]string:
-			for op, val := range v {
-				params.Set(fmt.Sprintf("%s[%s]", newPrefix, op), val)
-			}
-		case []interface{}:
-			// Handle arrays (e.g., OR filters): filter[or][0][field][op]=value
-			for i, item := range v {
-				indexedPrefix := fmt.Sprintf("%s[%d]", newPrefix, i)
-				if m, ok := item.(map[string]interface{}); ok {
-					addFilterParams(params, indexedPrefix, m)
-				} else {
-					params.Set(indexedPrefix, fmt.Sprintf("%v", item))
+		part := buildFilterPart(key, value)
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+	return strings.Join(parts, ",")
+}
+
+// buildFilterPart handles a single key-value pair in the filter.
+func buildFilterPart(key string, value interface{}) string {
+	switch key {
+	case "or", "and", "not":
+		return buildLogicalOperator(key, value)
+	default:
+		return buildFieldFilter(key, value)
+	}
+}
+
+// buildLogicalOperator handles or(), and(), not() constructs.
+func buildLogicalOperator(op string, value interface{}) string {
+	var parts []string
+
+	switch v := value.(type) {
+	case []interface{}:
+		for _, item := range v {
+			if m, ok := item.(map[string]interface{}); ok {
+				part := buildFilterString(m)
+				if part != "" {
+					parts = append(parts, part)
 				}
 			}
-		case []map[string]interface{}:
-			// Handle typed arrays of maps (e.g., OR filters)
-			for i, item := range v {
-				indexedPrefix := fmt.Sprintf("%s[%d]", newPrefix, i)
-				addFilterParams(params, indexedPrefix, item)
-			}
-		case string:
-			params.Set(newPrefix, v)
-		default:
-			params.Set(newPrefix, fmt.Sprintf("%v", v))
 		}
+	case []map[string]interface{}:
+		for _, item := range v {
+			part := buildFilterString(item)
+			if part != "" {
+				parts = append(parts, part)
+			}
+		}
+	case map[string]interface{}:
+		// For "not", value is typically a single map
+		part := buildFilterString(v)
+		if part != "" {
+			parts = append(parts, part)
+		}
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%s(%s)", op, strings.Join(parts, ","))
+}
+
+// buildFieldFilter handles field filters, possibly with nested fields.
+// Returns formats like: field[op]:"value" or field.subfield[op]:"value"
+func buildFieldFilter(fieldPath string, value interface{}) string {
+	switch v := value.(type) {
+	case map[string]interface{}:
+		// Check if this is an operator map (keys are operators like "eq", "ilike", etc.)
+		// or a nested field map (keys are field names)
+		for nestedKey, nestedValue := range v {
+			if isOperator(nestedKey) {
+				// This is an operator: field[op]:"value"
+				return fmt.Sprintf("%s[%s]:%s", fieldPath, nestedKey, formatValue(nestedValue))
+			}
+			// This is a nested field: recurse with dot notation
+			newPath := fieldPath + "." + nestedKey
+			return buildFieldFilter(newPath, nestedValue)
+		}
+	case map[string]string:
+		// Direct operator map
+		for op, val := range v {
+			return fmt.Sprintf("%s[%s]:%s", fieldPath, op, formatValue(val))
+		}
+	case string:
+		// Direct value without operator (implicit eq)
+		return fmt.Sprintf("%s[eq]:%s", fieldPath, formatValue(v))
+	default:
+		// Other types (numbers, booleans, etc.)
+		return fmt.Sprintf("%s[eq]:%s", fieldPath, formatValue(v))
+	}
+	return ""
+}
+
+// isOperator returns true if the key is a filter operator.
+func isOperator(key string) bool {
+	operators := map[string]bool{
+		"eq":          true,
+		"neq":         true,
+		"ne":          true,
+		"gt":          true,
+		"gte":         true,
+		"lt":          true,
+		"lte":         true,
+		"like":        true,
+		"ilike":       true,
+		"in":          true,
+		"is":          true,
+		"startsWith":  true,
+		"endsWith":    true,
+		"contains":    true,
+		"containsAny": true,
+	}
+	return operators[key]
+}
+
+// formatValue formats a value for the filter string.
+// Strings are wrapped in quotes, other types are converted to string.
+func formatValue(value interface{}) string {
+	switch v := value.(type) {
+	case string:
+		return fmt.Sprintf("%q", v)
+	default:
+		return fmt.Sprintf("%v", v)
 	}
 }

@@ -147,26 +147,21 @@ func TestApplyListParams(t *testing.T) {
 	}
 }
 
-func TestAddFilterParams(t *testing.T) {
+func TestBuildFilterString(t *testing.T) {
 	tests := []struct {
-		name           string
-		prefix         string
-		filter         map[string]interface{}
-		expectedParams map[string]string
+		name     string
+		filter   map[string]interface{}
+		expected string
 	}{
 		{
-			name:   "simple string filter",
-			prefix: "filter",
+			name: "simple string filter with implicit eq",
 			filter: map[string]interface{}{
 				"name": "John",
 			},
-			expectedParams: map[string]string{
-				"filter[name]": "John",
-			},
+			expected: `name[eq]:"John"`,
 		},
 		{
-			name:   "nested map filter",
-			prefix: "filter",
+			name: "nested field filter",
 			filter: map[string]interface{}{
 				"emails": map[string]interface{}{
 					"primaryEmail": map[string]interface{}{
@@ -174,57 +169,33 @@ func TestAddFilterParams(t *testing.T) {
 					},
 				},
 			},
-			expectedParams: map[string]string{
-				"filter[emails][primaryEmail][ilike]": "%test%",
-			},
+			expected: `emails.primaryEmail[ilike]:"%test%"`,
 		},
 		{
-			name:   "map of string filter",
-			prefix: "filter",
+			name: "map of string filter",
 			filter: map[string]interface{}{
 				"status": map[string]string{
 					"eq": "active",
 				},
 			},
-			expectedParams: map[string]string{
-				"filter[status][eq]": "active",
-			},
+			expected: `status[eq]:"active"`,
 		},
 		{
-			name:   "numeric filter",
-			prefix: "filter",
+			name: "numeric filter",
 			filter: map[string]interface{}{
 				"age": 25,
 			},
-			expectedParams: map[string]string{
-				"filter[age]": "25",
-			},
+			expected: `age[eq]:25`,
 		},
 		{
-			name:   "boolean filter",
-			prefix: "filter",
+			name: "boolean filter",
 			filter: map[string]interface{}{
 				"active": true,
 			},
-			expectedParams: map[string]string{
-				"filter[active]": "true",
-			},
+			expected: `active[eq]:true`,
 		},
 		{
-			name:   "multiple filters",
-			prefix: "filter",
-			filter: map[string]interface{}{
-				"name":   "John",
-				"status": "active",
-			},
-			expectedParams: map[string]string{
-				"filter[name]":   "John",
-				"filter[status]": "active",
-			},
-		},
-		{
-			name:   "deeply nested filter",
-			prefix: "filter",
+			name: "deeply nested filter",
 			filter: map[string]interface{}{
 				"address": map[string]interface{}{
 					"city": map[string]interface{}{
@@ -234,13 +205,10 @@ func TestAddFilterParams(t *testing.T) {
 					},
 				},
 			},
-			expectedParams: map[string]string{
-				"filter[address][city][name][eq]": "San Francisco",
-			},
+			expected: `address.city.name[eq]:"San Francisco"`,
 		},
 		{
-			name:   "OR filter with []interface{}",
-			prefix: "filter",
+			name: "OR filter with []interface{}",
 			filter: map[string]interface{}{
 				"or": []interface{}{
 					map[string]interface{}{
@@ -259,14 +227,10 @@ func TestAddFilterParams(t *testing.T) {
 					},
 				},
 			},
-			expectedParams: map[string]string{
-				"filter[or][0][name][firstName][ilike]": "%dickinson%",
-				"filter[or][1][name][lastName][ilike]":  "%dickinson%",
-			},
+			expected: `or(name.firstName[ilike]:"%dickinson%",name.lastName[ilike]:"%dickinson%")`,
 		},
 		{
-			name:   "OR filter with []map[string]interface{}",
-			prefix: "filter",
+			name: "OR filter with []map[string]interface{}",
 			filter: map[string]interface{}{
 				"or": []map[string]interface{}{
 					{
@@ -285,35 +249,35 @@ func TestAddFilterParams(t *testing.T) {
 					},
 				},
 			},
-			expectedParams: map[string]string{
-				"filter[or][0][name][firstName][ilike]":      "%smith%",
-				"filter[or][1][emails][primaryEmail][ilike]": "%smith%",
-			},
+			expected: `or(name.firstName[ilike]:"%smith%",emails.primaryEmail[ilike]:"%smith%")`,
 		},
 		{
-			name:   "array with simple values",
-			prefix: "filter",
+			name: "NOT filter",
 			filter: map[string]interface{}{
-				"ids": []interface{}{"id1", "id2", "id3"},
+				"not": map[string]interface{}{
+					"id": map[string]interface{}{
+						"is": "NULL",
+					},
+				},
 			},
-			expectedParams: map[string]string{
-				"filter[ids][0]": "id1",
-				"filter[ids][1]": "id2",
-				"filter[ids][2]": "id3",
+			expected: `not(id[is]:"NULL")`,
+		},
+		{
+			name: "simple operator filter",
+			filter: map[string]interface{}{
+				"createdAt": map[string]interface{}{
+					"gte": "2023-01-01",
+				},
 			},
+			expected: `createdAt[gte]:"2023-01-01"`,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			params := url.Values{}
-			addFilterParams(params, tt.prefix, tt.filter)
-
-			for expectedKey, expectedValue := range tt.expectedParams {
-				actual := params.Get(expectedKey)
-				if actual != expectedValue {
-					t.Errorf("expected %s=%s, got %s=%s", expectedKey, expectedValue, expectedKey, actual)
-				}
+			result := buildFilterString(tt.filter)
+			if result != tt.expected {
+				t.Errorf("expected %q, got %q", tt.expected, result)
 			}
 		})
 	}
@@ -340,8 +304,63 @@ func TestApplyListParams_WithFilter(t *testing.T) {
 		t.Errorf("expected limit=10 in result, got %s", result)
 	}
 
-	// The filter should be URL encoded
-	if !strings.Contains(result, "filter") {
-		t.Errorf("expected filter in result, got %s", result)
+	// The filter should be a single query param with the string value
+	// URL-encoded: filter=emails.primaryEmail%5Bilike%5D%3A%22%25test%25%22
+	if !strings.Contains(result, "filter=") {
+		t.Errorf("expected filter= in result, got %s", result)
+	}
+
+	// Decode and check the filter value
+	parsedURL, err := url.Parse(result)
+	if err != nil {
+		t.Fatalf("failed to parse URL: %v", err)
+	}
+
+	filterValue := parsedURL.Query().Get("filter")
+	expectedFilter := `emails.primaryEmail[ilike]:"%test%"`
+	if filterValue != expectedFilter {
+		t.Errorf("expected filter value %q, got %q", expectedFilter, filterValue)
+	}
+}
+
+func TestIsOperator(t *testing.T) {
+	operators := []string{
+		"eq", "neq", "ne", "gt", "gte", "lt", "lte",
+		"like", "ilike", "in", "is",
+		"startsWith", "endsWith", "contains", "containsAny",
+	}
+
+	for _, op := range operators {
+		if !isOperator(op) {
+			t.Errorf("expected %q to be an operator", op)
+		}
+	}
+
+	nonOperators := []string{"firstName", "lastName", "email", "name", "address"}
+	for _, field := range nonOperators {
+		if isOperator(field) {
+			t.Errorf("expected %q to NOT be an operator", field)
+		}
+	}
+}
+
+func TestFormatValue(t *testing.T) {
+	tests := []struct {
+		input    interface{}
+		expected string
+	}{
+		{"hello", `"hello"`},
+		{"%test%", `"%test%"`},
+		{123, "123"},
+		{true, "true"},
+		{false, "false"},
+		{3.14, "3.14"},
+	}
+
+	for _, tt := range tests {
+		result := formatValue(tt.input)
+		if result != tt.expected {
+			t.Errorf("formatValue(%v): expected %q, got %q", tt.input, tt.expected, result)
+		}
 	}
 }
