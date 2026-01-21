@@ -6,6 +6,12 @@ export interface SearchResult {
   record: Record<string, unknown>;
 }
 
+interface GraphQLSearchResponse {
+  data?: {
+    search?: SearchResult[];
+  };
+}
+
 export class SearchService {
   constructor(private api: ApiService) {}
 
@@ -35,7 +41,7 @@ export class SearchService {
       includedObjectNameSingulars: options.objects,
       excludedObjectNameSingulars: options.excludeObjects,
     };
-    const response = await this.api.post('/graphql', { query, variables });
+    const response = await this.api.post<GraphQLSearchResponse>('/graphql', { query, variables });
     return response.data?.data?.search ?? [];
   }
 }
