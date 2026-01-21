@@ -6,17 +6,25 @@ import { ApiMetadataContext, ApiMetadataOptions } from './operations/types';
 import { runObjectsList } from './operations/objects-list.operation';
 import { runObjectsGet } from './operations/objects-get.operation';
 import { runObjectsCreate } from './operations/objects-create.operation';
+import { runObjectsUpdate } from './operations/objects-update.operation';
+import { runObjectsDelete } from './operations/objects-delete.operation';
 import { runFieldsList } from './operations/fields-list.operation';
 import { runFieldsGet } from './operations/fields-get.operation';
 import { runFieldsCreate } from './operations/fields-create.operation';
+import { runFieldsUpdate } from './operations/fields-update.operation';
+import { runFieldsDelete } from './operations/fields-delete.operation';
 
 const handlers: Record<string, (ctx: ApiMetadataContext) => Promise<void>> = {
   'objects:list': runObjectsList,
   'objects:get': runObjectsGet,
   'objects:create': runObjectsCreate,
+  'objects:update': runObjectsUpdate,
+  'objects:delete': runObjectsDelete,
   'fields:list': runFieldsList,
   'fields:get': runFieldsGet,
   'fields:create': runFieldsCreate,
+  'fields:update': runFieldsUpdate,
+  'fields:delete': runFieldsDelete,
 };
 
 export function registerApiMetadataCommand(program: Command): void {
