@@ -182,8 +182,16 @@ twenty webhooks <operation> [id] [options]
 **Options:**
 
 ```bash
--d, --data <json>    # JSON payload
--f, --file <path>    # JSON file
+-d, --data <json>     # JSON payload
+-f, --file <path>     # JSON file
+--set <key=value>     # Set a field value (repeatable)
+```
+
+**Examples:**
+
+```bash
+twenty webhooks create --set targetUrl=https://example.com/webhook --set operations=create,update
+twenty webhooks update abc123 --set description="Updated webhook"
 ```
 
 ### API Keys
@@ -230,6 +238,7 @@ twenty files <operation> [path-or-id] [options]
 
 | Operation | Description | Example |
 |-----------|-------------|---------|
+| `list` | List all files | `twenty files list` |
 | `upload` | Upload file | `twenty files upload ./document.pdf` |
 | `download` | Download file | `twenty files download <id> --output-file doc.pdf` |
 | `delete` | Delete file | `twenty files delete <id>` |
@@ -243,6 +252,7 @@ twenty files <operation> [path-or-id] [options]
 **Examples:**
 
 ```bash
+twenty files list
 twenty files upload ./report.pdf
 twenty files download abc123 --output-file ./downloaded.pdf
 twenty files delete abc123

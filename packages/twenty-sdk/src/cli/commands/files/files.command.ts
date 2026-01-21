@@ -6,11 +6,15 @@ import fs from 'fs-extra';
 import path from 'path';
 import FormData from 'form-data';
 
+interface FilesOptions {
+  outputFile?: string;
+}
+
 export function registerFilesCommand(program: Command): void {
   const cmd = program
     .command('files')
     .description('Manage file attachments')
-    .argument('<operation>', 'upload, download, delete')
+    .argument('<operation>', 'list, upload, download, delete')
     .argument('[path-or-id]', 'File path (upload) or file ID (download/delete)')
     .option('--output-file <path>', 'Output file path (download)');
 
@@ -22,6 +26,11 @@ export function registerFilesCommand(program: Command): void {
     const op = operation.toLowerCase();
 
     switch (op) {
+      case 'list': {
+        const response = await services.api.get('/files');
+        await services.output.render(response.data ?? [], { format: globalOptions.output, query: globalOptions.query });
+        break;
+      }
       case 'upload': {
         if (!pathOrId) throw new CliError('Missing file path.', 'INVALID_ARGUMENTS');
         const filePath = pathOrId;
@@ -59,8 +68,4 @@ export function registerFilesCommand(program: Command): void {
         throw new CliError(`Unknown operation: ${operation}`, 'INVALID_ARGUMENTS');
     }
   });
-}
-
-interface FilesOptions {
-  outputFile?: string;
 }

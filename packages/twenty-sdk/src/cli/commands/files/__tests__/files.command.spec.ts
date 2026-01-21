@@ -88,6 +88,45 @@ describe('files command', () => {
     });
   });
 
+  describe('list operation', () => {
+    it('lists files successfully', async () => {
+      const filesList = [
+        { id: 'file-1', name: 'doc.pdf', size: 1024 },
+        { id: 'file-2', name: 'image.png', size: 2048 },
+      ];
+      mockGet.mockResolvedValue({ data: filesList });
+
+      await program.parseAsync(['node', 'test', 'files', 'list', '-o', 'json']);
+
+      expect(mockGet).toHaveBeenCalledWith('/files');
+      expect(consoleSpy).toHaveBeenCalled();
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(output);
+      expect(parsed).toHaveLength(2);
+      expect(parsed[0].id).toBe('file-1');
+    });
+
+    it('handles empty file list', async () => {
+      mockGet.mockResolvedValue({ data: [] });
+
+      await program.parseAsync(['node', 'test', 'files', 'list', '-o', 'json']);
+
+      expect(consoleSpy).toHaveBeenCalled();
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(JSON.parse(output)).toEqual([]);
+    });
+
+    it('handles null response', async () => {
+      mockGet.mockResolvedValue({ data: null });
+
+      await program.parseAsync(['node', 'test', 'files', 'list', '-o', 'json']);
+
+      expect(consoleSpy).toHaveBeenCalled();
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(JSON.parse(output)).toEqual([]);
+    });
+  });
+
   describe('upload operation', () => {
     it('uploads a file successfully', async () => {
       vi.mocked(fs.pathExists).mockResolvedValue(true as never);

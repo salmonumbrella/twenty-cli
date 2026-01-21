@@ -9,6 +9,13 @@ interface GraphQLResponse<T = unknown> {
   errors?: Array<{ message: string }>;
 }
 
+interface ServerlessOptions {
+  data?: string;
+  file?: string;
+  name?: string;
+  description?: string;
+}
+
 export function registerServerlessCommand(program: Command): void {
   const cmd = program
     .command('serverless')
@@ -106,11 +113,4 @@ export function registerServerlessCommand(program: Command): void {
         throw new CliError(`Unknown operation: ${operation}`, 'INVALID_ARGUMENTS');
     }
   });
-}
-
-interface ServerlessOptions {
-  data?: string;
-  file?: string;
-  name?: string;
-  description?: string;
 }

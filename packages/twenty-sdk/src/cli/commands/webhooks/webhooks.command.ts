@@ -9,6 +9,16 @@ interface GraphQLResponse<T = unknown> {
   errors?: Array<{ message: string }>;
 }
 
+interface WebhooksOptions {
+  data?: string;
+  file?: string;
+  set?: string[];
+}
+
+function collect(value: string, previous: string[] = []): string[] {
+  return previous.concat([value]);
+}
+
 export function registerWebhooksCommand(program: Command): void {
   const cmd = program
     .command('webhooks')
@@ -16,7 +26,8 @@ export function registerWebhooksCommand(program: Command): void {
     .argument('<operation>', 'list, get, create, update, delete')
     .argument('[id]', 'Webhook ID')
     .option('-d, --data <json>', 'JSON payload')
-    .option('-f, --file <path>', 'JSON file');
+    .option('-f, --file <path>', 'JSON file')
+    .option('--set <key=value>', 'Set a field value', collect);
 
   applyGlobalOptions(cmd);
 
@@ -43,7 +54,7 @@ export function registerWebhooksCommand(program: Command): void {
         break;
       }
       case 'create': {
-        const payload = await parseBody(options.data, options.file);
+        const payload = await parseBody(options.data, options.file, options.set);
         const response = await services.api.post<GraphQLResponse<{ createWebhook: unknown }>>('/graphql', {
           query: `mutation($data: WebhookCreateInput!) { createWebhook(data: $data) { id targetUrl operations description } }`,
           variables: { data: payload },
@@ -53,7 +64,7 @@ export function registerWebhooksCommand(program: Command): void {
       }
       case 'update': {
         if (!id) throw new CliError('Missing webhook ID.', 'INVALID_ARGUMENTS');
-        const payload = await parseBody(options.data, options.file);
+        const payload = await parseBody(options.data, options.file, options.set);
         const response = await services.api.post<GraphQLResponse<{ updateWebhook: unknown }>>('/graphql', {
           query: `mutation($id: UUID!, $data: WebhookUpdateInput!) { updateWebhook(id: $id, data: $data) { id targetUrl operations description } }`,
           variables: { id, data: payload },
@@ -75,9 +86,4 @@ export function registerWebhooksCommand(program: Command): void {
         throw new CliError(`Unknown operation: ${operation}`, 'INVALID_ARGUMENTS');
     }
   });
-}
-
-interface WebhooksOptions {
-  data?: string;
-  file?: string;
 }
