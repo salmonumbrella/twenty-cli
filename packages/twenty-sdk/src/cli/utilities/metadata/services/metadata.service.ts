@@ -48,6 +48,15 @@ export class MetadataService {
     return response.data ?? null;
   }
 
+  async updateObject(id: string, data: Record<string, unknown>): Promise<unknown> {
+    const response = await this.api.patch(`/rest/metadata/objects/${id}`, data);
+    return response.data ?? null;
+  }
+
+  async deleteObject(id: string): Promise<void> {
+    await this.api.delete(`/rest/metadata/objects/${id}`);
+  }
+
   async listFields(): Promise<FieldMetadata[]> {
     const response = await this.api.get('/rest/metadata/fields');
     const payload = response.data as any;
@@ -63,6 +72,15 @@ export class MetadataService {
   async createField(data: Record<string, unknown>): Promise<unknown> {
     const response = await this.api.post('/rest/metadata/fields', data);
     return response.data ?? null;
+  }
+
+  async updateField(id: string, data: Record<string, unknown>): Promise<unknown> {
+    const response = await this.api.patch(`/rest/metadata/fields/${id}`, data);
+    return response.data ?? null;
+  }
+
+  async deleteField(id: string): Promise<void> {
+    await this.api.delete(`/rest/metadata/fields/${id}`);
   }
 }
 

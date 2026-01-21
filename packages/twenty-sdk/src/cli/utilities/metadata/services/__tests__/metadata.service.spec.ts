@@ -254,4 +254,88 @@ describe('MetadataService', () => {
       expect(result).toBeNull();
     });
   });
+
+  describe('updateObject', () => {
+    it('calls PATCH with correct endpoint and data', async () => {
+      const mockApi = {
+        patch: vi.fn().mockResolvedValue({
+          data: { data: { object: { id: 'obj-1', nameSingular: 'updated' } } },
+        }),
+      };
+
+      const service = new MetadataService(mockApi as any);
+      const result = await service.updateObject('obj-1', { nameSingular: 'updated' });
+
+      expect(mockApi.patch).toHaveBeenCalledWith('/rest/metadata/objects/obj-1', {
+        nameSingular: 'updated',
+      });
+      expect(result).toEqual({ data: { object: { id: 'obj-1', nameSingular: 'updated' } } });
+    });
+
+    it('returns null when response has no data', async () => {
+      const mockApi = {
+        patch: vi.fn().mockResolvedValue({}),
+      };
+
+      const service = new MetadataService(mockApi as any);
+      const result = await service.updateObject('obj-1', { nameSingular: 'test' });
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('deleteObject', () => {
+    it('calls DELETE with correct endpoint', async () => {
+      const mockApi = {
+        delete: vi.fn().mockResolvedValue({}),
+      };
+
+      const service = new MetadataService(mockApi as any);
+      await service.deleteObject('obj-1');
+
+      expect(mockApi.delete).toHaveBeenCalledWith('/rest/metadata/objects/obj-1');
+    });
+  });
+
+  describe('updateField', () => {
+    it('calls PATCH with correct endpoint and data', async () => {
+      const mockApi = {
+        patch: vi.fn().mockResolvedValue({
+          data: { data: { field: { id: 'f1', name: 'updatedField' } } },
+        }),
+      };
+
+      const service = new MetadataService(mockApi as any);
+      const result = await service.updateField('f1', { name: 'updatedField' });
+
+      expect(mockApi.patch).toHaveBeenCalledWith('/rest/metadata/fields/f1', {
+        name: 'updatedField',
+      });
+      expect(result).toEqual({ data: { field: { id: 'f1', name: 'updatedField' } } });
+    });
+
+    it('returns null when response has no data', async () => {
+      const mockApi = {
+        patch: vi.fn().mockResolvedValue({}),
+      };
+
+      const service = new MetadataService(mockApi as any);
+      const result = await service.updateField('f1', { name: 'test' });
+
+      expect(result).toBeNull();
+    });
+  });
+
+  describe('deleteField', () => {
+    it('calls DELETE with correct endpoint', async () => {
+      const mockApi = {
+        delete: vi.fn().mockResolvedValue({}),
+      };
+
+      const service = new MetadataService(mockApi as any);
+      await service.deleteField('f1');
+
+      expect(mockApi.delete).toHaveBeenCalledWith('/rest/metadata/fields/f1');
+    });
+  });
 });
