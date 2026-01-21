@@ -38,6 +38,30 @@ export class OutputService {
 
   private formatCsv(data: unknown): string {
     const records = Array.isArray(data) ? data : [data];
-    return Papa.unparse(records as any[]);
+    const preprocessed = records.map((record) => this.preprocessForCsv(record));
+    return Papa.unparse(preprocessed as any[]);
+  }
+
+  private preprocessForCsv(record: unknown): unknown {
+    if (record === null || record === undefined) {
+      return record;
+    }
+    if (typeof record !== 'object') {
+      return record;
+    }
+    if (Array.isArray(record)) {
+      return JSON.stringify(record);
+    }
+    const result: Record<string, unknown> = {};
+    for (const [key, value] of Object.entries(record as Record<string, unknown>)) {
+      if (value === null || value === undefined) {
+        result[key] = '';
+      } else if (typeof value === 'object') {
+        result[key] = JSON.stringify(value);
+      } else {
+        result[key] = value;
+      }
+    }
+    return result;
   }
 }
