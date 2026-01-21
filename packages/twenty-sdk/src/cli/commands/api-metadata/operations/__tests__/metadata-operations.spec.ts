@@ -2,8 +2,12 @@ import { describe, it, expect, vi } from 'vitest';
 import { runObjectsList } from '../objects-list.operation';
 import { runObjectsGet } from '../objects-get.operation';
 import { runObjectsCreate } from '../objects-create.operation';
+import { runObjectsUpdate } from '../objects-update.operation';
+import { runObjectsDelete } from '../objects-delete.operation';
 import { runFieldsGet } from '../fields-get.operation';
 import { runFieldsCreate } from '../fields-create.operation';
+import { runFieldsUpdate } from '../fields-update.operation';
+import { runFieldsDelete } from '../fields-delete.operation';
 import { CliError } from '../../../../utilities/errors/cli-error';
 import { ApiMetadataContext } from '../types';
 
@@ -60,6 +64,19 @@ function createMockContext(overrides: Partial<ApiMetadataContext> = {}): ApiMeta
           type: 'TEXT',
           objectMetadataId: 'obj-1',
         }),
+        updateObject: vi.fn().mockResolvedValue({
+          id: 'obj-1',
+          nameSingular: 'updatedObject',
+          namePlural: 'updatedObjects',
+        }),
+        deleteObject: vi.fn().mockResolvedValue(undefined),
+        updateField: vi.fn().mockResolvedValue({
+          id: 'field-1',
+          name: 'updatedField',
+          type: 'TEXT',
+          objectMetadataId: 'obj-1',
+        }),
+        deleteField: vi.fn().mockResolvedValue(undefined),
       } as any,
       output: {
         render: vi.fn(),
@@ -365,6 +382,203 @@ describe('Metadata Operations', () => {
 
       expect(ctx.services.metadata.createField).toHaveBeenCalledWith({});
       expect(ctx.services.output.render).toHaveBeenCalled();
+    });
+  });
+
+  // ==================== OBJECTS UPDATE OPERATION ====================
+  describe('runObjectsUpdate', () => {
+    it('updates object with --data and renders output', async () => {
+      const ctx = createMockContext({
+        arg: 'obj-1',
+        options: { data: '{"nameSingular":"updatedObject","namePlural":"updatedObjects"}' },
+      });
+
+      await runObjectsUpdate(ctx);
+
+      expect(ctx.services.metadata.updateObject).toHaveBeenCalledWith('obj-1', {
+        nameSingular: 'updatedObject',
+        namePlural: 'updatedObjects',
+      });
+      expect(ctx.services.output.render).toHaveBeenCalledWith(
+        {
+          id: 'obj-1',
+          nameSingular: 'updatedObject',
+          namePlural: 'updatedObjects',
+        },
+        { format: 'json', query: undefined }
+      );
+    });
+
+    it('throws CliError when object ID is missing', async () => {
+      const ctx = createMockContext({
+        arg: undefined,
+        options: { data: '{"nameSingular":"test"}' },
+      });
+
+      await expect(runObjectsUpdate(ctx)).rejects.toThrow(CliError);
+      await expect(runObjectsUpdate(ctx)).rejects.toThrow('Missing object ID');
+    });
+
+    it('propagates error when updateObject fails', async () => {
+      const ctx = createMockContext({
+        arg: 'obj-1',
+        options: { data: '{"nameSingular":"invalid"}' },
+      });
+      (ctx.services.metadata.updateObject as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Validation error: cannot update system object')
+      );
+
+      await expect(runObjectsUpdate(ctx)).rejects.toThrow('Validation error: cannot update system object');
+    });
+
+    it('updates object with partial payload', async () => {
+      const ctx = createMockContext({
+        arg: 'obj-1',
+        options: { data: '{"icon":"IconStar"}' },
+      });
+
+      await runObjectsUpdate(ctx);
+
+      expect(ctx.services.metadata.updateObject).toHaveBeenCalledWith('obj-1', {
+        icon: 'IconStar',
+      });
+    });
+  });
+
+  // ==================== OBJECTS DELETE OPERATION ====================
+  describe('runObjectsDelete', () => {
+    it('deletes object and logs success message', async () => {
+      const ctx = createMockContext({
+        arg: 'obj-1',
+      });
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await runObjectsDelete(ctx);
+
+      expect(ctx.services.metadata.deleteObject).toHaveBeenCalledWith('obj-1');
+      expect(consoleSpy).toHaveBeenCalledWith('Object obj-1 deleted.');
+      consoleSpy.mockRestore();
+    });
+
+    it('throws CliError when object ID is missing', async () => {
+      const ctx = createMockContext({
+        arg: undefined,
+      });
+
+      await expect(runObjectsDelete(ctx)).rejects.toThrow(CliError);
+      await expect(runObjectsDelete(ctx)).rejects.toThrow('Missing object ID');
+    });
+
+    it('propagates error when deleteObject fails', async () => {
+      const ctx = createMockContext({
+        arg: 'obj-1',
+      });
+      (ctx.services.metadata.deleteObject as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Cannot delete system object')
+      );
+
+      await expect(runObjectsDelete(ctx)).rejects.toThrow('Cannot delete system object');
+    });
+  });
+
+  // ==================== FIELDS UPDATE OPERATION ====================
+  describe('runFieldsUpdate', () => {
+    it('updates field with --data and renders output', async () => {
+      const ctx = createMockContext({
+        arg: 'field-1',
+        options: { data: '{"name":"updatedField","label":"Updated Field"}' },
+      });
+
+      await runFieldsUpdate(ctx);
+
+      expect(ctx.services.metadata.updateField).toHaveBeenCalledWith('field-1', {
+        name: 'updatedField',
+        label: 'Updated Field',
+      });
+      expect(ctx.services.output.render).toHaveBeenCalledWith(
+        {
+          id: 'field-1',
+          name: 'updatedField',
+          type: 'TEXT',
+          objectMetadataId: 'obj-1',
+        },
+        { format: 'json', query: undefined }
+      );
+    });
+
+    it('throws CliError when field ID is missing', async () => {
+      const ctx = createMockContext({
+        arg: undefined,
+        options: { data: '{"name":"test"}' },
+      });
+
+      await expect(runFieldsUpdate(ctx)).rejects.toThrow(CliError);
+      await expect(runFieldsUpdate(ctx)).rejects.toThrow('Missing field ID');
+    });
+
+    it('propagates error when updateField fails', async () => {
+      const ctx = createMockContext({
+        arg: 'field-1',
+        options: { data: '{"type":"INVALID"}' },
+      });
+      (ctx.services.metadata.updateField as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Validation error: cannot change field type')
+      );
+
+      await expect(runFieldsUpdate(ctx)).rejects.toThrow('Validation error: cannot change field type');
+    });
+
+    it('updates field with SELECT options', async () => {
+      const payload = {
+        options: [
+          { label: 'High', value: 'HIGH', color: 'red' },
+          { label: 'Low', value: 'LOW', color: 'green' },
+        ],
+      };
+      const ctx = createMockContext({
+        arg: 'field-1',
+        options: { data: JSON.stringify(payload) },
+      });
+
+      await runFieldsUpdate(ctx);
+
+      expect(ctx.services.metadata.updateField).toHaveBeenCalledWith('field-1', payload);
+    });
+  });
+
+  // ==================== FIELDS DELETE OPERATION ====================
+  describe('runFieldsDelete', () => {
+    it('deletes field and logs success message', async () => {
+      const ctx = createMockContext({
+        arg: 'field-1',
+      });
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+
+      await runFieldsDelete(ctx);
+
+      expect(ctx.services.metadata.deleteField).toHaveBeenCalledWith('field-1');
+      expect(consoleSpy).toHaveBeenCalledWith('Field field-1 deleted.');
+      consoleSpy.mockRestore();
+    });
+
+    it('throws CliError when field ID is missing', async () => {
+      const ctx = createMockContext({
+        arg: undefined,
+      });
+
+      await expect(runFieldsDelete(ctx)).rejects.toThrow(CliError);
+      await expect(runFieldsDelete(ctx)).rejects.toThrow('Missing field ID');
+    });
+
+    it('propagates error when deleteField fails', async () => {
+      const ctx = createMockContext({
+        arg: 'field-1',
+      });
+      (ctx.services.metadata.deleteField as ReturnType<typeof vi.fn>).mockRejectedValue(
+        new Error('Cannot delete system field')
+      );
+
+      await expect(runFieldsDelete(ctx)).rejects.toThrow('Cannot delete system field');
     });
   });
 });
