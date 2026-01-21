@@ -4,6 +4,7 @@ import { registerApiCommand } from './commands/api/api.command';
 import { registerApiMetadataCommand } from './commands/api-metadata/api-metadata.command';
 import { registerRestCommand } from './commands/raw/rest.command';
 import { registerGraphqlCommand } from './commands/raw/graphql.command';
+import { registerAuthCommand } from './commands/auth/auth.command';
 import { formatError, toExitCode } from './utilities/errors/error-handler';
 
 async function main(): Promise<void> {
@@ -16,6 +17,7 @@ async function main(): Promise<void> {
   registerApiMetadataCommand(program);
   registerRestCommand(program);
   registerGraphqlCommand(program);
+  registerAuthCommand(program);
 
   try {
     await program.parseAsync(process.argv);
