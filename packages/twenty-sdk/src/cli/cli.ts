@@ -7,6 +7,7 @@ import { registerGraphqlCommand } from './commands/raw/graphql.command';
 import { registerAuthCommand } from './commands/auth/auth.command';
 import { registerSearchCommand } from './commands/search/search.command';
 import { registerWebhooksCommand } from './commands/webhooks/webhooks.command';
+import { registerApiKeysCommand } from './commands/api-keys/api-keys.command';
 import { formatError, toExitCode } from './utilities/errors/error-handler';
 
 async function main(): Promise<void> {
@@ -22,6 +23,7 @@ async function main(): Promise<void> {
   registerAuthCommand(program);
   registerSearchCommand(program);
   registerWebhooksCommand(program);
+  registerApiKeysCommand(program);
 
   try {
     await program.parseAsync(process.argv);
