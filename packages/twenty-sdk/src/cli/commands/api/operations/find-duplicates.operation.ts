@@ -16,7 +16,11 @@ export async function runFindDuplicatesOperation(ctx: ApiOperationContext): Prom
   }
 
   if (!payload) {
-    throw new CliError('Missing payload; use --fields, --data, or --file.', 'INVALID_ARGUMENTS');
+    throw new CliError(
+      'Missing payload for find-duplicates.',
+      'INVALID_ARGUMENTS',
+      'Use --fields to specify fields to check (e.g., --fields "email,phone") or --data for custom JSON payload.'
+    );
   }
 
   const response = await ctx.services.records.findDuplicates(ctx.object, payload);
