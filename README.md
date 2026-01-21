@@ -104,6 +104,8 @@ twenty api-metadata <type> <operation> [args]
 twenty api-metadata objects list                              # List all object types
 twenty api-metadata objects get person                        # Get object with fields
 twenty api-metadata objects create -d '{"nameSingular":"widget","namePlural":"widgets"}'
+twenty api-metadata objects update <id> -d '{"labelSingular":"Widget"}'
+twenty api-metadata objects delete <id>                       # Delete custom object
 ```
 
 **Fields:**
@@ -133,6 +135,156 @@ twenty graphql query --query 'query { people(first: 5) { edges { node { id } } }
 twenty graphql mutate --query 'mutation { createPerson(data:{...}) { id } }'
 twenty graphql schema                                         # Fetch introspection schema
 twenty graphql schema --output-file schema.json               # Save to file
+```
+
+### Search
+
+Full-text search across records.
+
+```bash
+twenty search <query> [options]
+```
+
+**Options:**
+
+| Option | Description |
+|--------|-------------|
+| `--limit <n>` | Maximum results (default: 20) |
+| `--objects <list>` | Comma-separated object names to include |
+| `--exclude <list>` | Comma-separated object names to exclude |
+
+**Examples:**
+
+```bash
+twenty search "John Doe"                                      # Search all objects
+twenty search "acme" --objects companies,people               # Search specific objects
+twenty search "engineer" --limit 50 --exclude notes           # Exclude objects
+```
+
+### Webhooks
+
+Manage webhook endpoints.
+
+```bash
+twenty webhooks <operation> [id] [options]
+```
+
+**Operations:**
+
+| Operation | Description | Example |
+|-----------|-------------|---------|
+| `list` | List webhooks | `twenty webhooks list` |
+| `get` | Get webhook details | `twenty webhooks get <id>` |
+| `create` | Create webhook | `twenty webhooks create -d '{"targetUrl":"https://..."}'` |
+| `update` | Update webhook | `twenty webhooks update <id> -d '{"targetUrl":"..."}'` |
+| `delete` | Delete webhook | `twenty webhooks delete <id>` |
+
+**Options:**
+
+```bash
+-d, --data <json>    # JSON payload
+-f, --file <path>    # JSON file
+```
+
+### API Keys
+
+Manage API keys.
+
+```bash
+twenty api-keys <operation> [id] [options]
+```
+
+**Operations:**
+
+| Operation | Description | Example |
+|-----------|-------------|---------|
+| `list` | List API keys | `twenty api-keys list` |
+| `get` | Get API key details | `twenty api-keys get <id>` |
+| `create` | Create API key | `twenty api-keys create --name "CI Key"` |
+| `revoke` | Revoke API key | `twenty api-keys revoke <id>` |
+
+**Options:**
+
+```bash
+--name <name>        # API key name (required for create)
+--expires-at <date>  # Expiration date (ISO format)
+```
+
+**Examples:**
+
+```bash
+twenty api-keys create --name "Production" --expires-at 2025-12-31
+twenty api-keys list -o json
+twenty api-keys revoke abc123
+```
+
+### Files
+
+Manage file attachments.
+
+```bash
+twenty files <operation> [path-or-id] [options]
+```
+
+**Operations:**
+
+| Operation | Description | Example |
+|-----------|-------------|---------|
+| `upload` | Upload file | `twenty files upload ./document.pdf` |
+| `download` | Download file | `twenty files download <id> --output-file doc.pdf` |
+| `delete` | Delete file | `twenty files delete <id>` |
+
+**Options:**
+
+```bash
+--output-file <path>  # Output file path (for download)
+```
+
+**Examples:**
+
+```bash
+twenty files upload ./report.pdf
+twenty files download abc123 --output-file ./downloaded.pdf
+twenty files delete abc123
+```
+
+### Serverless Functions
+
+Manage and execute serverless functions.
+
+```bash
+twenty serverless <operation> [id] [options]
+```
+
+**Operations:**
+
+| Operation | Description | Example |
+|-----------|-------------|---------|
+| `list` | List functions | `twenty serverless list` |
+| `get` | Get function details | `twenty serverless get <id>` |
+| `create` | Create function | `twenty serverless create --name "myFunc"` |
+| `update` | Update function | `twenty serverless update <id> -d '{"name":"..."}'` |
+| `delete` | Delete function | `twenty serverless delete <id>` |
+| `execute` | Execute function | `twenty serverless execute <id> -d '{"input":"..."}'` |
+| `publish` | Publish function | `twenty serverless publish <id>` |
+| `source` | Get source code | `twenty serverless source <id>` |
+
+**Options:**
+
+```bash
+-d, --data <json>      # JSON payload
+-f, --file <path>      # JSON file
+--name <name>          # Function name (required for create)
+--description <text>   # Function description
+```
+
+**Examples:**
+
+```bash
+twenty serverless create --name "sendNotification" --description "Send email notification"
+twenty serverless execute abc123 -d '{"email":"user@example.com"}'
+twenty serverless publish abc123
+twenty serverless source abc123 -o json
 ```
 
 ## Output Formats
