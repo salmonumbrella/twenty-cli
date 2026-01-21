@@ -62,7 +62,7 @@ describe('TableService', () => {
 
     service.render(data);
 
-    const headerLine = consoleSpy.mock.calls[0][0];
+    const headerLine = consoleSpy.mock.calls[0][0] as string;
     const idIndex = headerLine.indexOf('ID');
     const nameIndex = headerLine.indexOf('NAME');
     const zebraIndex = headerLine.indexOf('ZEBRA');
@@ -77,7 +77,7 @@ describe('TableService', () => {
 
     service.render(data);
 
-    const headerLine = consoleSpy.mock.calls[0][0];
+    const headerLine = consoleSpy.mock.calls[0][0] as string;
     const appleIndex = headerLine.indexOf('APPLE');
     const mangoIndex = headerLine.indexOf('MANGO');
     const zebraIndex = headerLine.indexOf('ZEBRA');
@@ -191,7 +191,7 @@ describe('TableService', () => {
 
     service.render(data);
 
-    const headerLine = consoleSpy.mock.calls[0][0];
+    const headerLine = consoleSpy.mock.calls[0][0] as string;
     const idPos = headerLine.indexOf('ID');
     const namePos = headerLine.indexOf('NAME');
     const emailPos = headerLine.indexOf('EMAIL');
