@@ -4,6 +4,7 @@ export interface ObjectMetadata {
   id: string;
   nameSingular?: string;
   namePlural?: string;
+  fields?: FieldMetadata[];
   [key: string]: unknown;
 }
 

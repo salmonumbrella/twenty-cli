@@ -6,7 +6,7 @@ export async function runFieldsList(ctx: ApiMetadataContext): Promise<void> {
   if (ctx.options.object) {
     // Get fields directly from the object metadata (matches Go CLI behavior)
     const obj = await ctx.services.metadata.getObject(ctx.options.object);
-    fields = (obj as any).fields ?? [];
+    fields = obj.fields ?? [];
   } else {
     // List all fields across all objects
     fields = await ctx.services.metadata.listFields();
