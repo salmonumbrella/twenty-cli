@@ -9,6 +9,7 @@ import { registerSearchCommand } from './commands/search/search.command';
 import { registerWebhooksCommand } from './commands/webhooks/webhooks.command';
 import { registerApiKeysCommand } from './commands/api-keys/api-keys.command';
 import { registerFilesCommand } from './commands/files/files.command';
+import { registerServerlessCommand } from './commands/serverless/serverless.command';
 import { formatError, toExitCode } from './utilities/errors/error-handler';
 
 async function main(): Promise<void> {
@@ -26,6 +27,7 @@ async function main(): Promise<void> {
   registerWebhooksCommand(program);
   registerApiKeysCommand(program);
   registerFilesCommand(program);
+  registerServerlessCommand(program);
 
   try {
     await program.parseAsync(process.argv);
