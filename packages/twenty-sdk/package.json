@@ -1,0 +1,32 @@
+{
+  "name": "twenty-sdk",
+  "version": "0.0.0-dev",
+  "private": true,
+  "type": "commonjs",
+  "bin": {
+    "twenty": "dist/cli/cli.js"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "dev": "tsc -p tsconfig.json --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "vitest run src/cli/__tests__/e2e"
+  },
+  "dependencies": {
+    "axios": "^1.6.8",
+    "axios-retry": "^4.1.0",
+    "commander": "^11.1.0",
+    "fs-extra": "^11.2.0",
+    "jmespath": "^0.16.0",
+    "papaparse": "^5.4.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.30",
+    "@types/fs-extra": "^11.0.4",
+    "@types/jmespath": "^0.15.2",
+    "@types/papaparse": "^5.3.14",
+    "typescript": "^5.4.5",
+    "vitest": "^1.6.0"
+  }
+}

@@ -1,0 +1,28 @@
+# IDE & AI
+.vscode/
+.claude/
+.cursor/
+.specstory/
+CLAUDE.md
+*.swp
+*.swo
+*~
+
+# Agent artifacts
+.dm/
+.private-journal/
+
+# Documentation (plans/drafts)
+docs/
+
+# Binary
+/twenty
+
+# Build
+dist/
+*.out
+*.test
+
+# OS
+.DS_Store
+Thumbs.db

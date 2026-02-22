@@ -1,0 +1,43 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # v6.4.0
+        with:
+          version: latest
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Update Homebrew formula
+        run: |
+          gh api repos/salmonumbrella/homebrew-tap/dispatches \
+            -f event_type=update-formula \
+            -f 'client_payload[repo]=salmonumbrella/twenty-cli' \
+            -f 'client_payload[version]=${{ github.ref_name }}' \
+            -f 'client_payload[binary_name]=twenty' \
+            -f 'client_payload[formula_name]=twenty-cli' \
+            -f 'client_payload[description]=CLI for Twenty CRM' \
+            -f 'client_payload[archive_prefix]=twenty'
+        env:
+          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
