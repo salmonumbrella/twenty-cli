@@ -14,7 +14,7 @@
     "test:e2e": "vitest run src/cli/__tests__/e2e"
   },
   "dependencies": {
-    "axios": "^1.13.5",
+    "axios": "^1.13.6",
     "axios-retry": "^4.1.0",
     "commander": "^14.0.3",
     "fs-extra": "^11.2.0",
@@ -22,7 +22,7 @@
     "papaparse": "^5.4.1"
   },
   "devDependencies": {
-    "@types/node": "^25.3.0",
+    "@types/node": "^25.3.3",
     "@types/fs-extra": "^11.0.4",
     "@types/jmespath": "^0.15.2",
     "@types/papaparse": "^5.3.14",
