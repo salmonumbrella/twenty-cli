@@ -1,14 +1,14 @@
-import Papa from 'papaparse';
-import fs from 'fs-extra';
+import Papa from "papaparse";
+import fs from "fs-extra";
 
 export class ExportService {
   async export(
     records: Record<string, unknown>[],
-    options: { format: 'json' | 'csv'; output?: string },
+    options: { format: "json" | "csv"; output?: string },
   ): Promise<void> {
     let content: string;
 
-    if (options.format === 'csv') {
+    if (options.format === "csv") {
       content = Papa.unparse(records as any[]);
     } else {
       content = JSON.stringify(records, null, 2);

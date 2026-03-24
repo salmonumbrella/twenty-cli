@@ -1,6 +1,6 @@
-import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import axiosRetry from 'axios-retry';
-import { ConfigService } from '../../config/services/config.service';
+import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import axiosRetry from "axios-retry";
+import { ConfigService } from "../../config/services/config.service";
 
 export interface ApiServiceOptions {
   workspace?: string;
@@ -22,7 +22,7 @@ export class ApiService {
       axiosRetry(this.client, {
         retries: 3,
         retryDelay: (retryCount, error) => {
-          const retryAfter = error.response?.headers?.['retry-after'];
+          const retryAfter = error.response?.headers?.["retry-after"];
           if (retryAfter) {
             const seconds = Number.parseInt(String(retryAfter), 10);
             if (!Number.isNaN(seconds)) {
@@ -56,7 +56,7 @@ export class ApiService {
       config.headers.Authorization = `Bearer ${resolved.apiKey}`;
 
       if (this.options.debug) {
-        const url = `${config.baseURL ?? ''}${config.url ?? ''}`;
+        const url = `${config.baseURL ?? ""}${config.url ?? ""}`;
         // eslint-disable-next-line no-console
         console.error(`→ ${config.method?.toUpperCase()} ${url}`);
         if (config.data) {
@@ -80,10 +80,10 @@ export class ApiService {
       (error) => {
         if (this.options.debug) {
           // eslint-disable-next-line no-console
-          console.error(`← ${error.response?.status ?? ''} ${error.message}`);
+          console.error(`← ${error.response?.status ?? ""} ${error.message}`);
         }
         throw error;
-      }
+      },
     );
   }
 
@@ -91,11 +91,19 @@ export class ApiService {
     return this.client.get<T>(url, config);
   }
 
-  async post<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async post<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig,
+  ): Promise<AxiosResponse<T>> {
     return this.client.post<T>(url, data, config);
   }
 
-  async patch<T = unknown>(url: string, data?: unknown, config?: AxiosRequestConfig): Promise<AxiosResponse<T>> {
+  async patch<T = unknown>(
+    url: string,
+    data?: unknown,
+    config?: AxiosRequestConfig,
+  ): Promise<AxiosResponse<T>> {
     return this.client.patch<T>(url, data, config);
   }
 

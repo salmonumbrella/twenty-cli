@@ -1,23 +1,23 @@
-import { Command } from 'commander';
-import { applyGlobalOptions, resolveGlobalOptions } from '../../utilities/shared/global-options';
-import { createServices } from '../../utilities/shared/services';
-import fs from 'fs-extra';
-import { readFileOrStdin, readJsonInput } from '../../utilities/shared/io';
-import { CliError } from '../../utilities/errors/cli-error';
+import { Command } from "commander";
+import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
+import { createServices } from "../../utilities/shared/services";
+import fs from "fs-extra";
+import { readFileOrStdin, readJsonInput } from "../../utilities/shared/io";
+import { CliError } from "../../utilities/errors/cli-error";
 
 export function registerGraphqlCommand(program: Command): void {
   const cmd = program
-    .command('graphql')
-    .description('Raw GraphQL API access')
-    .argument('<operation>', 'query, mutate, or schema')
-    .option('-q, --query <query>', 'GraphQL query string')
-    .option('-f, --file <path>', 'GraphQL query file (use - for stdin)')
-    .option('--variables <json>', 'JSON variables')
-    .option('--variables-file <path>', 'JSON variables file (use - for stdin)')
-    .option('--operation-name <name>', 'GraphQL operation name')
-    .option('--endpoint <path>', 'GraphQL endpoint path', 'graphql')
-    .option('--output-query <expression>', 'JMESPath query filter')
-    .option('--output-file <path>', 'Output file (schema command)');
+    .command("graphql")
+    .description("Raw GraphQL API access")
+    .argument("<operation>", "query, mutate, or schema")
+    .option("-q, --query <query>", "GraphQL query string")
+    .option("-f, --file <path>", "GraphQL query file (use - for stdin)")
+    .option("--variables <json>", "JSON variables")
+    .option("--variables-file <path>", "JSON variables file (use - for stdin)")
+    .option("--operation-name <name>", "GraphQL operation name")
+    .option("--endpoint <path>", "GraphQL endpoint path", "graphql")
+    .option("--output-query <expression>", "JMESPath query filter")
+    .option("--output-file <path>", "Output file (schema command)");
 
   applyGlobalOptions(cmd, { includeQuery: false });
 
@@ -29,15 +29,18 @@ export function registerGraphqlCommand(program: Command): void {
     const services = createServices(globalOptions);
 
     const op = operation.toLowerCase();
-    if (op === 'schema') {
+    if (op === "schema") {
       const payload = { query: introspectionQuery };
       const response = await services.api.post(normalizeEndpoint(rawOptions.endpoint), payload);
       await outputGraphqlResult(response.data, globalOptions, services, rawOptions.outputFile);
       return;
     }
 
-    if (op !== 'query' && op !== 'mutate') {
-      throw new CliError(`Unknown GraphQL operation ${JSON.stringify(operation)}.`, 'INVALID_ARGUMENTS');
+    if (op !== "query" && op !== "mutate") {
+      throw new CliError(
+        `Unknown GraphQL operation ${JSON.stringify(operation)}.`,
+        "INVALID_ARGUMENTS",
+      );
     }
 
     const query = await readGraphqlQuery(rawOptions.query, rawOptions.file);
@@ -73,7 +76,7 @@ async function readGraphqlQuery(query?: string, filePath?: string): Promise<stri
     return content.trim();
   }
   if (!query) {
-    throw new CliError('Missing GraphQL query; use --query or --file.', 'INVALID_ARGUMENTS');
+    throw new CliError("Missing GraphQL query; use --query or --file.", "INVALID_ARGUMENTS");
   }
   return query;
 }
@@ -81,14 +84,14 @@ async function readGraphqlQuery(query?: string, filePath?: string): Promise<stri
 async function readVariables(raw?: string, filePath?: string): Promise<Record<string, unknown>> {
   const payload = await readJsonInput(raw, filePath);
   if (!payload) return {};
-  if (typeof payload !== 'object' || Array.isArray(payload)) {
-    throw new CliError('GraphQL variables must be a JSON object.', 'INVALID_ARGUMENTS');
+  if (typeof payload !== "object" || Array.isArray(payload)) {
+    throw new CliError("GraphQL variables must be a JSON object.", "INVALID_ARGUMENTS");
   }
   return payload as Record<string, unknown>;
 }
 
 function normalizeEndpoint(endpoint: string): string {
-  if (endpoint.startsWith('/')) return endpoint;
+  if (endpoint.startsWith("/")) return endpoint;
   return `/${endpoint}`;
 }
 
@@ -99,7 +102,7 @@ async function outputGraphqlResult(
   outputFile?: string,
 ): Promise<void> {
   if (outputFile) {
-    const content = typeof data === 'string' ? data : JSON.stringify(data, null, 2);
+    const content = typeof data === "string" ? data : JSON.stringify(data, null, 2);
     await fs.writeFile(outputFile, content);
     // eslint-disable-next-line no-console
     console.error(`Wrote schema output to ${outputFile}`);

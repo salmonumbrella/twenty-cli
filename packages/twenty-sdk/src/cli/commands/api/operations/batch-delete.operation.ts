@@ -1,6 +1,6 @@
-import { ApiOperationContext } from './types';
-import { readJsonInput } from '../../../utilities/shared/io';
-import { CliError } from '../../../utilities/errors/cli-error';
+import { ApiOperationContext } from "./types";
+import { readJsonInput } from "../../../utilities/shared/io";
+import { CliError } from "../../../utilities/errors/cli-error";
 
 export async function runBatchDeleteOperation(ctx: ApiOperationContext): Promise<void> {
   if (!ctx.options.force) {
@@ -12,20 +12,26 @@ export async function runBatchDeleteOperation(ctx: ApiOperationContext): Promise
   let ids: string[] = [];
 
   if (ctx.options.ids) {
-    ids = ctx.options.ids.split(',').map((id) => id.trim()).filter(Boolean);
+    ids = ctx.options.ids
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
   } else {
     const payload = await readJsonInput(ctx.options.data, ctx.options.file);
     if (!payload) {
-      throw new CliError('Missing JSON payload; use --data, --file, or --ids.', 'INVALID_ARGUMENTS');
+      throw new CliError(
+        "Missing JSON payload; use --data, --file, or --ids.",
+        "INVALID_ARGUMENTS",
+      );
     }
     if (!Array.isArray(payload)) {
-      throw new CliError('Batch payload must be a JSON array.', 'INVALID_ARGUMENTS');
+      throw new CliError("Batch payload must be a JSON array.", "INVALID_ARGUMENTS");
     }
     ids = payload.map((value) => String(value));
   }
 
   if (ids.length === 0) {
-    throw new CliError('No valid IDs provided.', 'INVALID_ARGUMENTS');
+    throw new CliError("No valid IDs provided.", "INVALID_ARGUMENTS");
   }
 
   const response = await ctx.services.records.batchDelete(ctx.object, ids);

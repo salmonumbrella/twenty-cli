@@ -3,7 +3,7 @@ export class TableService {
     const records = normalizeRecords(data);
     if (records.length === 0) {
       // eslint-disable-next-line no-console
-      console.log('No records found.');
+      console.log("No records found.");
       return;
     }
 
@@ -18,7 +18,7 @@ export class TableService {
     const widths = calculateWidths(columns, rows);
 
     // eslint-disable-next-line no-console
-    console.log(columns.map((col, i) => col.toUpperCase().padEnd(widths[i])).join('  '));
+    console.log(columns.map((col, i) => col.toUpperCase().padEnd(widths[i])).join("  "));
 
     for (const record of rows) {
       const row = columns.map((col, i) => {
@@ -27,7 +27,7 @@ export class TableService {
         return cell.padEnd(widths[i]);
       });
       // eslint-disable-next-line no-console
-      console.log(row.join('  '));
+      console.log(row.join("  "));
     }
   }
 }
@@ -39,11 +39,11 @@ function normalizeRecords(data: unknown): unknown[] {
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
 function extractColumns(record: Record<string, unknown>): string[] {
-  const priority = ['id', 'name', 'email', 'title', 'status', 'createdAt'];
+  const priority = ["id", "name", "email", "title", "status", "createdAt"];
   const keys = Object.keys(record);
   return [
     ...priority.filter((k) => keys.includes(k)),
@@ -62,8 +62,8 @@ function calculateWidths(columns: string[], records: Record<string, unknown>[]):
 }
 
 function getValue(record: Record<string, unknown>, path: string): unknown {
-  return path.split('.').reduce<unknown>((obj, key) => {
-    if (obj && typeof obj === 'object' && !Array.isArray(obj)) {
+  return path.split(".").reduce<unknown>((obj, key) => {
+    if (obj && typeof obj === "object" && !Array.isArray(obj)) {
       return (obj as Record<string, unknown>)[key];
     }
     return undefined;
@@ -71,9 +71,9 @@ function getValue(record: Record<string, unknown>, path: string): unknown {
 }
 
 function formatValue(value: unknown): string {
-  if (value == null) return '';
-  if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  if (value == null) return "";
+  if (typeof value === "string") return value;
+  if (typeof value === "number" || typeof value === "boolean") return String(value);
   try {
     return JSON.stringify(value);
   } catch {

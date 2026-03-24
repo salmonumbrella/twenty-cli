@@ -1,0 +1,32 @@
+{
+  "name": "twenty-cli-workspace",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter twenty-sdk build",
+    "check:upstream-drift": "node scripts/check-upstream-drift.mjs",
+    "readme:generate": "node scripts/render-readme-snippets.mjs",
+    "release:build": "node scripts/build-release.mjs",
+    "release:metadata": "node scripts/write-release-metadata.mjs",
+    "typecheck": "pnpm --filter twenty-sdk typecheck",
+    "test": "pnpm --filter twenty-sdk test",
+    "test:e2e": "pnpm --filter twenty-sdk test:e2e",
+    "lint": "pnpm exec oxlint -c ./oxlint.config.ts .",
+    "lint:fix": "pnpm exec oxlint -c ./oxlint.config.ts --fix .",
+    "format": "pnpm exec oxfmt --write .",
+    "format:check": "pnpm exec oxfmt --check .",
+    "prek:install": "pnpm exec prek install",
+    "prek:run": "pnpm exec prek run --all-files",
+    "setup": "pnpm exec prek install"
+  },
+  "devDependencies": {
+    "@j178/prek": "0.3.6",
+    "@yao-pkg/pkg": "6.14.1",
+    "oxfmt": "0.41.0",
+    "oxlint": "1.56.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@10.28.0"
+}

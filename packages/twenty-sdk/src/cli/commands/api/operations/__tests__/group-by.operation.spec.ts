@@ -1,13 +1,13 @@
-import { describe, it, expect, vi } from 'vitest';
-import { runGroupByOperation } from '../group-by.operation';
+import { describe, it, expect, vi } from "vitest";
+import { runGroupByOperation } from "../group-by.operation";
 
-describe('runGroupByOperation', () => {
-  it('sends groupBy in query params when --field is provided without payload', async () => {
+describe("runGroupByOperation", () => {
+  it("sends groupBy in query params when --field is provided without payload", async () => {
     const mockResponse = { data: { groups: [] } };
     const ctx = {
-      object: 'people',
-      options: { field: 'city' },
-      globalOptions: { output: 'json' },
+      object: "people",
+      options: { field: "city" },
+      globalOptions: { output: "json" },
       services: {
         records: {
           groupBy: vi.fn().mockResolvedValue(mockResponse),
@@ -20,20 +20,19 @@ describe('runGroupByOperation', () => {
 
     await runGroupByOperation(ctx as any);
 
-    // Should pass field as query param, not as POST body
     expect(ctx.services.records.groupBy).toHaveBeenCalledWith(
-      'people',
-      undefined, // no payload
-      expect.objectContaining({ groupBy: ['city'] }) // as query params
+      "people",
+      { groupBy: [{ city: true }] },
+      undefined,
     );
   });
 
-  it('sends payload as POST body when --data is provided', async () => {
+  it("sends payload as POST body when --data is provided", async () => {
     const mockResponse = { data: { groups: [] } };
     const ctx = {
-      object: 'people',
+      object: "people",
       options: { data: '{"groupBy":"status","filter":{"city":{"eq":"NYC"}}}' },
-      globalOptions: { output: 'json' },
+      globalOptions: { output: "json" },
       services: {
         records: {
           groupBy: vi.fn().mockResolvedValue(mockResponse),
@@ -47,9 +46,9 @@ describe('runGroupByOperation', () => {
     await runGroupByOperation(ctx as any);
 
     expect(ctx.services.records.groupBy).toHaveBeenCalledWith(
-      'people',
-      { groupBy: 'status', filter: { city: { eq: 'NYC' } } },
-      undefined
+      "people",
+      { groupBy: [{ status: true }], filter: { city: { eq: "NYC" } } },
+      undefined,
     );
   });
 });

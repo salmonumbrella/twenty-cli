@@ -9,31 +9,127 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  verify:
     runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build
+        run: pnpm build
+
+      - name: Test
+        run: pnpm test
+
+      - name: End-to-end tests
+        run: pnpm test:e2e
+
+      - name: Lint, format, and typecheck
+        run: pnpm exec prek run --all-files
+
+  build-release:
+    needs: verify
+    strategy:
+      matrix:
+        include:
+          - runner: ubuntu-latest
+            targets: linux-x64,linux-arm64
+            artifact_name: release-linux
+          - runner: macos-14
+            targets: macos-arm64,macos-x64
+            artifact_name: release-macos
+    runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           fetch-depth: 0
 
-      - uses: actions/setup-go@7a3fe6cf4cb3a834922a1244abfce67bcef6a0c5 # v6.2.0
+      - uses: pnpm/action-setup@v4
         with:
-          go-version-file: go.mod
-          cache: true
+          version: 10.28.0
 
-      - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@ec59f474b9834571250b370d4735c50f8e2d1e29 # v7.0.0
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
         with:
-          version: latest
-          args: release --clean
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Install Rosetta for cross-packaging
+        if: runner.os == 'macOS'
+        run: softwareupdate --install-rosetta --agree-to-license || true
+
+      - name: Build release archives
+        run: pnpm release:build -- --version "${GITHUB_REF_NAME#v}" --targets "${{ matrix.targets }}"
+
+      - name: Upload release archives
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact_name }}
+          path: dist/release/twenty_*.tar.gz
+
+  release:
+    needs: build-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.28.0
+
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Download release archives
+        uses: actions/download-artifact@v4
+        with:
+          path: dist/release
+          merge-multiple: true
+
+      - name: Write release metadata
+        run: pnpm release:metadata -- --tag "${GITHUB_REF_NAME}" --output-dir dist/release
+
+      - name: Publish GitHub release assets
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "${GITHUB_REF_NAME}" >/dev/null 2>&1; then
+            gh release upload "${GITHUB_REF_NAME}" \
+              dist/release/twenty_*.tar.gz \
+              dist/release/checksums.txt \
+              dist/release/release-metadata.json \
+              --clobber
+          else
+            gh release create "${GITHUB_REF_NAME}" \
+              dist/release/twenty_*.tar.gz \
+              dist/release/checksums.txt \
+              dist/release/release-metadata.json \
+              --generate-notes
+          fi
 
       - name: Update Homebrew formula
         run: |
-          gh api repos/salmonumbrella/homebrew-tap/dispatches \
+          gh api repos/${{ github.repository_owner }}/homebrew-tap/dispatches \
             -f event_type=update-formula \
-            -f 'client_payload[repo]=salmonumbrella/twenty-cli' \
+            -f 'client_payload[repo]=${{ github.repository }}' \
             -f 'client_payload[version]=${{ github.ref_name }}' \
             -f 'client_payload[binary_name]=twenty' \
             -f 'client_payload[formula_name]=twenty-cli' \

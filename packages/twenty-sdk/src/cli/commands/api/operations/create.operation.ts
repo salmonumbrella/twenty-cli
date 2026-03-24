@@ -1,5 +1,5 @@
-import { ApiOperationContext } from './types';
-import { parseBody } from '../../../utilities/shared/body';
+import { ApiOperationContext } from "./types";
+import { parseBody } from "../../../utilities/shared/body";
 
 export async function runCreateOperation(ctx: ApiOperationContext): Promise<void> {
   const payload = await parseBody(ctx.options.data, ctx.options.file, ctx.options.set);

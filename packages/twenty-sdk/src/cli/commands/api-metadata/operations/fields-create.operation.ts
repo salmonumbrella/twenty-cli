@@ -1,5 +1,5 @@
-import { ApiMetadataContext } from './types';
-import { parseBody } from '../../../utilities/shared/body';
+import { ApiMetadataContext } from "./types";
+import { parseBody } from "../../../utilities/shared/body";
 
 export async function runFieldsCreate(ctx: ApiMetadataContext): Promise<void> {
   const payload = await parseBody(ctx.options.data, ctx.options.file);

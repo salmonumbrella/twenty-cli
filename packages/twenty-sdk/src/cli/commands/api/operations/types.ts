@@ -1,5 +1,5 @@
-import { CliServices } from '../../../utilities/shared/services';
-import { GlobalOptions } from '../../../utilities/shared/global-options';
+import { CliServices } from "../../../utilities/shared/services";
+import { GlobalOptions } from "../../../utilities/shared/global-options";
 
 export interface ApiCommandOptions {
   limit?: string;

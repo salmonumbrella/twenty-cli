@@ -1,13 +1,19 @@
-import { ApiOperationContext } from './types';
-import { parseKeyValuePairs } from '../../../utilities/shared/parse';
-import { CliError } from '../../../utilities/errors/cli-error';
+import { ApiOperationContext } from "./types";
+import { parseKeyValuePairs } from "../../../utilities/shared/parse";
+import { CliError } from "../../../utilities/errors/cli-error";
 
-const OUTPUT_FORMATS = new Set(['json', 'csv', 'text']);
+const OUTPUT_FORMATS = new Set(["json", "csv", "text"]);
 
 export async function runExportOperation(ctx: ApiOperationContext): Promise<void> {
-  const format = (ctx.options.format ?? 'json').toLowerCase();
-  if (format !== 'json' && format !== 'csv') {
-    throw new CliError(`Unsupported export format ${JSON.stringify(format)}.`, 'INVALID_ARGUMENTS');
+  const format = (ctx.options.format ?? "json").toLowerCase();
+  if (format !== "json" && format !== "csv") {
+    throw new CliError(`Unsupported export format ${JSON.stringify(format)}.`, "INVALID_ARGUMENTS");
+  }
+  if (ctx.options.fields) {
+    throw new CliError(
+      "--fields is not supported for export. Twenty REST find-many only supports depth-based field expansion.",
+      "INVALID_ARGUMENTS",
+    );
   }
 
   const params = parseKeyValuePairs(ctx.options.param);
@@ -19,7 +25,6 @@ export async function runExportOperation(ctx: ApiOperationContext): Promise<void
     include: ctx.options.include,
     sort: ctx.options.sort,
     order: ctx.options.order,
-    fields: ctx.options.fields,
     params,
   };
 
@@ -34,7 +39,7 @@ export async function runExportOperation(ctx: ApiOperationContext): Promise<void
   }
 
   await ctx.services.exporter.export(response.data as Record<string, unknown>[], {
-    format: format as 'json' | 'csv',
+    format: format as "json" | "csv",
     output: outputFile,
   });
 }

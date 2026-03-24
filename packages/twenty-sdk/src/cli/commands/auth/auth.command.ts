@@ -1,28 +1,118 @@
-import { Command } from 'commander';
-import { ConfigService } from '../../utilities/config/services/config.service';
-import { OutputService } from '../../utilities/output/services/output.service';
-import { TableService } from '../../utilities/output/services/table.service';
-import { QueryService } from '../../utilities/output/services/query.service';
-import { CliError } from '../../utilities/errors/cli-error';
+import { Command } from "commander";
+import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { ConfigService } from "../../utilities/config/services/config.service";
+import { CliError } from "../../utilities/errors/cli-error";
+import { loadCliEnvironment } from "../../utilities/config/services/environment.service";
+import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
+import { createOutputService, createServices } from "../../utilities/shared/services";
+import { createOutputContext } from "../../utilities/shared/context";
+
+const CURRENT_WORKSPACE_QUERY = `query CurrentWorkspace {
+  currentWorkspace {
+    id
+    displayName
+    activationStatus
+    inviteHash
+    allowImpersonation
+    isPublicInviteLinkEnabled
+    isGoogleAuthEnabled
+    isMicrosoftAuthEnabled
+    isPasswordAuthEnabled
+    isTwoFactorAuthenticationEnforced
+    isCustomDomainEnabled
+    subdomain
+    customDomain
+    workspaceMembersCount
+    logo
+    metadataVersion
+    workspaceUrls {
+      subdomainUrl
+      customUrl
+    }
+    featureFlags {
+      key
+      value
+    }
+  }
+}`;
+
+const PUBLIC_WORKSPACE_QUERY = `query GetPublicWorkspaceDataByDomain($origin: String) {
+  getPublicWorkspaceDataByDomain(origin: $origin) {
+    id
+    logo
+    displayName
+    workspaceUrls {
+      subdomainUrl
+      customUrl
+    }
+    authProviders {
+      google
+      magicLink
+      password
+      microsoft
+      sso {
+        id
+        name
+        type
+        status
+        issuer
+      }
+    }
+    authBypassProviders {
+      google
+      password
+      microsoft
+    }
+  }
+}`;
+
+const RENEW_TOKEN_MUTATION = `mutation RenewToken($appToken: String!) {
+  renewToken(appToken: $appToken) {
+    tokens {
+      accessToken
+      refreshToken
+    }
+  }
+}`;
+
+const SSO_URL_MUTATION = `mutation GetAuthorizationUrlForSSO($input: GetAuthorizationUrlForSSOInput!) {
+  getAuthorizationUrlForSSO(input: $input) {
+    authorizationURL
+    type
+    id
+  }
+}`;
 
 function maskToken(token: string): string {
-  if (token.length <= 8) return '****';
-  return token.slice(0, 4) + '****' + token.slice(-4);
+  if (token.length <= 8) return "****";
+  return token.slice(0, 4) + "****" + token.slice(-4);
+}
+
+function applyEnvFileOption(command: Command): Command {
+  return command.option("--env-file <path>", "Load environment variables from file");
+}
+
+function hydrateEnvironment(options: { envFile?: string }): void {
+  loadCliEnvironment({
+    argv: process.argv,
+    cwd: process.cwd(),
+    explicitEnvFile: options.envFile,
+  });
 }
 
 export function registerAuthCommand(program: Command): void {
-  const authCmd = program
-    .command('auth')
-    .description('Manage authentication and workspaces');
+  const authCmd = program.command("auth").description("Manage authentication and workspaces");
 
   // auth list
   authCmd
-    .command('list')
-    .description('List configured workspaces')
-    .option('-o, --output <format>', 'Output format (text, json)', 'text')
-    .action(async (options: { output: string }) => {
+    .command("list")
+    .description("List configured workspaces")
+    .option("-o, --output <format>", "Output format (text, json, jsonl, agent, csv)", "text")
+    .option("--env-file <path>", "Load environment variables from file")
+    .action(async (options: { output: string; envFile?: string }, command: Command) => {
+      hydrateEnvironment(options);
       const configService = new ConfigService();
-      const output = new OutputService(new TableService(), new QueryService());
+      const { globalOptions, output } = createOutputContext(command);
 
       const workspaces = await configService.listWorkspaces();
 
@@ -34,86 +124,209 @@ export function registerAuthCommand(program: Command): void {
 
       const displayData = workspaces.map((ws) => ({
         name: ws.name,
-        default: ws.isDefault ? 'Y' : '',
-        apiUrl: ws.apiUrl ?? '',
+        default: ws.isDefault ? "Y" : "",
+        apiUrl: ws.apiUrl ?? "",
       }));
 
-      await output.render(displayData, { format: options.output });
+      await output.render(displayData, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
     });
 
   // auth switch
-  authCmd
-    .command('switch')
-    .description('Set default workspace')
-    .argument('<workspace>', 'Workspace name')
-    .action(async (workspace: string) => {
-      const configService = new ConfigService();
-      await configService.setDefaultWorkspace(workspace);
-      // eslint-disable-next-line no-console
-      console.log(`Switched to workspace "${workspace}".`);
-    });
+  applyEnvFileOption(
+    authCmd
+      .command("switch")
+      .description("Set default workspace")
+      .argument("<workspace>", "Workspace name"),
+  ).action(async (workspace: string, options: { envFile?: string }) => {
+    hydrateEnvironment(options);
+    const configService = new ConfigService();
+    await configService.setDefaultWorkspace(workspace);
+    // eslint-disable-next-line no-console
+    console.log(`Switched to workspace "${workspace}".`);
+  });
 
   // auth status
   authCmd
-    .command('status')
-    .description('Show current authentication status')
-    .option('--show-token', 'Show full API token')
-    .option('-o, --output <format>', 'Output format (text, json)', 'text')
-    .action(async (options: { showToken?: boolean; output: string }) => {
-      const configService = new ConfigService();
-      const output = new OutputService(new TableService(), new QueryService());
+    .command("status")
+    .description("Show current authentication status")
+    .option("--show-token", "Show full API token")
+    .option("-o, --output <format>", "Output format (text, json, jsonl, agent, csv)", "text")
+    .option("--env-file <path>", "Load environment variables from file")
+    .action(
+      async (
+        options: { showToken?: boolean; output: string; envFile?: string },
+        command: Command,
+      ) => {
+        hydrateEnvironment(options);
+        const configService = new ConfigService();
+        const { globalOptions, output } = createOutputContext(command);
 
-      try {
-        const config = await configService.getConfig();
-        const statusData = {
-          authenticated: true,
-          workspace: config.workspace,
-          apiUrl: config.apiUrl,
-          apiKey: options.showToken ? config.apiKey : maskToken(config.apiKey),
-        };
-
-        await output.render(statusData, { format: options.output });
-      } catch (error) {
-        if (error instanceof CliError && error.code === 'AUTH') {
+        try {
+          const config = await configService.getConfig();
           const statusData = {
-            authenticated: false,
-            error: error.message,
+            authenticated: true,
+            workspace: config.workspace,
+            apiUrl: config.apiUrl,
+            apiKey: options.showToken ? config.apiKey : maskToken(config.apiKey),
           };
-          await output.render(statusData, { format: options.output });
-        } else {
-          throw error;
+
+          await output.render(statusData, {
+            format: globalOptions.output,
+            query: globalOptions.query,
+          });
+        } catch (error) {
+          if (error instanceof CliError && error.code === "AUTH") {
+            const statusData = {
+              authenticated: false,
+              error: error.message,
+            };
+            await output.render(statusData, {
+              format: globalOptions.output,
+              query: globalOptions.query,
+            });
+          } else {
+            throw error;
+          }
         }
-      }
+      },
+    );
+
+  const workspaceCmd = authCmd
+    .command("workspace")
+    .description("Show current workspace from the Twenty API");
+  applyGlobalOptions(workspaceCmd);
+  workspaceCmd.action(async (_options: Record<string, unknown>, command: Command) => {
+    const globalOptions = resolveGlobalOptions(command);
+    const services = createServices(globalOptions);
+    const response = await services.api.post<GraphQLResponse<{ currentWorkspace: unknown }>>(
+      "/metadata",
+      {
+        query: CURRENT_WORKSPACE_QUERY,
+      },
+    );
+
+    await services.output.render(response.data?.data?.currentWorkspace, {
+      format: globalOptions.output,
+      query: globalOptions.query,
     });
+  });
+
+  const discoverCmd = authCmd
+    .command("discover")
+    .description("Look up public workspace auth settings by origin")
+    .argument("<origin>", "Workspace origin or URL");
+  applyGlobalOptions(discoverCmd);
+  discoverCmd.action(
+    async (origin: string, _options: Record<string, unknown>, command: Command) => {
+      const globalOptions = resolveGlobalOptions(command);
+      const services = createServices(globalOptions);
+      const response = await services.api.post<
+        GraphQLResponse<{ getPublicWorkspaceDataByDomain: unknown }>
+      >("/metadata", {
+        query: PUBLIC_WORKSPACE_QUERY,
+        variables: { origin },
+      });
+
+      await services.output.render(response.data?.data?.getPublicWorkspaceDataByDomain, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
+    },
+  );
+
+  const renewTokenCmd = authCmd
+    .command("renew-token")
+    .description("Exchange an app refresh token for new auth tokens")
+    .requiredOption("--app-token <token>", "App refresh token");
+  applyGlobalOptions(renewTokenCmd);
+  renewTokenCmd.action(async (options: { appToken: string }, commandOptions: Command) => {
+    const globalOptions = resolveGlobalOptions(commandOptions);
+    const services = createServices(globalOptions);
+    const response = await services.api.post<GraphQLResponse<{ renewToken: unknown }>>("/graphql", {
+      query: RENEW_TOKEN_MUTATION,
+      variables: {
+        appToken: options.appToken,
+      },
+    });
+
+    await services.output.render(response.data?.data?.renewToken, {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
+
+  const ssoUrlCmd = authCmd
+    .command("sso-url")
+    .description("Get the SSO authorization URL for an identity provider")
+    .argument("<identityProviderId>", "Identity provider ID")
+    .option("--workspace-invite-hash <hash>", "Optional workspace invite hash");
+  applyGlobalOptions(ssoUrlCmd);
+  ssoUrlCmd.action(
+    async (
+      identityProviderId: string,
+      options: { workspaceInviteHash?: string },
+      commandOptions: Command,
+    ) => {
+      const globalOptions = resolveGlobalOptions(commandOptions);
+      const services = createServices(globalOptions);
+      const response = await services.api.post<
+        GraphQLResponse<{ getAuthorizationUrlForSSO: unknown }>
+      >("/graphql", {
+        query: SSO_URL_MUTATION,
+        variables: {
+          input: {
+            identityProviderId,
+            ...(options.workspaceInviteHash
+              ? { workspaceInviteHash: options.workspaceInviteHash }
+              : {}),
+          },
+        },
+      });
+
+      await services.output.render(response.data?.data?.getAuthorizationUrlForSSO, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
+    },
+  );
 
   // auth login
   authCmd
-    .command('login')
-    .description('Configure API credentials')
-    .requiredOption('--token <token>', 'API token')
-    .option('--base-url <url>', 'API base URL', 'https://api.twenty.com')
-    .option('--workspace <name>', 'Workspace name', 'default')
-    .action(async (options: { token: string; baseUrl: string; workspace: string }) => {
-      const configService = new ConfigService();
+    .command("login")
+    .description("Configure API credentials")
+    .requiredOption("--token <token>", "API token")
+    .option("--base-url <url>", "API base URL", "https://api.twenty.com")
+    .option("--workspace <name>", "Workspace name", "default")
+    .option("--env-file <path>", "Load environment variables from file")
+    .action(
+      async (options: { token: string; baseUrl: string; workspace: string; envFile?: string }) => {
+        hydrateEnvironment(options);
+        const configService = new ConfigService();
 
-      await configService.saveWorkspace(options.workspace, {
-        apiKey: options.token,
-        apiUrl: options.baseUrl,
-      });
+        await configService.saveWorkspace(options.workspace, {
+          apiKey: options.token,
+          apiUrl: options.baseUrl,
+        });
 
-      // eslint-disable-next-line no-console
-      console.log(`Workspace "${options.workspace}" configured.`);
-      // eslint-disable-next-line no-console
-      console.log(`API URL: ${options.baseUrl}`);
-    });
+        // eslint-disable-next-line no-console
+        console.log(`Workspace "${options.workspace}" configured.`);
+        // eslint-disable-next-line no-console
+        console.log(`API URL: ${options.baseUrl}`);
+      },
+    );
 
   // auth logout
   authCmd
-    .command('logout')
-    .description('Remove credentials')
-    .option('--workspace <name>', 'Workspace name to remove')
-    .option('--all', 'Remove all workspaces')
-    .action(async (options: { workspace?: string; all?: boolean }) => {
+    .command("logout")
+    .description("Remove credentials")
+    .option("--workspace <name>", "Workspace name to remove")
+    .option("--all", "Remove all workspaces")
+    .option("--env-file <path>", "Load environment variables from file")
+    .action(async (options: { workspace?: string; all?: boolean; envFile?: string }) => {
+      hydrateEnvironment(options);
       const configService = new ConfigService();
 
       if (options.all) {
@@ -122,7 +335,7 @@ export function registerAuthCommand(program: Command): void {
           await configService.removeWorkspace(ws.name);
         }
         // eslint-disable-next-line no-console
-        console.log('All workspaces removed.');
+        console.log("All workspaces removed.");
         return;
       }
 
@@ -133,12 +346,12 @@ export function registerAuthCommand(program: Command): void {
         // Get current default workspace
         try {
           const config = await configService.getConfig();
-          workspaceToRemove = config.workspace ?? 'default';
+          workspaceToRemove = config.workspace ?? "default";
         } catch {
           throw new CliError(
-            'No workspace specified and no default workspace configured.',
-            'INVALID_ARGUMENTS',
-            'Use --workspace <name> or --all to specify what to remove.'
+            "No workspace specified and no default workspace configured.",
+            "INVALID_ARGUMENTS",
+            "Use --workspace <name> or --all to specify what to remove.",
           );
         }
       }

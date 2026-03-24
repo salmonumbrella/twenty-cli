@@ -1,0 +1,106 @@
+twenty - CLI for Twenty
+
+Discovery:
+  twenty --help-json             Machine-readable root command tree
+  twenty --hj                    Short alias for --help-json
+  twenty CMD --help-json         Machine-readable contract for a command
+  twenty CMD --hj                Short alias for command help JSON
+  twenty CMD --help              Detailed Commander help for a command
+  Command names are canonical; only --help-json also has the short --hj alias
+
+Agent Use:
+  Prefer twenty CMD --help-json before executing mutations
+  Stable JSON fields: path, args, options, operations, capabilities, exit_codes, output_contract
+
+Env Precedence:
+  .env then .env.local then the explicit env file; existing environment variables win
+
+Auth & Workspace:
+  twenty auth list              List configured workspaces
+  twenty auth switch NAME       Switch the default workspace profile
+  twenty auth status            Show the active auth/config state
+  twenty auth workspace         Query the current workspace
+  twenty auth discover ORIGIN   Discover a public workspace by domain
+
+Records:
+  twenty api person list -o json
+  twenty api company get RECORD_ID
+  twenty api note create --data '{"title":"Hello"}'
+  twenty search "acme" --objects person,company
+
+Metadata & Admin:
+  twenty api-metadata objects list
+  twenty api-metadata front-components list
+  twenty dashboards duplicate DASHBOARD_ID
+  twenty public-domains list
+  twenty emailing-domains list
+  twenty event-logs list --table workspace-event
+  twenty postgres-proxy get
+  twenty roles list --include-targets
+  twenty api-keys list
+  twenty approved-access-domains list
+  twenty route-triggers list
+  twenty skills list
+  twenty serverless list
+  twenty serverless logs SERVERLESS_FUNCTION_ID --max-events 1 -o jsonl
+  twenty serverless create-layer --package-json '{"dependencies":{}}' --yarn-lock 'lockfile'
+  twenty applications list
+  twenty applications create-development com.example.app --name 'Example App'
+  twenty application-registrations list
+  twenty application-registrations tarball-url APPLICATION_REGISTRATION_ID
+  twenty marketplace-apps list
+
+Integrations:
+  twenty webhooks list
+  twenty routes invoke ROUTE_PATH
+  twenty workflows invoke-webhook WORKFLOW_ID
+  twenty workflows run WORKFLOW_VERSION_ID --data '{"source":"cli"}'
+  twenty workflows stop-run WORKFLOW_RUN_ID
+  twenty connected-accounts list
+  twenty connected-accounts get-imap-smtp-caldav ACCOUNT_ID
+  twenty message-channels list
+  twenty calendar-channels list
+  twenty files upload PATH --target application-file
+  twenty files upload PATH --target app-tarball
+
+Raw Access:
+  twenty openapi core
+  twenty graphql query --query 'query { currentWorkspace { id } }'
+  twenty graphql schema --output-file schema.json
+  twenty rest GET /health
+
+Common Flags:
+  -o, --output <text|json|jsonl|agent|csv>  Output format
+  --query <expr>                JMESPath filter on rendered output
+  --workspace <name>            Workspace profile from ~/.twenty/config.json
+  --env-file <path>             Load .env/.env.local plus an explicit env file
+  --debug                       Show request/response details
+  --no-retry                    Disable automatic retry
+
+Output Guarantees:
+  --query runs before output formatting
+  json renders pretty-printed 2-space JSON
+  jsonl renders one compact JSON record per line
+  agent renders stable envelopes for arrays, objects, and scalar data
+  csv wraps singleton values and JSON-encodes nested objects/arrays
+  text renders best-effort tables
+
+Environment:
+  TWENTY_TOKEN                  API token
+  TWENTY_BASE_URL               Base URL (default: https://api.twenty.com)
+  TWENTY_PROFILE                Default workspace profile
+  TWENTY_OUTPUT                 Default output format
+  TWENTY_QUERY                  Default JMESPath output filter
+  TWENTY_ENV_FILE               Default explicit env file path
+  TWENTY_DEBUG                  Enable debug output (true/false)
+  TWENTY_NO_RETRY               Disable retries (true/false)
+
+Exit Codes:
+  0  Success, help output, or version output
+  1  General or unexpected error
+  2  Invalid arguments or command usage error
+  3  Authentication or permission error
+  4  Network error or request failed before a response
+  5  Rate limited (429)
+
+Use "twenty CMD --help" for command-specific details.

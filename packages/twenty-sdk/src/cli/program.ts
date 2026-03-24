@@ -1,0 +1,68 @@
+import { Command } from "commander";
+import { registerApiCommand } from "./commands/api/api.command";
+import { registerApprovedAccessDomainsCommand } from "./commands/approved-access-domains/approved-access-domains.command";
+import { registerApiMetadataCommand } from "./commands/api-metadata/api-metadata.command";
+import { registerRestCommand } from "./commands/raw/rest.command";
+import { registerGraphqlCommand } from "./commands/raw/graphql.command";
+import { registerAuthCommand } from "./commands/auth/auth.command";
+import { registerSearchCommand } from "./commands/search/search.command";
+import { registerWebhooksCommand } from "./commands/webhooks/webhooks.command";
+import { registerApiKeysCommand } from "./commands/api-keys/api-keys.command";
+import { registerCalendarChannelsCommand } from "./commands/calendar-channels/calendar-channels.command";
+import { registerConnectedAccountsCommand } from "./commands/connected-accounts/connected-accounts.command";
+import { registerDashboardsCommand } from "./commands/dashboards/dashboards.command";
+import { registerEmailingDomainsCommand } from "./commands/emailing-domains/emailing-domains.command";
+import { registerEventLogsCommand } from "./commands/event-logs/event-logs.command";
+import { registerFilesCommand } from "./commands/files/files.command";
+import { registerMessageChannelsCommand } from "./commands/message-channels/message-channels.command";
+import { registerPostgresProxyCommand } from "./commands/postgres-proxy/postgres-proxy.command";
+import { registerRolesCommand } from "./commands/roles/roles.command";
+import { registerPublicDomainsCommand } from "./commands/public-domains/public-domains.command";
+import { registerRoutesCommand } from "./commands/routes/routes.command";
+import { registerRouteTriggersCommand } from "./commands/route-triggers/route-triggers.command";
+import { registerServerlessCommand } from "./commands/serverless/serverless.command";
+import { registerApplicationsCommand } from "./commands/applications/applications.command";
+import { registerApplicationRegistrationsCommand } from "./commands/application-registrations/application-registrations.command";
+import { registerSkillsCommand } from "./commands/skills/skills.command";
+import { registerMarketplaceAppsCommand } from "./commands/marketplace-apps/marketplace-apps.command";
+import { registerWorkflowsCommand } from "./commands/workflows/workflows.command";
+import { registerOpenApiCommand } from "./commands/openapi/openapi.command";
+
+export function buildProgram(): Command {
+  const program = new Command();
+  program.name("twenty");
+  program.description("Twenty CLI (TypeScript port)");
+  program.option("--env-file <path>", "Load environment variables from file");
+  program.exitOverride();
+
+  registerApiCommand(program);
+  registerApprovedAccessDomainsCommand(program);
+  registerApiMetadataCommand(program);
+  registerRestCommand(program);
+  registerGraphqlCommand(program);
+  registerAuthCommand(program);
+  registerSearchCommand(program);
+  registerWebhooksCommand(program);
+  registerApiKeysCommand(program);
+  registerCalendarChannelsCommand(program);
+  registerConnectedAccountsCommand(program);
+  registerDashboardsCommand(program);
+  registerEmailingDomainsCommand(program);
+  registerEventLogsCommand(program);
+  registerFilesCommand(program);
+  registerMessageChannelsCommand(program);
+  registerOpenApiCommand(program);
+  registerPostgresProxyCommand(program);
+  registerPublicDomainsCommand(program);
+  registerRolesCommand(program);
+  registerRoutesCommand(program);
+  registerRouteTriggersCommand(program);
+  registerServerlessCommand(program);
+  registerApplicationsCommand(program);
+  registerApplicationRegistrationsCommand(program);
+  registerMarketplaceAppsCommand(program);
+  registerSkillsCommand(program);
+  registerWorkflowsCommand(program);
+
+  return program;
+}

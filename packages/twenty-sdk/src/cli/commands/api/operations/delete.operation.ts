@@ -1,10 +1,10 @@
-import { ApiOperationContext } from './types';
-import { CliError } from '../../../utilities/errors/cli-error';
+import { ApiOperationContext } from "./types";
+import { CliError } from "../../../utilities/errors/cli-error";
 
 export async function runDeleteOperation(ctx: ApiOperationContext): Promise<void> {
   const id = ctx.arg;
   if (!id) {
-    throw new CliError('Missing record ID.', 'INVALID_ARGUMENTS');
+    throw new CliError("Missing record ID.", "INVALID_ARGUMENTS");
   }
   if (!ctx.options.force) {
     // eslint-disable-next-line no-console
@@ -12,7 +12,7 @@ export async function runDeleteOperation(ctx: ApiOperationContext): Promise<void
     return;
   }
   const response = await ctx.services.records.delete(ctx.object, id);
-  if (response == null || (typeof response === 'string' && response === '')) {
+  if (response == null || (typeof response === "string" && response === "")) {
     // eslint-disable-next-line no-console
     console.log(`Deleted ${ctx.object} ${id}`);
     return;

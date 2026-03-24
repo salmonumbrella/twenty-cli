@@ -1,13 +1,13 @@
-import { ApiService } from '../api/services/api.service';
-import { ConfigService } from '../config/services/config.service';
-import { MetadataService } from '../metadata/services/metadata.service';
-import { RecordsService } from '../records/services/records.service';
-import { OutputService } from '../output/services/output.service';
-import { QueryService } from '../output/services/query.service';
-import { TableService } from '../output/services/table.service';
-import { ExportService } from '../file/services/export.service';
-import { ImportService } from '../file/services/import.service';
-import { GlobalOptions } from './global-options';
+import { ApiService } from "../api/services/api.service";
+import { ConfigService } from "../config/services/config.service";
+import { MetadataService } from "../metadata/services/metadata.service";
+import { RecordsService } from "../records/services/records.service";
+import { OutputService } from "../output/services/output.service";
+import { QueryService } from "../output/services/query.service";
+import { TableService } from "../output/services/table.service";
+import { ExportService } from "../file/services/export.service";
+import { ImportService } from "../file/services/import.service";
+import { GlobalOptions } from "./global-options";
 
 export interface CliServices {
   api: ApiService;
@@ -16,6 +16,12 @@ export interface CliServices {
   output: OutputService;
   importer: ImportService;
   exporter: ExportService;
+}
+
+export function createOutputService(globalOptions: GlobalOptions): OutputService {
+  return new OutputService(new TableService(), new QueryService(), {
+    kind: globalOptions.outputKind,
+  });
 }
 
 export function createServices(globalOptions: GlobalOptions): CliServices {
@@ -27,7 +33,7 @@ export function createServices(globalOptions: GlobalOptions): CliServices {
   });
   const records = new RecordsService(api);
   const metadata = new MetadataService(api);
-  const output = new OutputService(new TableService(), new QueryService());
+  const output = createOutputService(globalOptions);
   const importer = new ImportService();
   const exporter = new ExportService();
 

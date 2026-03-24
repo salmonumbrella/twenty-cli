@@ -1,4 +1,4 @@
-import { ApiMetadataContext } from './types';
+import { ApiMetadataContext } from "./types";
 
 export async function runFieldsList(ctx: ApiMetadataContext): Promise<void> {
   let fields: unknown[];

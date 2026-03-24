@@ -1,39 +1,59 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { Command } from 'commander';
-import { registerServerlessCommand } from '../serverless.command';
-import { ApiService } from '../../../utilities/api/services/api.service';
-import { CliError } from '../../../utilities/errors/cli-error';
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { Command } from "commander";
+import { registerServerlessCommand } from "../serverless.command";
+import { ApiService } from "../../../utilities/api/services/api.service";
+import { MetadataSubscriptionService } from "../../../utilities/api/services/metadata-subscription.service";
+import { CliError } from "../../../utilities/errors/cli-error";
+import { mockConstructor } from "../../../test-utils/mock-constructor";
 
-vi.mock('../../../utilities/api/services/api.service');
-vi.mock('../../../utilities/config/services/config.service', () => ({
-  ConfigService: vi.fn().mockImplementation(() => ({
-    getConfig: vi.fn().mockResolvedValue({
-      apiUrl: 'https://api.twenty.com',
-      apiKey: 'test-token',
-      workspace: 'default',
-    }),
-  })),
+vi.mock("../../../utilities/api/services/api.service");
+vi.mock("../../../utilities/api/services/metadata-subscription.service");
+vi.mock("../../../utilities/config/services/config.service", () => ({
+  ConfigService: vi.fn(function MockConfigService() {
+    return {
+      getConfig: vi.fn().mockResolvedValue({
+        apiUrl: "https://api.twenty.com",
+        apiKey: "test-token",
+        workspace: "default",
+      }),
+    };
+  }),
 }));
 
-describe('serverless command', () => {
+describe("serverless command", () => {
   let program: Command;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let mockPost: ReturnType<typeof vi.fn>;
+  let mockSubscribe: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     program = new Command();
     program.exitOverride();
     registerServerlessCommand(program);
-    consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
+    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mockPost = vi.fn();
-    vi.mocked(ApiService).mockImplementation(() => ({
-      post: mockPost,
-      get: vi.fn(),
-      put: vi.fn(),
-      patch: vi.fn(),
-      delete: vi.fn(),
-      request: vi.fn(),
-    }) as unknown as ApiService);
+    mockSubscribe = vi.fn();
+    vi.mocked(ApiService).mockImplementation(
+      mockConstructor(
+        () =>
+          ({
+            post: mockPost,
+            get: vi.fn(),
+            put: vi.fn(),
+            patch: vi.fn(),
+            delete: vi.fn(),
+            request: vi.fn(),
+          }) as unknown as ApiService,
+      ),
+    );
+    vi.mocked(MetadataSubscriptionService).mockImplementation(
+      mockConstructor(
+        () =>
+          ({
+            subscribe: mockSubscribe,
+          }) as unknown as MetadataSubscriptionService,
+      ),
+    );
   });
 
   afterEach(() => {
@@ -41,92 +61,142 @@ describe('serverless command', () => {
     vi.clearAllMocks();
   });
 
-  describe('command registration', () => {
-    it('registers serverless command with correct name and description', () => {
-      const serverlessCmd = program.commands.find(cmd => cmd.name() === 'serverless');
+  function makeUnknownSymbolError(symbol: string): { message: string } {
+    return {
+      message: `Cannot query field "${symbol}" on type "Query".`,
+    };
+  }
+
+  describe("command registration", () => {
+    it("registers serverless command with correct name and description", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       expect(serverlessCmd).toBeDefined();
-      expect(serverlessCmd?.description()).toBe('Manage serverless functions');
+      expect(serverlessCmd?.description()).toBe("Manage serverless functions");
     });
 
-    it('has required operation argument', () => {
-      const serverlessCmd = program.commands.find(cmd => cmd.name() === 'serverless');
+    it("has required operation argument", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       const args = serverlessCmd?.registeredArguments ?? [];
       expect(args.length).toBe(2);
-      expect(args[0].name()).toBe('operation');
+      expect(args[0].name()).toBe("operation");
       expect(args[0].required).toBe(true);
     });
 
-    it('has optional id argument', () => {
-      const serverlessCmd = program.commands.find(cmd => cmd.name() === 'serverless');
+    it("has optional id argument", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       const args = serverlessCmd?.registeredArguments ?? [];
-      expect(args[1].name()).toBe('id');
+      expect(args[1].name()).toBe("id");
       expect(args[1].required).toBe(false);
     });
 
-    it('has --data option', () => {
-      const serverlessCmd = program.commands.find(cmd => cmd.name() === 'serverless');
+    it("has --data option", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       const opts = serverlessCmd?.options ?? [];
-      const dataOpt = opts.find(o => o.long === '--data');
+      const dataOpt = opts.find((o) => o.long === "--data");
       expect(dataOpt).toBeDefined();
     });
 
-    it('has --file option', () => {
-      const serverlessCmd = program.commands.find(cmd => cmd.name() === 'serverless');
+    it("has --file option", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       const opts = serverlessCmd?.options ?? [];
-      const fileOpt = opts.find(o => o.long === '--file');
+      const fileOpt = opts.find((o) => o.long === "--file");
       expect(fileOpt).toBeDefined();
     });
 
-    it('has --name option', () => {
-      const serverlessCmd = program.commands.find(cmd => cmd.name() === 'serverless');
+    it("has --name option", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       const opts = serverlessCmd?.options ?? [];
-      const nameOpt = opts.find(o => o.long === '--name');
+      const nameOpt = opts.find((o) => o.long === "--name");
       expect(nameOpt).toBeDefined();
     });
 
-    it('has --description option', () => {
-      const serverlessCmd = program.commands.find(cmd => cmd.name() === 'serverless');
+    it("has --description option", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       const opts = serverlessCmd?.options ?? [];
-      const descOpt = opts.find(o => o.long === '--description');
+      const descOpt = opts.find((o) => o.long === "--description");
       expect(descOpt).toBeDefined();
     });
 
-    it('has global options applied', () => {
-      const serverlessCmd = program.commands.find(cmd => cmd.name() === 'serverless');
+    it("has --set option", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       const opts = serverlessCmd?.options ?? [];
-      const outputOpt = opts.find(o => o.long === '--output');
-      const queryOpt = opts.find(o => o.long === '--query');
-      const workspaceOpt = opts.find(o => o.long === '--workspace');
+      const setOpt = opts.find((o) => o.long === "--set");
+      expect(setOpt).toBeDefined();
+    });
+
+    it("has --timeout-seconds option", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
+      const opts = serverlessCmd?.options ?? [];
+      const timeoutOpt = opts.find((o) => o.long === "--timeout-seconds");
+      expect(timeoutOpt).toBeDefined();
+    });
+
+    it("has layer creation options", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
+      const opts = serverlessCmd?.options ?? [];
+
+      expect(opts.find((option) => option.long === "--package-json")).toBeDefined();
+      expect(opts.find((option) => option.long === "--package-json-file")).toBeDefined();
+      expect(opts.find((option) => option.long === "--yarn-lock")).toBeDefined();
+      expect(opts.find((option) => option.long === "--yarn-lock-file")).toBeDefined();
+    });
+
+    it("has global options applied", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
+      const opts = serverlessCmd?.options ?? [];
+      const outputOpt = opts.find((o) => o.long === "--output");
+      const queryOpt = opts.find((o) => o.long === "--query");
+      const workspaceOpt = opts.find((o) => o.long === "--workspace");
       expect(outputOpt).toBeDefined();
       expect(queryOpt).toBeDefined();
       expect(workspaceOpt).toBeDefined();
     });
   });
 
-  describe('list operation', () => {
-    it('lists serverless functions', async () => {
+  describe("list operation", () => {
+    it("lists serverless functions", async () => {
       const functions = [
-        { id: 'fn-1', name: 'Function 1', description: 'Test 1', syncStatus: 'READY', createdAt: '2024-01-01', updatedAt: '2024-01-02' },
-        { id: 'fn-2', name: 'Function 2', description: 'Test 2', syncStatus: 'PENDING', createdAt: '2024-01-03', updatedAt: '2024-01-04' },
+        {
+          id: "fn-1",
+          name: "Function 1",
+          description: "Test 1",
+          runtime: "nodejs22.x",
+          timeoutSeconds: 30,
+          handlerPath: "src/index.ts",
+          handlerName: "handler",
+          createdAt: "2024-01-01",
+          updatedAt: "2024-01-02",
+        },
+        {
+          id: "fn-2",
+          name: "Function 2",
+          description: "Test 2",
+          runtime: "nodejs22.x",
+          timeoutSeconds: 60,
+          handlerPath: "src/main.ts",
+          handlerName: "main",
+          createdAt: "2024-01-03",
+          updatedAt: "2024-01-04",
+        },
       ];
       mockPost.mockResolvedValue({ data: { data: { findManyServerlessFunctions: functions } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'list', '-o', 'json']);
+      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('findManyServerlessFunctions'),
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("findManyServerlessFunctions"),
       });
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
       expect(parsed).toHaveLength(2);
-      expect(parsed[0].id).toBe('fn-1');
+      expect(parsed[0].id).toBe("fn-1");
     });
 
-    it('handles empty functions list', async () => {
+    it("handles empty functions list", async () => {
       mockPost.mockResolvedValue({ data: { data: { findManyServerlessFunctions: [] } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'list', '-o', 'json']);
+      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -134,248 +204,573 @@ describe('serverless command', () => {
       expect(parsed).toEqual([]);
     });
 
-    it('handles null functions response', async () => {
+    it("handles null functions response", async () => {
       mockPost.mockResolvedValue({ data: { data: { findManyServerlessFunctions: null } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'list', '-o', 'json']);
+      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
       expect(parsed).toEqual([]);
     });
+
+    it("falls back to legacy logic-function queries on older workspaces", async () => {
+      const functions = [{ id: "fn-1", name: "Legacy Function" }];
+      mockPost
+        .mockResolvedValueOnce({
+          data: {
+            errors: [makeUnknownSymbolError("findManyServerlessFunctions")],
+          },
+        })
+        .mockResolvedValueOnce({
+          data: { data: { findManyLogicFunctions: functions } },
+        });
+
+      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]);
+
+      expect(mockPost).toHaveBeenNthCalledWith(1, "/metadata", {
+        query: expect.stringContaining("findManyServerlessFunctions"),
+      });
+      expect(mockPost).toHaveBeenNthCalledWith(2, "/metadata", {
+        query: expect.stringContaining("findManyLogicFunctions"),
+      });
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(JSON.parse(output)).toEqual(functions);
+    });
   });
 
-  describe('get operation', () => {
-    it('gets a single function by ID', async () => {
-      const func = { id: 'fn-1', name: 'Function 1', description: 'Test', syncStatus: 'READY', sourceCodeFullPath: '/path/to/code', createdAt: '2024-01-01', updatedAt: '2024-01-02' };
+  describe("get operation", () => {
+    it("gets a single function by ID", async () => {
+      const func = {
+        id: "fn-1",
+        name: "Function 1",
+        description: "Test",
+        runtime: "nodejs22.x",
+        timeoutSeconds: 30,
+        handlerPath: "src/index.ts",
+        handlerName: "handler",
+        createdAt: "2024-01-01",
+        updatedAt: "2024-01-02",
+      };
       mockPost.mockResolvedValue({ data: { data: { findOneServerlessFunction: func } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'get', 'fn-1', '-o', 'json']);
+      await program.parseAsync(["node", "test", "serverless", "get", "fn-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('findOneServerlessFunction(id: $id)'),
-        variables: { id: 'fn-1' },
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("findOneServerlessFunction(input: $input)"),
+        variables: { input: { id: "fn-1" } },
       });
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
-      expect(parsed.id).toBe('fn-1');
-      expect(parsed.sourceCodeFullPath).toBe('/path/to/code');
+      expect(parsed.id).toBe("fn-1");
+      expect(parsed.handlerPath).toBe("src/index.ts");
     });
 
-    it('throws error when ID is missing', async () => {
-      await expect(
-        program.parseAsync(['node', 'test', 'serverless', 'get'])
-      ).rejects.toThrow(CliError);
+    it("throws error when ID is missing", async () => {
+      await expect(program.parseAsync(["node", "test", "serverless", "get"])).rejects.toThrow(
+        CliError,
+      );
     });
   });
 
-  describe('create operation', () => {
-    it('creates a function with --name option', async () => {
-      const newFunc = { id: 'fn-new', name: 'NewFunction', description: 'New function' };
+  describe("create operation", () => {
+    it("creates a function with --name option", async () => {
+      const newFunc = {
+        id: "fn-new",
+        name: "NewFunction",
+        description: "New function",
+        runtime: "nodejs22.x",
+        timeoutSeconds: 45,
+      };
       mockPost.mockResolvedValue({ data: { data: { createOneServerlessFunction: newFunc } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'create', '--name', 'NewFunction', '--description', 'New function', '-o', 'json']);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "create",
+        "--name",
+        "NewFunction",
+        "--description",
+        "New function",
+        "--timeout-seconds",
+        "45",
+        "-o",
+        "json",
+      ]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('createOneServerlessFunction'),
-        variables: { name: 'NewFunction', description: 'New function' },
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("createOneServerlessFunction"),
+        variables: {
+          input: {
+            name: "NewFunction",
+            description: "New function",
+            timeoutSeconds: 45,
+          },
+        },
       });
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
-      expect(parsed.id).toBe('fn-new');
+      expect(parsed.id).toBe("fn-new");
     });
 
-    it('creates a function without description', async () => {
-      const newFunc = { id: 'fn-new', name: 'NewFunction', description: null };
+    it("creates a function from JSON payload", async () => {
+      const newFunc = { id: "fn-new", name: "JsonFunction", description: null };
       mockPost.mockResolvedValue({ data: { data: { createOneServerlessFunction: newFunc } } });
+      const payload = {
+        name: "JsonFunction",
+        source: {
+          sourceHandlerCode: "export const handler = async () => ({ ok: true });",
+          toolInputSchema: {},
+          handlerName: "handler",
+        },
+      };
 
-      await program.parseAsync(['node', 'test', 'serverless', 'create', '--name', 'NewFunction', '-o', 'json']);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "create",
+        "-d",
+        JSON.stringify(payload),
+        "-o",
+        "json",
+      ]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('createOneServerlessFunction'),
-        variables: { name: 'NewFunction', description: undefined },
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("createOneServerlessFunction"),
+        variables: {
+          input: {
+            name: "JsonFunction",
+            code: {
+              "src/index.ts": "export const handler = async () => ({ ok: true });",
+            },
+            handlerName: "handler",
+            handlerPath: "src/index.ts",
+            toolInputSchema: {},
+          },
+        },
       });
     });
 
-    it('throws error when --name is missing', async () => {
-      await expect(
-        program.parseAsync(['node', 'test', 'serverless', 'create'])
-      ).rejects.toThrow(CliError);
+    it("throws error when --name is missing", async () => {
+      await expect(program.parseAsync(["node", "test", "serverless", "create"])).rejects.toThrow(
+        CliError,
+      );
     });
   });
 
-  describe('update operation', () => {
-    it('updates a function with JSON data', async () => {
-      const updatedFunc = { id: 'fn-1', name: 'UpdatedFunction', description: 'Updated description' };
-      mockPost.mockResolvedValue({ data: { data: { updateOneServerlessFunction: updatedFunc } } });
-      const payload = { name: 'UpdatedFunction', description: 'Updated description' };
+  describe("update operation", () => {
+    it("updates a function with JSON data", async () => {
+      mockPost.mockResolvedValue({ data: { data: { updateOneServerlessFunction: true } } });
+      const payload = { name: "UpdatedFunction", description: "Updated description" };
 
-      await program.parseAsync(['node', 'test', 'serverless', 'update', 'fn-1', '-d', JSON.stringify(payload), '-o', 'json']);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "update",
+        "fn-1",
+        "-d",
+        JSON.stringify(payload),
+        "-o",
+        "json",
+      ]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('updateOneServerlessFunction'),
-        variables: { id: 'fn-1', ...payload },
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("updateOneServerlessFunction(input: $input)"),
+        variables: { input: { id: "fn-1", update: payload } },
       });
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
-      expect(parsed.id).toBe('fn-1');
-      expect(parsed.name).toBe('UpdatedFunction');
+      expect(parsed.id).toBe("fn-1");
+      expect(parsed.updated).toBe(true);
     });
 
-    it('updates a function without data', async () => {
-      const updatedFunc = { id: 'fn-1', name: 'Function', description: 'Desc' };
-      mockPost.mockResolvedValue({ data: { data: { updateOneServerlessFunction: updatedFunc } } });
+    it("updates a function from options", async () => {
+      mockPost.mockResolvedValue({ data: { data: { updateOneServerlessFunction: true } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'update', 'fn-1', '-o', 'json']);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "update",
+        "fn-1",
+        "--description",
+        "Desc",
+        "--timeout-seconds",
+        "90",
+        "-o",
+        "json",
+      ]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('updateOneServerlessFunction'),
-        variables: { id: 'fn-1' },
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("updateOneServerlessFunction(input: $input)"),
+        variables: {
+          input: {
+            id: "fn-1",
+            update: { description: "Desc", timeoutSeconds: 90 },
+          },
+        },
       });
     });
 
-    it('throws error when ID is missing', async () => {
-      const payload = { name: 'UpdatedFunction' };
+    it("throws error when ID is missing", async () => {
+      const payload = { name: "UpdatedFunction" };
       await expect(
-        program.parseAsync(['node', 'test', 'serverless', 'update', '-d', JSON.stringify(payload)])
+        program.parseAsync(["node", "test", "serverless", "update", "-d", JSON.stringify(payload)]),
+      ).rejects.toThrow(CliError);
+    });
+
+    it("throws error when no update fields are provided", async () => {
+      await expect(
+        program.parseAsync(["node", "test", "serverless", "update", "fn-1"]),
       ).rejects.toThrow(CliError);
     });
   });
 
-  describe('delete operation', () => {
-    it('deletes a function by ID', async () => {
-      mockPost.mockResolvedValue({ data: { data: { deleteOneServerlessFunction: { id: 'fn-1' } } } });
-
-      await program.parseAsync(['node', 'test', 'serverless', 'delete', 'fn-1']);
-
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('deleteOneServerlessFunction'),
-        variables: { id: 'fn-1' },
+  describe("delete operation", () => {
+    it("deletes a function by ID", async () => {
+      mockPost.mockResolvedValue({
+        data: { data: { deleteOneServerlessFunction: { id: "fn-1" } } },
       });
-      expect(consoleSpy).toHaveBeenCalledWith('Serverless function fn-1 deleted.');
+
+      await program.parseAsync(["node", "test", "serverless", "delete", "fn-1"]);
+
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("deleteOneServerlessFunction(input: $input)"),
+        variables: { input: { id: "fn-1" } },
+      });
+      expect(consoleSpy).toHaveBeenCalledWith("Serverless function fn-1 deleted.");
     });
 
-    it('throws error when ID is missing', async () => {
-      await expect(
-        program.parseAsync(['node', 'test', 'serverless', 'delete'])
-      ).rejects.toThrow(CliError);
+    it("throws error when ID is missing", async () => {
+      await expect(program.parseAsync(["node", "test", "serverless", "delete"])).rejects.toThrow(
+        CliError,
+      );
     });
   });
 
-  describe('execute operation', () => {
-    it('executes a function with payload', async () => {
-      const result = { data: { result: 'success' }, status: 'OK', duration: 150 };
+  describe("execute operation", () => {
+    it("executes a function with payload", async () => {
+      const result = {
+        data: { result: "success" },
+        logs: "ran successfully",
+        status: "SUCCESS",
+        duration: 150,
+        error: null,
+      };
       mockPost.mockResolvedValue({ data: { data: { executeOneServerlessFunction: result } } });
-      const payload = { input: 'test data' };
+      const payload = { input: "test data" };
 
-      await program.parseAsync(['node', 'test', 'serverless', 'execute', 'fn-1', '-d', JSON.stringify(payload), '-o', 'json']);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "execute",
+        "fn-1",
+        "-d",
+        JSON.stringify(payload),
+        "-o",
+        "json",
+      ]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('executeOneServerlessFunction'),
-        variables: { id: 'fn-1', payload },
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("executeOneServerlessFunction(input: $input)"),
+        variables: { input: { id: "fn-1", payload } },
       });
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
-      expect(parsed.status).toBe('OK');
+      expect(parsed.status).toBe("SUCCESS");
       expect(parsed.duration).toBe(150);
     });
 
-    it('executes a function without payload', async () => {
-      const result = { data: null, status: 'OK', duration: 50 };
+    it("executes a function without payload", async () => {
+      const result = { data: null, logs: "", status: "SUCCESS", duration: 50 };
       mockPost.mockResolvedValue({ data: { data: { executeOneServerlessFunction: result } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'execute', 'fn-1', '-o', 'json']);
+      await program.parseAsync(["node", "test", "serverless", "execute", "fn-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('executeOneServerlessFunction'),
-        variables: { id: 'fn-1', payload: {} },
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("executeOneServerlessFunction(input: $input)"),
+        variables: { input: { id: "fn-1", payload: {} } },
       });
     });
 
-    it('throws error when ID is missing', async () => {
-      await expect(
-        program.parseAsync(['node', 'test', 'serverless', 'execute'])
-      ).rejects.toThrow(CliError);
+    it("throws error when ID is missing", async () => {
+      await expect(program.parseAsync(["node", "test", "serverless", "execute"])).rejects.toThrow(
+        CliError,
+      );
     });
   });
 
-  describe('publish operation', () => {
-    it('publishes a function by ID', async () => {
-      const result = { id: 'fn-1', syncStatus: 'READY' };
-      mockPost.mockResolvedValue({ data: { data: { publishServerlessFunction: result } } });
+  describe("packages operation", () => {
+    it("lists available packages for a function by ID", async () => {
+      const result = { lodash: "^4.17.21", zod: "^3.25.0" };
+      mockPost.mockResolvedValue({ data: { data: { getAvailablePackages: result } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'publish', 'fn-1', '-o', 'json']);
+      await program.parseAsync(["node", "test", "serverless", "packages", "fn-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('publishServerlessFunction'),
-        variables: { id: 'fn-1' },
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("getAvailablePackages(input: $input)"),
+        variables: { input: { id: "fn-1" } },
       });
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
-      expect(parsed.id).toBe('fn-1');
-      expect(parsed.syncStatus).toBe('READY');
+      expect(parsed.lodash).toBe("^4.17.21");
     });
 
-    it('throws error when ID is missing', async () => {
+    it("throws error when ID is missing", async () => {
+      await expect(program.parseAsync(["node", "test", "serverless", "packages"])).rejects.toThrow(
+        CliError,
+      );
+    });
+  });
+
+  describe("create-layer operation", () => {
+    it("creates a serverless layer from inline package.json and yarn.lock content", async () => {
+      mockPost.mockResolvedValue({
+        data: {
+          data: {
+            createOneServerlessFunctionLayer: {
+              id: "layer-1",
+              applicationId: null,
+              createdAt: "2026-03-22T00:00:00.000Z",
+              updatedAt: "2026-03-22T00:00:00.000Z",
+            },
+          },
+        },
+      });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "create-layer",
+        "--package-json",
+        '{"dependencies":{"zod":"^3.25.0"}}',
+        "--yarn-lock",
+        "zod@^3.25.0:",
+        "-o",
+        "json",
+      ]);
+
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("createOneServerlessFunctionLayer"),
+        variables: {
+          packageJson: {
+            dependencies: {
+              zod: "^3.25.0",
+            },
+          },
+          yarnLock: "zod@^3.25.0:",
+        },
+      });
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(output);
+      expect(parsed.id).toBe("layer-1");
+    });
+
+    it("throws a clear error when layer creation is unavailable on a legacy workspace", async () => {
+      mockPost.mockResolvedValue({
+        data: {
+          errors: [makeUnknownSymbolError("createOneServerlessFunctionLayer")],
+        },
+      });
+
       await expect(
-        program.parseAsync(['node', 'test', 'serverless', 'publish'])
+        program.parseAsync([
+          "node",
+          "test",
+          "serverless",
+          "create-layer",
+          "--package-json",
+          '{"dependencies":{"zod":"^3.25.0"}}',
+          "--yarn-lock",
+          "zod@^3.25.0:",
+        ]),
+      ).rejects.toThrow(
+        "Serverless layers are not available on this workspace because it does not expose createOneServerlessFunctionLayer.",
+      );
+    });
+  });
+
+  describe("logs operation", () => {
+    it("streams logic function logs with a metadata subscription", async () => {
+      mockSubscribe.mockReturnValue(
+        (async function* () {
+          yield {
+            logicFunctionLogs: {
+              logs: "hello\nworld",
+            },
+          };
+        })(),
+      );
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "logs",
+        "fn-1",
+        "--max-events",
+        "1",
+        "-o",
+        "jsonl",
+      ]);
+
+      expect(MetadataSubscriptionService).toHaveBeenCalled();
+      expect(mockSubscribe).toHaveBeenCalledWith(
+        expect.objectContaining({
+          query: expect.stringContaining("logicFunctionLogs"),
+          variables: {
+            input: {
+              id: "fn-1",
+            },
+          },
+        }),
+      );
+      expect(consoleSpy).toHaveBeenCalledWith('{"logs":"hello\\nworld"}');
+    });
+
+    it("requires at least one filter for logs", async () => {
+      await expect(
+        program.parseAsync(["node", "test", "serverless", "logs", "--max-events", "1"]),
       ).rejects.toThrow(CliError);
     });
   });
 
-  describe('source operation', () => {
-    it('gets source code for a function', async () => {
+  describe("source operation", () => {
+    it("gets source code for a function", async () => {
       const sourceCode = 'export default function handler() { return "Hello"; }';
-      mockPost.mockResolvedValue({ data: { data: { getServerlessFunctionSourceCode: sourceCode } } });
+      mockPost.mockResolvedValue({
+        data: { data: { getServerlessFunctionSourceCode: sourceCode } },
+      });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'source', 'fn-1']);
+      await program.parseAsync(["node", "test", "serverless", "source", "fn-1"]);
 
-      expect(mockPost).toHaveBeenCalledWith('/graphql', {
-        query: expect.stringContaining('getServerlessFunctionSourceCode'),
-        variables: { id: 'fn-1' },
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("getServerlessFunctionSourceCode(input: $input)"),
+        variables: { input: { id: "fn-1" } },
       });
       expect(consoleSpy).toHaveBeenCalledWith(sourceCode);
     });
 
-    it('handles null source code', async () => {
+    it("handles null source code", async () => {
       mockPost.mockResolvedValue({ data: { data: { getServerlessFunctionSourceCode: null } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'source', 'fn-1']);
+      await program.parseAsync(["node", "test", "serverless", "source", "fn-1"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith('');
+      expect(consoleSpy).toHaveBeenCalledWith("");
     });
 
-    it('throws error when ID is missing', async () => {
-      await expect(
-        program.parseAsync(['node', 'test', 'serverless', 'source'])
-      ).rejects.toThrow(CliError);
+    it("renders source code as structured output for json format", async () => {
+      const sourceCode = "export const handler = async () => ({ ok: true });";
+      mockPost.mockResolvedValue({
+        data: { data: { getServerlessFunctionSourceCode: sourceCode } },
+      });
+
+      await program.parseAsync(["node", "test", "serverless", "source", "fn-1", "-o", "json"]);
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(output);
+      expect(parsed.sourceCode).toBe(sourceCode);
+    });
+
+    it("falls back to legacy source-code queries on older workspaces", async () => {
+      const sourceCode = "export const handler = async () => ({ ok: true });";
+      mockPost
+        .mockResolvedValueOnce({
+          data: {
+            errors: [makeUnknownSymbolError("getServerlessFunctionSourceCode")],
+          },
+        })
+        .mockResolvedValueOnce({
+          data: { data: { getLogicFunctionSourceCode: sourceCode } },
+        });
+
+      await program.parseAsync(["node", "test", "serverless", "source", "fn-1"]);
+
+      expect(mockPost).toHaveBeenNthCalledWith(1, "/metadata", {
+        query: expect.stringContaining("getServerlessFunctionSourceCode(input: $input)"),
+        variables: { input: { id: "fn-1" } },
+      });
+      expect(mockPost).toHaveBeenNthCalledWith(2, "/metadata", {
+        query: expect.stringContaining("getLogicFunctionSourceCode(input: $input)"),
+        variables: { input: { id: "fn-1" } },
+      });
+      expect(consoleSpy).toHaveBeenCalledWith(sourceCode);
+    });
+
+    it("throws error when ID is missing", async () => {
+      await expect(program.parseAsync(["node", "test", "serverless", "source"])).rejects.toThrow(
+        CliError,
+      );
     });
   });
 
-  describe('error handling', () => {
-    it('requires operation argument', async () => {
-      await expect(
-        program.parseAsync(['node', 'test', 'serverless'])
-      ).rejects.toThrow();
+  describe("error handling", () => {
+    it("requires operation argument", async () => {
+      await expect(program.parseAsync(["node", "test", "serverless"])).rejects.toThrow();
     });
 
-    it('throws error for unknown operation', async () => {
-      await expect(
-        program.parseAsync(['node', 'test', 'serverless', 'unknown'])
-      ).rejects.toThrow(CliError);
+    it("throws error for unknown operation", async () => {
+      await expect(program.parseAsync(["node", "test", "serverless", "unknown"])).rejects.toThrow(
+        CliError,
+      );
     });
 
-    it('handles case insensitive operations', async () => {
-      const functions = [{ id: 'fn-1', name: 'Function', description: '', syncStatus: 'READY', createdAt: '', updatedAt: '' }];
+    it("publishes a function when the current schema supports it", async () => {
+      mockPost.mockResolvedValue({
+        data: { data: { publishServerlessFunction: { id: "fn-1", name: "Published" } } },
+      });
+
+      await program.parseAsync(["node", "test", "serverless", "publish", "fn-1", "-o", "json"]);
+
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("publishServerlessFunction(input: $input)"),
+        variables: { input: { id: "fn-1" } },
+      });
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(JSON.parse(output)).toEqual({ id: "fn-1", name: "Published" });
+    });
+
+    it("throws a clear error when publish is unavailable on a legacy workspace", async () => {
+      mockPost.mockResolvedValue({
+        data: {
+          errors: [makeUnknownSymbolError("publishServerlessFunction")],
+        },
+      });
+
+      await expect(
+        program.parseAsync(["node", "test", "serverless", "publish", "fn-1"]),
+      ).rejects.toThrow("Publish is not available on this workspace");
+    });
+
+    it("handles case insensitive operations", async () => {
+      const functions = [
+        {
+          id: "fn-1",
+          name: "Function",
+          description: "",
+          runtime: "nodejs22.x",
+          timeoutSeconds: 30,
+          handlerPath: "src/index.ts",
+          handlerName: "handler",
+          createdAt: "",
+          updatedAt: "",
+        },
+      ];
       mockPost.mockResolvedValue({ data: { data: { findManyServerlessFunctions: functions } } });
 
-      await program.parseAsync(['node', 'test', 'serverless', 'LIST', '-o', 'json']);
+      await program.parseAsync(["node", "test", "serverless", "LIST", "-o", "json"]);
 
       expect(mockPost).toHaveBeenCalled();
     });

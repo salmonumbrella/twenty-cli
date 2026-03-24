@@ -1,11 +1,11 @@
-import { ApiOperationContext } from './types';
-import { chunkArray } from '../../../utilities/shared/parse';
-import { CliError } from '../../../utilities/errors/cli-error';
+import { ApiOperationContext } from "./types";
+import { chunkArray } from "../../../utilities/shared/parse";
+import { CliError } from "../../../utilities/errors/cli-error";
 
 export async function runImportOperation(ctx: ApiOperationContext): Promise<void> {
   const filePath = ctx.arg;
   if (!filePath) {
-    throw new CliError('Missing import file path.', 'INVALID_ARGUMENTS');
+    throw new CliError("Missing import file path.", "INVALID_ARGUMENTS");
   }
 
   const batchSizeRaw = ctx.options.batchSize ? Number(ctx.options.batchSize) : 60;
@@ -18,7 +18,7 @@ export async function runImportOperation(ctx: ApiOperationContext): Promise<void
   }
   if (records.length === 0) {
     // eslint-disable-next-line no-console
-    console.log('No records to import.');
+    console.log("No records to import.");
     return;
   }
 
@@ -39,5 +39,5 @@ export async function runImportOperation(ctx: ApiOperationContext): Promise<void
   }
 
   // eslint-disable-next-line no-console
-  console.log(`Import complete: ${imported} imported${errors ? `, ${errors} failed` : ''}.`);
+  console.log(`Import complete: ${imported} imported${errors ? `, ${errors} failed` : ""}.`);
 }

@@ -1,4 +1,4 @@
-import { ApiMetadataContext } from './types';
+import { ApiMetadataContext } from "./types";
 
 export async function runObjectsList(ctx: ApiMetadataContext): Promise<void> {
   const objects = await ctx.services.metadata.listObjects();

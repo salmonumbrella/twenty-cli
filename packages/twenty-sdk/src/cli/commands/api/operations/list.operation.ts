@@ -1,8 +1,16 @@
-import { ApiOperationContext } from './types';
-import { parseKeyValuePairs } from '../../../utilities/shared/parse';
+import { ApiOperationContext } from "./types";
+import { parseKeyValuePairs } from "../../../utilities/shared/parse";
+import { CliError } from "../../../utilities/errors/cli-error";
 
 export async function runListOperation(ctx: ApiOperationContext): Promise<void> {
   const { services, globalOptions } = ctx;
+  if (ctx.options.fields) {
+    throw new CliError(
+      "--fields is not supported for list. Twenty REST find-many only supports depth-based field expansion.",
+      "INVALID_ARGUMENTS",
+    );
+  }
+
   const limit = ctx.options.limit ? Number(ctx.options.limit) : undefined;
   const params = parseKeyValuePairs(ctx.options.param);
 
@@ -13,7 +21,6 @@ export async function runListOperation(ctx: ApiOperationContext): Promise<void> 
     include: ctx.options.include,
     sort: ctx.options.sort,
     order: ctx.options.order,
-    fields: ctx.options.fields,
     params,
   };
 

@@ -1,12 +1,12 @@
-import path from 'path';
-import { ApiOperationContext } from './types';
-import { parseArrayPayload } from '../../../utilities/shared/body';
+import path from "path";
+import { ApiOperationContext } from "./types";
+import { parseArrayPayload } from "../../../utilities/shared/body";
 
 export async function runBatchCreateOperation(ctx: ApiOperationContext): Promise<void> {
   let records: Record<string, unknown>[] = [];
   if (ctx.options.file) {
     const ext = path.extname(ctx.options.file).toLowerCase();
-    if (ext === '.csv') {
+    if (ext === ".csv") {
       records = await ctx.services.importer.import(ctx.options.file);
     } else {
       const payload = await parseArrayPayload(ctx.options.data, ctx.options.file);

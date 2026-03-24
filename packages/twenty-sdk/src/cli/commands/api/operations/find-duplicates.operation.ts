@@ -1,25 +1,40 @@
-import { ApiOperationContext } from './types';
-import { readJsonInput } from '../../../utilities/shared/io';
-import { CliError } from '../../../utilities/errors/cli-error';
+import { ApiOperationContext } from "./types";
+import { readJsonInput } from "../../../utilities/shared/io";
+import { CliError } from "../../../utilities/errors/cli-error";
 
 export async function runFindDuplicatesOperation(ctx: ApiOperationContext): Promise<void> {
   let payload: unknown | undefined;
 
   if (ctx.options.data || ctx.options.file) {
     payload = await readJsonInput(ctx.options.data, ctx.options.file);
+  } else if (ctx.options.ids) {
+    const ids = ctx.options.ids
+      .split(",")
+      .map((id) => id.trim())
+      .filter(Boolean);
+
+    payload = { ids };
   } else if (ctx.options.fields) {
-    const fields = ctx.options.fields.split(',').map((field) => field.trim()).filter(Boolean);
-    if (fields.length === 0) {
-      throw new CliError('No fields provided for duplicate detection.', 'INVALID_ARGUMENTS');
-    }
-    payload = { fields };
+    throw new CliError(
+      "Field-only duplicate detection is not supported by the current Twenty REST API.",
+      "INVALID_ARGUMENTS",
+      'Use --ids "record_1,record_2" or --data \'{"data":[{...}]}\'.',
+    );
   }
 
   if (!payload) {
     throw new CliError(
-      'Missing payload for find-duplicates.',
-      'INVALID_ARGUMENTS',
-      'Use --fields to specify fields to check (e.g., --fields "email,phone") or --data for custom JSON payload.'
+      "Missing payload for find-duplicates.",
+      "INVALID_ARGUMENTS",
+      'Use --ids "record_1,record_2" or --data \'{"ids":["record_1"]}\' / \'{"data":[{...}]}\'.',
+    );
+  }
+
+  if (typeof payload !== "object" || Array.isArray(payload)) {
+    throw new CliError(
+      "Find-duplicates payload must be a JSON object.",
+      "INVALID_ARGUMENTS",
+      'Use --data \'{"ids":["record_1"]}\' or --data \'{"data":[{...}]}\'.',
     );
   }
 
