@@ -46,7 +46,8 @@ describe("repo release consistency", () => {
     expect(releaseWorkflow).not.toContain("setup-go");
     expect(releaseWorkflow).not.toContain("goreleaser");
     expect(releaseWorkflow).toContain("pnpm release:build");
-    expect(releaseWorkflow).toContain("actions/upload-artifact@v4");
+    expect(releaseWorkflow).toContain("actions/upload-artifact@v7");
+    expect(releaseWorkflow).toContain("actions/download-artifact@v8");
     expect(releaseWorkflow).toContain("checksums.txt");
 
     expect(driftWorkflow).toContain("pnpm check:upstream-drift");
