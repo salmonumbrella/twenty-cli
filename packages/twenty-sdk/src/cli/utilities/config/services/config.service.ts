@@ -31,6 +31,11 @@ export interface ConfigOverrides {
   apiKey?: string;
 }
 
+export interface ResolveApiConfigOptions extends ConfigOverrides {
+  requireAuth?: boolean;
+  missingAuthSuggestion?: string;
+}
+
 export class ConfigService {
   private configPath: string;
 
@@ -54,6 +59,21 @@ export class ConfigService {
   }
 
   async getConfig(overrides?: ConfigOverrides): Promise<ResolvedConfig> {
+    const resolved = await this.resolveApiConfig({
+      ...overrides,
+      requireAuth: true,
+      missingAuthSuggestion:
+        "Set TWENTY_TOKEN or configure ~/.twenty/config.json with an apiKey.",
+    });
+
+    return {
+      apiUrl: resolved.apiUrl,
+      apiKey: resolved.apiKey,
+      workspace: resolved.workspace,
+    };
+  }
+
+  async resolveApiConfig(overrides?: ResolveApiConfigOptions): Promise<ResolvedConfig> {
     const fileConfig = await this.loadConfigFile();
     const workspace =
       overrides?.workspace ??
@@ -71,11 +91,12 @@ export class ConfigService {
 
     const apiKey = overrides?.apiKey ?? process.env.TWENTY_TOKEN ?? workspaceConfig.apiKey ?? "";
 
-    if (!apiKey) {
+    if (overrides?.requireAuth && !apiKey) {
       throw new CliError(
         "Missing API token.",
         "AUTH",
-        "Set TWENTY_TOKEN or configure ~/.twenty/config.json with an apiKey.",
+        overrides.missingAuthSuggestion ??
+          "Set TWENTY_TOKEN or configure ~/.twenty/config.json with an apiKey.",
       );
     }
 

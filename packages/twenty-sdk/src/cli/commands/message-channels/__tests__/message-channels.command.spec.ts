@@ -4,8 +4,22 @@ import { registerMessageChannelsCommand } from "../message-channels.command";
 import { ApiService } from "../../../utilities/api/services/api.service";
 import { CliError } from "../../../utilities/errors/cli-error";
 import { mockConstructor } from "../../../test-utils/mock-constructor";
+import { RecordsService } from "../../../utilities/records/services/records.service";
+
+const mockCreateCommandContext = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../utilities/api/services/api.service");
+vi.mock("../../../utilities/records/services/records.service");
+vi.mock("../../../utilities/shared/context", async () => {
+  const actual = await vi.importActual<typeof import("../../../utilities/shared/context")>(
+    "../../../utilities/shared/context",
+  );
+
+  return {
+    ...actual,
+    createCommandContext: mockCreateCommandContext,
+  };
+});
 vi.mock("../../../utilities/config/services/config.service", () => ({
   ConfigService: vi.fn(function MockConfigService() {
     return {
@@ -23,6 +37,9 @@ describe("message-channels command", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let mockGet: ReturnType<typeof vi.fn>;
   let mockPatch: ReturnType<typeof vi.fn>;
+  let mockRecordsList: ReturnType<typeof vi.fn>;
+  let mockRecordsGet: ReturnType<typeof vi.fn>;
+  let mockRecordsUpdate: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     program = new Command();
@@ -31,6 +48,28 @@ describe("message-channels command", () => {
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mockGet = vi.fn();
     mockPatch = vi.fn();
+    mockRecordsList = vi.fn();
+    mockRecordsGet = vi.fn();
+    mockRecordsUpdate = vi.fn();
+    mockCreateCommandContext.mockReset();
+    mockCreateCommandContext.mockReturnValue({
+      globalOptions: {
+        output: "json",
+        query: undefined,
+      },
+      services: {
+        records: {
+          list: mockRecordsList,
+          get: mockRecordsGet,
+          update: mockRecordsUpdate,
+        },
+        output: {
+          render: vi.fn(async (value: unknown) => {
+            console.log(JSON.stringify(value));
+          }),
+        },
+      },
+    } as never);
     vi.mocked(ApiService).mockImplementation(
       mockConstructor(
         () =>
@@ -42,6 +81,16 @@ describe("message-channels command", () => {
             delete: vi.fn(),
             request: vi.fn(),
           }) as unknown as ApiService,
+      ),
+    );
+    vi.mocked(RecordsService).mockImplementation(
+      mockConstructor(
+        () =>
+          ({
+            list: mockRecordsList,
+            get: mockRecordsGet,
+            update: mockRecordsUpdate,
+          }) as unknown as RecordsService,
       ),
     );
   });
@@ -83,20 +132,16 @@ describe("message-channels command", () => {
 
   describe("list operation", () => {
     it("lists message channels", async () => {
-      mockGet.mockResolvedValue({
-        data: {
-          data: {
-            messageChannels: [
-              {
-                id: "mc-1",
-                handle: "owner@example.com",
-                visibility: "SHARE_EVERYTHING",
-                isSyncEnabled: true,
-                syncCursor: "cursor-value",
-              },
-            ],
+      mockRecordsList.mockResolvedValue({
+        data: [
+          {
+            id: "mc-1",
+            handle: "owner@example.com",
+            visibility: "SHARE_EVERYTHING",
+            isSyncEnabled: true,
+            syncCursor: "cursor-value",
           },
-        },
+        ],
       });
 
       await program.parseAsync([
@@ -112,8 +157,11 @@ describe("message-channels command", () => {
         "json",
       ]);
 
-      expect(mockGet).toHaveBeenCalledWith("/rest/messageChannels", {
-        params: { limit: "5", starting_after: "cursor-1" },
+      expect(mockCreateCommandContext).toHaveBeenCalled();
+      expect(RecordsService).not.toHaveBeenCalled();
+      expect(mockRecordsList).toHaveBeenCalledWith("messageChannels", {
+        limit: 5,
+        cursor: "cursor-1",
       });
 
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -131,22 +179,18 @@ describe("message-channels command", () => {
 
   describe("get operation", () => {
     it("gets one message channel by id", async () => {
-      mockGet.mockResolvedValue({
-        data: {
-          data: {
-            messageChannel: {
-              id: "mc-1",
-              handle: "owner@example.com",
-              excludeGroupEmails: false,
-              syncCursor: "cursor-value",
-            },
-          },
-        },
+      mockRecordsGet.mockResolvedValue({
+        id: "mc-1",
+        handle: "owner@example.com",
+        excludeGroupEmails: false,
+        syncCursor: "cursor-value",
       });
 
       await program.parseAsync(["node", "test", "message-channels", "get", "mc-1", "-o", "json"]);
 
-      expect(mockGet).toHaveBeenCalledWith("/rest/messageChannels/mc-1", { params: {} });
+      expect(mockCreateCommandContext).toHaveBeenCalled();
+      expect(RecordsService).not.toHaveBeenCalled();
+      expect(mockRecordsGet).toHaveBeenCalledWith("messageChannels", "mc-1");
       const output = consoleSpy.mock.calls[0][0] as string;
       expect(JSON.parse(output)).toEqual({
         id: "mc-1",
@@ -165,16 +209,10 @@ describe("message-channels command", () => {
 
   describe("update operation", () => {
     it("updates one message channel with a JSON payload", async () => {
-      mockPatch.mockResolvedValue({
-        data: {
-          data: {
-            updateMessageChannel: {
-              id: "mc-1",
-              isSyncEnabled: false,
-              excludeGroupEmails: true,
-            },
-          },
-        },
+      mockRecordsUpdate.mockResolvedValue({
+        id: "mc-1",
+        isSyncEnabled: false,
+        excludeGroupEmails: true,
       });
 
       await program.parseAsync([
@@ -189,7 +227,9 @@ describe("message-channels command", () => {
         "json",
       ]);
 
-      expect(mockPatch).toHaveBeenCalledWith("/rest/messageChannels/mc-1", {
+      expect(mockCreateCommandContext).toHaveBeenCalled();
+      expect(RecordsService).not.toHaveBeenCalled();
+      expect(mockRecordsUpdate).toHaveBeenCalledWith("messageChannels", "mc-1", {
         isSyncEnabled: false,
         excludeGroupEmails: true,
       });

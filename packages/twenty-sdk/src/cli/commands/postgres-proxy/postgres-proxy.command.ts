@@ -1,8 +1,8 @@
 import { Command } from "commander";
 import { type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
-import { createServices } from "../../utilities/shared/services";
+import { applyGlobalOptions } from "../../utilities/shared/global-options";
+import { createCommandContext } from "../../utilities/shared/context";
 
 interface PostgresProxyOptions {
   showPassword?: boolean;
@@ -39,77 +39,70 @@ const DISABLE_POSTGRES_PROXY_MUTATION = `mutation DisablePostgresProxy {
 
 export function registerPostgresProxyCommand(program: Command): void {
   const endpoint = "/graphql";
-  const cmd = program
-    .command("postgres-proxy")
-    .description("Manage Postgres proxy credentials")
-    .argument("<operation>", "get, enable, disable")
-    .option("--show-password", "Show the Postgres proxy password");
-
+  const cmd = program.command("postgres-proxy").description("Manage Postgres proxy credentials");
   applyGlobalOptions(cmd);
 
-  cmd.action(async (operation: string, options: PostgresProxyOptions, command: Command) => {
-    const globalOptions = resolveGlobalOptions(command);
-    const services = createServices(globalOptions);
-    const op = operation.toLowerCase();
+  const getCmd = cmd
+    .command("get")
+    .description("Get Postgres proxy credentials")
+    .option("--show-password", "Show the Postgres proxy password");
+  applyGlobalOptions(getCmd);
+  getCmd.action(async (options: PostgresProxyOptions, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    const response = await services.api.post<
+      GraphQLResponse<{ getPostgresCredentials?: unknown }>
+    >(endpoint, {
+      query: GET_POSTGRES_CREDENTIALS_QUERY,
+    });
 
-    switch (op) {
-      case "get": {
-        const response = await services.api.post<
-          GraphQLResponse<{ getPostgresCredentials?: unknown }>
-        >(endpoint, {
-          query: GET_POSTGRES_CREDENTIALS_QUERY,
-        });
+    await services.output.render(
+      sanitizeCredentials(
+        resolvePostgresResult(response.data, "getPostgresCredentials"),
+        options,
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
+  });
 
-        await services.output.render(
-          sanitizeCredentials(
-            resolvePostgresResult(response.data, "getPostgresCredentials"),
-            options,
-          ),
-          {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          },
-        );
-        break;
-      }
-      case "enable": {
-        const response = await services.api.post<
-          GraphQLResponse<{ enablePostgresProxy?: unknown }>
-        >(endpoint, {
-          query: ENABLE_POSTGRES_PROXY_MUTATION,
-        });
+  const enableCmd = cmd.command("enable").description("Enable the Postgres proxy");
+  applyGlobalOptions(enableCmd);
+  enableCmd.action(async (_options: unknown, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    const response = await services.api.post<
+      GraphQLResponse<{ enablePostgresProxy?: unknown }>
+    >(endpoint, {
+      query: ENABLE_POSTGRES_PROXY_MUTATION,
+    });
 
-        await services.output.render(
-          sanitizeCredentials(resolvePostgresResult(response.data, "enablePostgresProxy"), options),
-          {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          },
-        );
-        break;
-      }
-      case "disable": {
-        const response = await services.api.post<
-          GraphQLResponse<{ disablePostgresProxy?: unknown }>
-        >(endpoint, {
-          query: DISABLE_POSTGRES_PROXY_MUTATION,
-        });
+    await services.output.render(
+      sanitizeCredentials(resolvePostgresResult(response.data, "enablePostgresProxy"), {}),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
+  });
 
-        await services.output.render(
-          sanitizeCredentials(
-            resolvePostgresResult(response.data, "disablePostgresProxy"),
-            options,
-          ),
-          {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          },
-        );
-        break;
-      }
-      default:
-        throw new CliError(`Unknown operation: ${operation}`, "INVALID_ARGUMENTS");
-    }
+  const disableCmd = cmd.command("disable").description("Disable the Postgres proxy");
+  applyGlobalOptions(disableCmd);
+  disableCmd.action(async (_options: unknown, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    const response = await services.api.post<
+      GraphQLResponse<{ disablePostgresProxy?: unknown }>
+    >(endpoint, {
+      query: DISABLE_POSTGRES_PROXY_MUTATION,
+    });
+
+    await services.output.render(
+      sanitizeCredentials(resolvePostgresResult(response.data, "disablePostgresProxy"), {}),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 }
 

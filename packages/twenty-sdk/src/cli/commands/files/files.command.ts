@@ -4,8 +4,8 @@ import path from "path";
 import { Command } from "commander";
 import { type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
-import { createServices } from "../../utilities/shared/services";
+import { applyGlobalOptions } from "../../utilities/shared/global-options";
+import { createCommandContext } from "../../utilities/shared/context";
 
 interface FilesOptions {
   outputFile?: string;
@@ -311,25 +311,95 @@ function buildUploadMutation(
   }
 }
 
+function getFilesOptions(command: Command): FilesOptions {
+  return command.opts() as FilesOptions;
+}
+
+async function runUploadCommand(filePath: string | undefined, command: Command): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+  const options = getFilesOptions(command);
+
+  if (!filePath) {
+    throw new CliError("Missing file path.", "INVALID_ARGUMENTS");
+  }
+  if (!(await fs.pathExists(filePath))) {
+    throw new CliError(`File not found: ${filePath}`, "INVALID_ARGUMENTS");
+  }
+
+  const target = normalizeUploadTarget(options.target);
+  const { query, variables, resultKey } = buildUploadMutation(target, options);
+  const form = buildGraphqlUploadForm(query, variables, filePath);
+  const response = await services.api.post<GraphQLResponse<Record<string, unknown>>>(
+    endpoint,
+    form,
+    {
+      headers: form.getHeaders(),
+    },
+  );
+
+  await services.output.render(response.data?.data?.[resultKey], {
+    format: globalOptions.output,
+    query: globalOptions.query,
+  });
+}
+
+async function runDownloadCommand(pathOrId: string | undefined, command: Command): Promise<void> {
+  const { services } = createCommandContext(command);
+  const options = getFilesOptions(command);
+
+  if (!pathOrId) {
+    throw new CliError("Missing file ID or signed URL.", "INVALID_ARGUMENTS");
+  }
+
+  const downloadUrl = buildDownloadUrl(pathOrId, options);
+  const outputPath = options.outputFile || inferOutputPath(downloadUrl);
+  const response = await services.api.get<ArrayBuffer>(downloadUrl, {
+    responseType: "arraybuffer",
+  });
+
+  await fs.writeFile(outputPath, Buffer.from(response.data));
+  // eslint-disable-next-line no-console
+  console.log(`Downloaded to ${outputPath}`);
+}
+
+async function runPublicAssetCommand(
+  assetPath: string | undefined,
+  command: Command,
+): Promise<void> {
+  const { services } = createCommandContext(command);
+  const options = getFilesOptions(command);
+
+  if (!assetPath) {
+    throw new CliError("Missing public asset path.", "INVALID_ARGUMENTS");
+  }
+
+  const assetUrl = buildPublicAssetUrl(assetPath, options);
+  const outputPath = options.outputFile || inferOutputPath(assetPath);
+  const response = await services.api.get<ArrayBuffer>(assetUrl, {
+    responseType: "arraybuffer",
+  });
+
+  await fs.writeFile(outputPath, Buffer.from(response.data));
+  // eslint-disable-next-line no-console
+  console.log(`Downloaded to ${outputPath}`);
+}
+
 export function registerFilesCommand(program: Command): void {
-  const cmd = program
+  const files = program
     .command("files")
-    .description("Upload and download files through verified Twenty file APIs")
-    .argument("<operation>", "upload, download, public-asset")
-    .argument("[path-or-id]", "Local file path, signed URL, file ID, or public asset path")
-    .option("--output-file <path>", "Output file path (download/public-asset)")
+    .description("Upload and download files through verified Twenty file APIs");
+  applyGlobalOptions(files);
+
+  const uploadCmd = files
+    .command("upload")
+    .description("Upload a file")
+    .argument("[path-or-id]", "Local file path");
+  uploadCmd
     .option(
       "--target <target>",
       "Upload target: ai-chat, workflow, field, workspace-logo, profile-picture, app-tarball, application-file",
     )
-    .option(
-      "--folder <folder>",
-      "Signed file folder: core-picture, files-field, workflow, agent-chat, app-tarball",
-    )
-    .option("--token <token>", "Signed file token for /file downloads")
     .option("--universal-identifier <id>", "Optional universal identifier for app tarball uploads")
-    .option("--workspace-id <id>", "Workspace ID for public asset downloads")
-    .option("--application-id <id>", "Application ID for public asset downloads")
     .option(
       "--application-universal-identifier <id>",
       "Application universal identifier for application-file uploads",
@@ -344,89 +414,37 @@ export function registerFilesCommand(program: Command): void {
       "--field-metadata-universal-identifier <id>",
       "Field metadata universal identifier for field uploads",
     );
+  applyGlobalOptions(uploadCmd);
+  uploadCmd.action(async (filePath: string | undefined, _options: unknown, command: Command) => {
+    await runUploadCommand(filePath, command);
+  });
 
-  applyGlobalOptions(cmd);
+  const downloadCmd = files
+    .command("download")
+    .description("Download a file")
+    .argument("[path-or-id]", "Signed URL or file ID")
+    .option("--output-file <path>", "Output file path")
+    .option(
+      "--folder <folder>",
+      "Signed file folder: core-picture, files-field, workflow, agent-chat, app-tarball",
+    )
+    .option("--token <token>", "Signed file token for /file downloads");
+  applyGlobalOptions(downloadCmd);
+  downloadCmd.action(async (pathOrId: string | undefined, _options: unknown, command: Command) => {
+    await runDownloadCommand(pathOrId, command);
+  });
 
-  cmd.action(
-    async (
-      operation: string,
-      pathOrId: string | undefined,
-      options: FilesOptions,
-      command: Command,
-    ) => {
-      const globalOptions = resolveGlobalOptions(command);
-      const services = createServices(globalOptions);
-      const op = operation.toLowerCase();
-
-      switch (op) {
-        case "upload": {
-          if (!pathOrId) throw new CliError("Missing file path.", "INVALID_ARGUMENTS");
-          if (!(await fs.pathExists(pathOrId))) {
-            throw new CliError(`File not found: ${pathOrId}`, "INVALID_ARGUMENTS");
-          }
-
-          const target = normalizeUploadTarget(options.target);
-          const { query, variables, resultKey } = buildUploadMutation(target, options);
-          const form = buildGraphqlUploadForm(query, variables, pathOrId);
-          const response = await services.api.post<GraphQLResponse<Record<string, unknown>>>(
-            endpoint,
-            form,
-            {
-              headers: form.getHeaders(),
-            },
-          );
-
-          await services.output.render(response.data?.data?.[resultKey], {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-          break;
-        }
-        case "download": {
-          if (!pathOrId) {
-            throw new CliError("Missing file ID or signed URL.", "INVALID_ARGUMENTS");
-          }
-
-          const downloadUrl = buildDownloadUrl(pathOrId, options);
-          const outputPath = options.outputFile || inferOutputPath(downloadUrl);
-          const response = await services.api.get<ArrayBuffer>(downloadUrl, {
-            responseType: "arraybuffer",
-          });
-
-          await fs.writeFile(outputPath, Buffer.from(response.data));
-          // eslint-disable-next-line no-console
-          console.log(`Downloaded to ${outputPath}`);
-          break;
-        }
-        case "public-asset": {
-          if (!pathOrId) {
-            throw new CliError("Missing public asset path.", "INVALID_ARGUMENTS");
-          }
-
-          const assetUrl = buildPublicAssetUrl(pathOrId, options);
-          const outputPath = options.outputFile || inferOutputPath(pathOrId);
-          const response = await services.api.get<ArrayBuffer>(assetUrl, {
-            responseType: "arraybuffer",
-          });
-
-          await fs.writeFile(outputPath, Buffer.from(response.data));
-          // eslint-disable-next-line no-console
-          console.log(`Downloaded to ${outputPath}`);
-          break;
-        }
-        case "list":
-          throw new CliError(
-            "Current Twenty does not expose a public generic file list API. Use domain-specific uploads and signed or public download URLs instead.",
-            "INVALID_ARGUMENTS",
-          );
-        case "delete":
-          throw new CliError(
-            "Current Twenty does not expose a public generic file delete API.",
-            "INVALID_ARGUMENTS",
-          );
-        default:
-          throw new CliError(`Unknown operation: ${operation}`, "INVALID_ARGUMENTS");
-      }
+  const publicAssetCmd = files
+    .command("public-asset")
+    .description("Download a public asset")
+    .argument("[path-or-id]", "Public asset path")
+    .option("--output-file <path>", "Output file path")
+    .option("--workspace-id <id>", "Workspace ID for public asset downloads")
+    .option("--application-id <id>", "Application ID for public asset downloads");
+  applyGlobalOptions(publicAssetCmd);
+  publicAssetCmd.action(
+    async (assetPath: string | undefined, _options: unknown, command: Command) => {
+      await runPublicAssetCommand(assetPath, command);
     },
   );
 }

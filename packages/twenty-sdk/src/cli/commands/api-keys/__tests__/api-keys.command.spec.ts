@@ -56,44 +56,39 @@ describe("api-keys command", () => {
       expect(apiKeysCmd?.description()).toBe("Manage API keys");
     });
 
-    it("has required operation argument", () => {
+    it("registers explicit subcommands for each API key operation", () => {
       const apiKeysCmd = program.commands.find((cmd) => cmd.name() === "api-keys");
-      const args = apiKeysCmd?.registeredArguments ?? [];
-      expect(args.length).toBe(2);
-      expect(args[0].name()).toBe("operation");
-      expect(args[0].required).toBe(true);
-    });
+      const subcommands = apiKeysCmd?.commands.map((cmd) => cmd.name()) ?? [];
+      const help = apiKeysCmd?.helpInformation() ?? "";
 
-    it("has optional id argument", () => {
-      const apiKeysCmd = program.commands.find((cmd) => cmd.name() === "api-keys");
-      const args = apiKeysCmd?.registeredArguments ?? [];
-      expect(args[1].name()).toBe("id");
-      expect(args[1].required).toBe(false);
-    });
-
-    it("has --name option", () => {
-      const apiKeysCmd = program.commands.find((cmd) => cmd.name() === "api-keys");
-      const opts = apiKeysCmd?.options ?? [];
-      const nameOpt = opts.find((o) => o.long === "--name");
-      expect(nameOpt).toBeDefined();
-    });
-
-    it("has --expires-at option", () => {
-      const apiKeysCmd = program.commands.find((cmd) => cmd.name() === "api-keys");
-      const opts = apiKeysCmd?.options ?? [];
-      const expiresAtOpt = opts.find((o) => o.long === "--expires-at");
-      expect(expiresAtOpt).toBeDefined();
+      expect(subcommands).toEqual(
+        expect.arrayContaining(["list", "get", "create", "update", "revoke", "assign-role"]),
+      );
+      expect(help).toContain("Commands:");
+      expect(help).toContain("list");
+      expect(help).toContain("get");
+      expect(help).toContain("create");
+      expect(help).toContain("update");
+      expect(help).toContain("revoke");
+      expect(help).toContain("assign-role");
     });
 
     it("has global options applied", () => {
       const apiKeysCmd = program.commands.find((cmd) => cmd.name() === "api-keys");
-      const opts = apiKeysCmd?.options ?? [];
+      const listCmd = apiKeysCmd?.commands.find((cmd) => cmd.name() === "list");
+      const createCmd = apiKeysCmd?.commands.find((cmd) => cmd.name() === "create");
+      const opts = listCmd?.options ?? [];
       const outputOpt = opts.find((o) => o.long === "--output");
       const queryOpt = opts.find((o) => o.long === "--query");
       const workspaceOpt = opts.find((o) => o.long === "--workspace");
       expect(outputOpt).toBeDefined();
       expect(queryOpt).toBeDefined();
       expect(workspaceOpt).toBeDefined();
+
+      const createOpts = createCmd?.options ?? [];
+      expect(createOpts.find((o) => o.long === "--name")).toBeDefined();
+      expect(createOpts.find((o) => o.long === "--expires-at")).toBeDefined();
+      expect(createOpts.find((o) => o.long === "--role-id")).toBeDefined();
     });
   });
 
@@ -127,6 +122,16 @@ describe("api-keys command", () => {
       const parsed = JSON.parse(output);
       expect(parsed).toHaveLength(2);
       expect(parsed[0].id).toBe("key-1");
+    });
+
+    it("accepts parent-first global options before the list subcommand", async () => {
+      mockPost.mockResolvedValue({ data: { data: { apiKeys: [] } } });
+
+      await program.parseAsync(["node", "test", "api-keys", "-o", "json", "list"]);
+
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("apiKeys"),
+      });
     });
 
     it("handles empty API keys list", async () => {
@@ -360,25 +365,8 @@ describe("api-keys command", () => {
   });
 
   describe("error handling", () => {
-    it("requires operation argument", async () => {
+    it("requires a subcommand", async () => {
       await expect(program.parseAsync(["node", "test", "api-keys"])).rejects.toThrow();
-    });
-
-    it("throws error for unknown operation", async () => {
-      await expect(program.parseAsync(["node", "test", "api-keys", "unknown"])).rejects.toThrow(
-        CliError,
-      );
-    });
-
-    it("handles case insensitive operations", async () => {
-      const apiKeys = [
-        { id: "key-1", name: "Test", expiresAt: null, revokedAt: null, createdAt: "" },
-      ];
-      mockPost.mockResolvedValue({ data: { data: { apiKeys } } });
-
-      await program.parseAsync(["node", "test", "api-keys", "LIST", "-o", "json"]);
-
-      expect(mockPost).toHaveBeenCalled();
     });
   });
 });

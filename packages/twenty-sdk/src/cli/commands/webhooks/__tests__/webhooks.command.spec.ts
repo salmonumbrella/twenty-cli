@@ -56,44 +56,41 @@ describe("webhooks command", () => {
       expect(webhooksCmd?.description()).toBe("Manage webhooks");
     });
 
-    it("has required operation argument", () => {
+    it("registers explicit subcommands for each webhook operation", () => {
       const webhooksCmd = program.commands.find((cmd) => cmd.name() === "webhooks");
-      const args = webhooksCmd?.registeredArguments ?? [];
-      expect(args.length).toBe(2);
-      expect(args[0].name()).toBe("operation");
-      expect(args[0].required).toBe(true);
-    });
+      const subcommands = webhooksCmd?.commands.map((cmd) => cmd.name()) ?? [];
+      const help = webhooksCmd?.helpInformation() ?? "";
 
-    it("has optional id argument", () => {
-      const webhooksCmd = program.commands.find((cmd) => cmd.name() === "webhooks");
-      const args = webhooksCmd?.registeredArguments ?? [];
-      expect(args[1].name()).toBe("id");
-      expect(args[1].required).toBe(false);
-    });
-
-    it("has --data option", () => {
-      const webhooksCmd = program.commands.find((cmd) => cmd.name() === "webhooks");
-      const opts = webhooksCmd?.options ?? [];
-      const dataOpt = opts.find((o) => o.long === "--data");
-      expect(dataOpt).toBeDefined();
-    });
-
-    it("has --file option", () => {
-      const webhooksCmd = program.commands.find((cmd) => cmd.name() === "webhooks");
-      const opts = webhooksCmd?.options ?? [];
-      const fileOpt = opts.find((o) => o.long === "--file");
-      expect(fileOpt).toBeDefined();
+      expect(subcommands).toEqual(expect.arrayContaining(["list", "get", "create", "update", "delete"]));
+      expect(help).toContain("Commands:");
+      expect(help).toContain("list");
+      expect(help).toContain("get");
+      expect(help).toContain("create");
+      expect(help).toContain("update");
+      expect(help).toContain("delete");
     });
 
     it("has global options applied", () => {
       const webhooksCmd = program.commands.find((cmd) => cmd.name() === "webhooks");
-      const opts = webhooksCmd?.options ?? [];
+      const createCmd = webhooksCmd?.commands.find((cmd) => cmd.name() === "create");
+      const updateCmd = webhooksCmd?.commands.find((cmd) => cmd.name() === "update");
+      const opts = createCmd?.options ?? [];
       const outputOpt = opts.find((o) => o.long === "--output");
       const queryOpt = opts.find((o) => o.long === "--query");
       const workspaceOpt = opts.find((o) => o.long === "--workspace");
       expect(outputOpt).toBeDefined();
       expect(queryOpt).toBeDefined();
       expect(workspaceOpt).toBeDefined();
+
+      const createOpts = createCmd?.options ?? [];
+      expect(createOpts.find((o) => o.long === "--data")).toBeDefined();
+      expect(createOpts.find((o) => o.long === "--file")).toBeDefined();
+      expect(createOpts.find((o) => o.long === "--set")).toBeDefined();
+
+      const updateOpts = updateCmd?.options ?? [];
+      expect(updateOpts.find((o) => o.long === "--data")).toBeDefined();
+      expect(updateOpts.find((o) => o.long === "--file")).toBeDefined();
+      expect(updateOpts.find((o) => o.long === "--set")).toBeDefined();
     });
   });
 
@@ -127,6 +124,16 @@ describe("webhooks command", () => {
       const parsed = JSON.parse(output);
       expect(parsed).toHaveLength(2);
       expect(parsed[0].id).toBe("wh-1");
+    });
+
+    it("accepts parent-first global options before the list subcommand", async () => {
+      mockPost.mockResolvedValue({ data: { data: { webhooks: [] } } });
+
+      await program.parseAsync(["node", "test", "webhooks", "-o", "json", "list"]);
+
+      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+        query: expect.stringContaining("webhooks"),
+      });
     });
 
     it("handles empty webhooks list", async () => {
@@ -298,31 +305,8 @@ describe("webhooks command", () => {
   });
 
   describe("error handling", () => {
-    it("requires operation argument", async () => {
+    it("requires a subcommand", async () => {
       await expect(program.parseAsync(["node", "test", "webhooks"])).rejects.toThrow();
-    });
-
-    it("throws error for unknown operation", async () => {
-      await expect(program.parseAsync(["node", "test", "webhooks", "unknown"])).rejects.toThrow(
-        CliError,
-      );
-    });
-
-    it("handles case insensitive operations", async () => {
-      const webhooks = [
-        {
-          id: "wh-1",
-          targetUrl: "https://example.com",
-          operations: [],
-          description: "",
-          createdAt: "",
-        },
-      ];
-      mockPost.mockResolvedValue({ data: { data: { webhooks } } });
-
-      await program.parseAsync(["node", "test", "webhooks", "LIST", "-o", "json"]);
-
-      expect(mockPost).toHaveBeenCalled();
     });
   });
 });

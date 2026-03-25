@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Command } from "commander";
-import axios from "axios";
 import { registerWorkflowsCommand } from "../workflows.command";
 import { CliError } from "../../../utilities/errors/cli-error";
 import { ApiService } from "../../../utilities/api/services/api.service";
@@ -8,8 +7,10 @@ import { mockConstructor } from "../../../test-utils/mock-constructor";
 
 const mockLoadConfigFile = vi.fn();
 const mockGetConfig = vi.fn();
+const mockCreateCommandContext = vi.hoisted(() => vi.fn());
+const mockPublicHttpRequest = vi.hoisted(() => vi.fn());
+const mockOutputRender = vi.hoisted(() => vi.fn());
 
-vi.mock("axios");
 vi.mock("../../../utilities/api/services/api.service");
 vi.mock("../../../utilities/config/services/config.service", () => ({
   ConfigService: vi.fn(function MockConfigService() {
@@ -19,6 +20,16 @@ vi.mock("../../../utilities/config/services/config.service", () => ({
     };
   }),
 }));
+vi.mock("../../../utilities/shared/context", async () => {
+  const actual = await vi.importActual<typeof import("../../../utilities/shared/context")>(
+    "../../../utilities/shared/context",
+  );
+
+  return {
+    ...actual,
+    createCommandContext: mockCreateCommandContext,
+  };
+});
 
 const defaultConfigFile = {
   defaultWorkspace: "default",
@@ -36,6 +47,26 @@ const defaultResolvedConfig = {
   workspace: "default",
 };
 
+function mockSharedCommandContext() {
+  mockCreateCommandContext.mockReturnValue({
+    globalOptions: {
+      output: "json",
+      query: undefined,
+      debug: false,
+      noRetry: false,
+      workspace: "default",
+    },
+    services: {
+      publicHttp: {
+        request: mockPublicHttpRequest,
+      },
+      output: {
+        render: mockOutputRender,
+      },
+    },
+  } as never);
+}
+
 describe("workflows command", () => {
   let program: Command;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
@@ -47,8 +78,6 @@ describe("workflows command", () => {
     registerWorkflowsCommand(program);
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mockGraphqlPost = vi.fn();
-    vi.mocked(axios.post).mockReset();
-    vi.mocked(axios.request).mockReset();
     vi.mocked(ApiService).mockImplementation(
       mockConstructor(
         () =>
@@ -64,6 +93,10 @@ describe("workflows command", () => {
     );
     mockLoadConfigFile.mockResolvedValue(defaultConfigFile);
     mockGetConfig.mockResolvedValue(defaultResolvedConfig);
+    mockCreateCommandContext.mockReset();
+    mockPublicHttpRequest.mockReset();
+    mockOutputRender.mockReset();
+    mockSharedCommandContext();
   });
 
   afterEach(() => {
@@ -134,8 +167,8 @@ describe("workflows command", () => {
   });
 
   describe("invoke-webhook", () => {
-    it("invokes a workflow webhook with POST and explicit workspace id", async () => {
-      vi.mocked(axios.request).mockResolvedValue({
+    it("invokes a workflow webhook through shared public transport with POST and explicit workspace id", async () => {
+      mockPublicHttpRequest.mockResolvedValue({
         data: {
           success: true,
           workflowName: "Sync Contacts",
@@ -157,26 +190,58 @@ describe("workflows command", () => {
         "json",
       ]);
 
-      expect(axios.request).toHaveBeenCalledWith({
+      expect(mockCreateCommandContext).toHaveBeenCalled();
+      expect(mockPublicHttpRequest).toHaveBeenCalledWith({
+        authMode: "optional",
         method: "post",
-        url: "https://api.twenty.com/webhooks/workflows/workspace-1/workflow-1",
+        path: "/webhooks/workflows/workspace-1/workflow-1",
         data: { hello: "world" },
         params: undefined,
-        headers: {
-          Authorization: "Bearer test-token",
-        },
       });
 
-      const output = consoleSpy.mock.calls[0][0] as string;
-      expect(JSON.parse(output)).toEqual({
-        success: true,
-        workflowName: "Sync Contacts",
-        workflowRunId: "run-1",
+      expect(mockOutputRender).toHaveBeenCalledWith(
+        {
+          success: true,
+          workflowName: "Sync Contacts",
+          workflowRunId: "run-1",
+        },
+        {
+          format: "json",
+          query: undefined,
+        },
+      );
+    });
+
+    it("passes debug and no-retry through shared transport context", async () => {
+      mockPublicHttpRequest.mockResolvedValue({
+        data: {
+          success: true,
+        },
+      } as never);
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "workflows",
+        "invoke-webhook",
+        "workflow-1",
+        "--workspace-id",
+        "workspace-1",
+        "--debug",
+        "--no-retry",
+        "-o",
+        "json",
+      ]);
+
+      expect(mockCreateCommandContext).toHaveBeenCalledTimes(1);
+      expect(mockCreateCommandContext.mock.calls[0][0].opts()).toMatchObject({
+        debug: true,
+        retry: false,
       });
     });
 
-    it("invokes a workflow webhook with GET and query params", async () => {
-      vi.mocked(axios.request).mockResolvedValue({
+    it("invokes a workflow webhook with GET and query params through shared transport", async () => {
+      mockPublicHttpRequest.mockResolvedValue({
         data: {
           success: true,
           workflowName: "Webhook Workflow",
@@ -202,37 +267,36 @@ describe("workflows command", () => {
         "json",
       ]);
 
-      expect(axios.request).toHaveBeenCalledWith({
+      expect(mockPublicHttpRequest).toHaveBeenCalledWith({
+        authMode: "optional",
         method: "get",
-        url: "https://api.twenty.com/webhooks/workflows/workspace-2/workflow-2",
+        path: "/webhooks/workflows/workspace-2/workflow-2",
         data: undefined,
         params: {
           source: "cli",
           dryRun: "true",
         },
-        headers: {
-          Authorization: "Bearer test-token",
-        },
       });
     });
 
-    it("discovers the current workspace id when omitted", async () => {
-      vi.mocked(axios.post).mockResolvedValue({
-        data: {
+    it("discovers the current workspace id with required auth when omitted", async () => {
+      mockPublicHttpRequest
+        .mockResolvedValueOnce({
           data: {
-            currentWorkspace: {
-              id: "workspace-lookup",
+            data: {
+              currentWorkspace: {
+                id: "workspace-lookup",
+              },
             },
           },
-        },
-      } as never);
-      vi.mocked(axios.request).mockResolvedValue({
-        data: {
-          success: true,
-          workflowName: "Lookup Workflow",
-          workflowRunId: "run-3",
-        },
-      } as never);
+        } as never)
+        .mockResolvedValueOnce({
+          data: {
+            success: true,
+            workflowName: "Lookup Workflow",
+            workflowRunId: "run-3",
+          },
+        } as never);
 
       await program.parseAsync([
         "node",
@@ -244,25 +308,23 @@ describe("workflows command", () => {
         "json",
       ]);
 
-      expect(axios.post).toHaveBeenCalledWith(
-        "https://api.twenty.com/graphql",
-        {
-          query: expect.stringContaining("currentWorkspace"),
-        },
-        {
-          headers: {
-            Authorization: "Bearer test-token",
+      expect(mockPublicHttpRequest).toHaveBeenNthCalledWith(
+        1,
+        expect.objectContaining({
+          authMode: "required",
+          method: "post",
+          path: "/graphql",
+          data: {
+            query: expect.stringContaining("currentWorkspace"),
           },
-        },
+        }),
       );
-      expect(axios.request).toHaveBeenCalledWith({
+      expect(mockPublicHttpRequest).toHaveBeenNthCalledWith(2, {
+        authMode: "optional",
         method: "post",
-        url: "https://api.twenty.com/webhooks/workflows/workspace-lookup/workflow-3",
+        path: "/webhooks/workflows/workspace-lookup/workflow-3",
         data: {},
         params: undefined,
-        headers: {
-          Authorization: "Bearer test-token",
-        },
       });
     });
 
@@ -285,21 +347,23 @@ describe("workflows command", () => {
     });
 
     it("throws when workspace discovery is needed but no token is configured", async () => {
-      mockLoadConfigFile.mockResolvedValue({
-        defaultWorkspace: "default",
-        workspaces: {
-          default: {
-            apiUrl: "https://api.twenty.com",
-          },
-        },
-      });
+      mockPublicHttpRequest.mockRejectedValueOnce(
+        new CliError(
+          "Missing API token.",
+          "AUTH",
+          "Set TWENTY_TOKEN or configure an API key for the selected workspace.",
+        ),
+      );
 
       await expect(
         program.parseAsync(["node", "test", "workflows", "invoke-webhook", "workflow-1"]),
       ).rejects.toThrow(CliError);
 
-      expect(axios.post).not.toHaveBeenCalled();
-      expect(axios.request).not.toHaveBeenCalled();
+      expect(mockPublicHttpRequest).toHaveBeenCalledWith(
+        expect.objectContaining({
+          authMode: "required",
+        }),
+      );
     });
 
     it("throws for unsupported methods", async () => {

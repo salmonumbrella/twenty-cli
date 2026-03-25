@@ -1,13 +1,13 @@
 import { Command } from "commander";
 import { assertGraphqlSuccess, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
-import { createServices } from "../../utilities/shared/services";
+import { applyGlobalOptions } from "../../utilities/shared/global-options";
+import { createCommandContext } from "../../utilities/shared/context";
 
 interface EventLogsOptions {
   table?: string;
-  first?: string;
-  after?: string;
+  limit?: string;
+  cursor?: string;
   eventType?: string;
   userWorkspaceId?: string;
   recordId?: string;
@@ -57,16 +57,17 @@ const EVENT_LOG_TABLES = {
 type EventLogTable = (typeof EVENT_LOG_TABLES)[keyof typeof EVENT_LOG_TABLES];
 
 export function registerEventLogsCommand(program: Command): void {
-  const cmd = program
-    .command("event-logs")
-    .description("Query enterprise event logs")
-    .argument("<operation>", "list")
+  const cmd = program.command("event-logs").description("Query enterprise event logs");
+  applyGlobalOptions(cmd);
+
+  const listCmd = cmd.command("list").description("List event logs");
+  listCmd
     .requiredOption(
       "--table <table>",
       "Event log table: workspace-event, pageview, object-event, usage-event",
     )
-    .option("--first <count>", "Number of records to fetch", "100")
-    .option("--after <cursor>", "Pagination cursor")
+    .option("--limit <count>", "Number of records to fetch", "100")
+    .option("--cursor <cursor>", "Pagination cursor")
     .option("--event-type <type>", "Filter by event type")
     .option("--user-workspace-id <id>", "Filter by user workspace ID")
     .option("--record-id <id>", "Filter by record ID")
@@ -74,17 +75,9 @@ export function registerEventLogsCommand(program: Command): void {
     .option("--start <date>", "Filter start timestamp (ISO-8601)")
     .option("--end <date>", "Filter end timestamp (ISO-8601)")
     .option("--include-page-info", "Render records plus totalCount and pageInfo");
-
-  applyGlobalOptions(cmd);
-
-  cmd.action(async (operation: string, options: EventLogsOptions, command: Command) => {
-    const op = operation.toLowerCase();
-    if (op !== "list") {
-      throw new CliError(`Unknown operation: ${operation}`, "INVALID_ARGUMENTS");
-    }
-
-    const globalOptions = resolveGlobalOptions(command);
-    const services = createServices(globalOptions);
+  applyGlobalOptions(listCmd);
+  listCmd.action(async (options: EventLogsOptions, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
     const input = buildEventLogsInput(options);
     const response = await services.api.post<GraphQLResponse<{ eventLogs: EventLogsResult }>>(
       endpoint,
@@ -110,11 +103,11 @@ export function registerEventLogsCommand(program: Command): void {
 function buildEventLogsInput(options: EventLogsOptions): Record<string, unknown> {
   const input: Record<string, unknown> = {
     table: normalizeTable(options.table),
-    first: parsePositiveInteger(options.first ?? "100", "--first"),
+    first: parsePositiveInteger(options.limit ?? "100", "--limit"),
   };
 
-  if (options.after) {
-    input.after = options.after;
+  if (options.cursor) {
+    input.after = options.cursor;
   }
 
   const filters = buildEventLogFilters(options);

@@ -50,9 +50,18 @@ describe("emailing-domains command", () => {
 
   it("registers the emailing-domains command", () => {
     const command = program.commands.find((candidate) => candidate.name() === "emailing-domains");
+    const deleteCmd = command?.commands.find((candidate) => candidate.name() === "delete");
 
     expect(command).toBeDefined();
     expect(command?.description()).toBe("Manage emailing domains");
+    expect(command?.registeredArguments ?? []).toHaveLength(0);
+    expect(command?.commands.map((candidate) => candidate.name())).toEqual([
+      "list",
+      "create",
+      "verify",
+      "delete",
+    ]);
+    expect(deleteCmd?.options.find((option) => option.long === "--yes")).toBeDefined();
   });
 
   it("lists emailing domains", async () => {
@@ -196,6 +205,7 @@ describe("emailing-domains command", () => {
       "emailing-domains",
       "delete",
       "domain-1",
+      "--yes",
       "-o",
       "json",
     ]);
@@ -221,5 +231,14 @@ describe("emailing-domains command", () => {
     await expect(
       program.parseAsync(["node", "test", "emailing-domains", "create"]),
     ).rejects.toThrow("Missing --domain option.");
+  });
+
+  it("requires --yes for delete", async () => {
+    await expect(
+      program.parseAsync(["node", "test", "emailing-domains", "delete", "domain-1"]),
+    ).rejects.toMatchObject({
+      message: "Delete requires --yes.",
+      code: "INVALID_ARGUMENTS",
+    });
   });
 });

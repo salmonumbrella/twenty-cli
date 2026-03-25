@@ -1,13 +1,10 @@
 import { ApiOperationContext } from "./types";
 import { readJsonInput } from "../../../utilities/shared/io";
 import { CliError } from "../../../utilities/errors/cli-error";
+import { requireYes } from "../../../utilities/shared/confirmation";
 
 export async function runBatchDeleteOperation(ctx: ApiOperationContext): Promise<void> {
-  if (!ctx.options.force) {
-    // eslint-disable-next-line no-console
-    console.log(`About to batch delete ${ctx.object}. Use --force to confirm.`);
-    return;
-  }
+  requireYes(ctx.options, "Batch delete");
 
   let ids: string[] = [];
 

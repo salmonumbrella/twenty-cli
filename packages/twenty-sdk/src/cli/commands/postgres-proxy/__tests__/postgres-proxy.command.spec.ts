@@ -50,9 +50,19 @@ describe("postgres-proxy command", () => {
 
   it("registers the postgres-proxy command", () => {
     const command = program.commands.find((candidate) => candidate.name() === "postgres-proxy");
+    const help = command?.helpInformation() ?? "";
 
     expect(command).toBeDefined();
     expect(command?.description()).toBe("Manage Postgres proxy credentials");
+    expect(command?.commands.map((candidate) => candidate.name())).toEqual(
+      expect.arrayContaining(["get", "enable", "disable"]),
+    );
+    expect(help).toContain("Commands:");
+    expect(help).toContain("get");
+    expect(help).toContain("enable");
+    expect(help).toContain("disable");
+    expect(command?.options.find((option) => option.long === "--show-password")).toBeUndefined();
+    expect(command?.commands.find((candidate) => candidate.name() === "get")?.options.find((option) => option.long === "--show-password")).toBeDefined();
   });
 
   it("gets Postgres credentials and masks the password by default", async () => {

@@ -6,11 +6,13 @@ import {
   hasGraphqlField,
   hasSchemaErrorSymbol,
 } from "../../utilities/api/graphql-response";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
+import { applyGlobalOptions } from "../../utilities/shared/global-options";
+import { createCommandContext } from "../../utilities/shared/context";
 import { createServices } from "../../utilities/shared/services";
 import { CliError } from "../../utilities/errors/cli-error";
 import { parseBody } from "../../utilities/shared/body";
 import { readFileOrStdin, readJsonInput } from "../../utilities/shared/io";
+import { requireYes } from "../../utilities/shared/confirmation";
 import { MetadataSubscriptionService } from "../../utilities/api/services/metadata-subscription.service";
 
 interface ServerlessOptions {
@@ -29,6 +31,7 @@ interface ServerlessOptions {
   packageJsonFile?: string;
   yarnLock?: string;
   yarnLockFile?: string;
+  yes?: boolean;
 }
 
 interface OperationRequest {
@@ -488,21 +491,30 @@ function renderServerlessFunction(
   });
 }
 
-export function registerServerlessCommand(program: Command): void {
-  const cmd = program
-    .command("serverless")
-    .description("Manage serverless functions")
-    .argument(
-      "<operation>",
-      "list, get, create, update, delete, publish, execute, packages, source, logs, or create-layer",
-    )
-    .argument("[id]", "Function ID")
+function getServerlessOptions(command: Command): ServerlessOptions {
+  return command.opts() as ServerlessOptions;
+}
+
+function applyMutationOptions(command: Command): void {
+  command
     .option("-d, --data <json>", "JSON payload")
-    .option("-f, --file <path>", "JSON file")
+    .option("-f, --file <path>", "JSON file payload (use - for stdin)")
     .option("--set <key=value>", "Set a field value", collect)
     .option("--name <name>", "Function name")
     .option("--description <text>", "Function description")
-    .option("--timeout-seconds <seconds>", "Function timeout in seconds", Number)
+    .option("--timeout-seconds <seconds>", "Function timeout in seconds", Number);
+}
+
+function applyExecutionOptions(command: Command): void {
+  command
+    .option("-d, --data <json>", "JSON payload")
+    .option("-f, --file <path>", "JSON file payload (use - for stdin)")
+    .option("--set <key=value>", "Set a field value", collect);
+}
+
+function applyLogsOptions(command: Command): void {
+  command
+    .option("--name <name>", "Function name")
     .option("--universal-identifier <id>", "Function universal identifier filter for logs")
     .option("--application-id <id>", "Application ID filter for logs")
     .option(
@@ -510,262 +522,377 @@ export function registerServerlessCommand(program: Command): void {
       "Application universal identifier filter for logs",
     )
     .option("--max-events <count>", "Stop streaming after N log payloads", Number)
-    .option("--wait-seconds <seconds>", "Stop streaming after N seconds", Number)
+    .option("--wait-seconds <seconds>", "Stop streaming after N seconds", Number);
+}
+
+function applyLayerOptions(command: Command): void {
+  command
     .option("--package-json <json>", "Layer package.json JSON")
     .option("--package-json-file <path>", "Layer package.json file")
     .option("--yarn-lock <text>", "Layer yarn.lock content")
     .option("--yarn-lock-file <path>", "Layer yarn.lock file");
+}
 
-  applyGlobalOptions(cmd);
+async function runServerlessListCommand(command: Command): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
 
-  cmd.action(
-    async (
-      operation: string,
-      id: string | undefined,
-      options: ServerlessOptions,
-      command: Command,
-    ) => {
-      const globalOptions = resolveGlobalOptions(command);
-      const services = createServices(globalOptions);
-      const op = operation.toLowerCase();
-
-      switch (op) {
-        case "list": {
-          const result = await executeCompatibleOperation<unknown[]>(services, {
-            current: {
-              query: `query { findManyServerlessFunctions { ${SERVERLESS_FUNCTION_FIELDS} } }`,
-              resultKey: "findManyServerlessFunctions",
-              schemaSymbols: ["findManyServerlessFunctions"],
-            },
-            legacy: {
-              query: `query { findManyLogicFunctions { ${LEGACY_LOGIC_FUNCTION_FIELDS} } }`,
-              resultKey: "findManyLogicFunctions",
-            },
-          });
-
-          await renderServerlessFunction(
-            Array.isArray(result) ? result : [],
-            services,
-            globalOptions,
-          );
-          break;
-        }
-        case "get": {
-          if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
-
-          const result = await executeCompatibleOperation<unknown>(services, {
-            current: {
-              query: `query($input: ServerlessFunctionIdInput!) { findOneServerlessFunction(input: $input) { ${SERVERLESS_FUNCTION_FIELDS} } }`,
-              variables: { input: { id } },
-              resultKey: "findOneServerlessFunction",
-              schemaSymbols: ["findOneServerlessFunction", "ServerlessFunctionIdInput"],
-            },
-            legacy: {
-              query: `query($input: LogicFunctionIdInput!) { findOneLogicFunction(input: $input) { ${LEGACY_LOGIC_FUNCTION_FIELDS} } }`,
-              variables: { input: { id } },
-              resultKey: "findOneLogicFunction",
-            },
-          });
-
-          await renderServerlessFunction(result, services, globalOptions);
-          break;
-        }
-        case "create": {
-          const currentInput = await buildCreateInput(options, "current");
-
-          const result = await executeCompatibleOperation<unknown>(services, {
-            current: {
-              query: `mutation($input: CreateServerlessFunctionInput!) { createOneServerlessFunction(input: $input) { ${SERVERLESS_FUNCTION_FIELDS} } }`,
-              variables: { input: currentInput },
-              resultKey: "createOneServerlessFunction",
-              schemaSymbols: ["createOneServerlessFunction", "CreateServerlessFunctionInput"],
-            },
-            legacy: {
-              query: `mutation($input: CreateLogicFunctionFromSourceInput!) { createOneLogicFunction(input: $input) { ${LEGACY_LOGIC_FUNCTION_FIELDS} } }`,
-              variables: { input: await buildCreateInput(options, "legacy") },
-              resultKey: "createOneLogicFunction",
-            },
-          });
-
-          await renderServerlessFunction(result, services, globalOptions);
-          break;
-        }
-        case "update": {
-          if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
-
-          const currentInput = await buildUpdateInput(id, options, "current");
-
-          const result = await executeCompatibleOperation<unknown>(services, {
-            current: {
-              query: `mutation($input: UpdateServerlessFunctionInput!) { updateOneServerlessFunction(input: $input) { ${SERVERLESS_FUNCTION_FIELDS} } }`,
-              variables: { input: currentInput },
-              resultKey: "updateOneServerlessFunction",
-              schemaSymbols: ["updateOneServerlessFunction", "UpdateServerlessFunctionInput"],
-            },
-            legacy: {
-              query: `mutation($input: UpdateLogicFunctionFromSourceInput!) { updateOneLogicFunction(input: $input) }`,
-              variables: { input: await buildUpdateInput(id, options, "legacy") },
-              resultKey: "updateOneLogicFunction",
-            },
-          });
-
-          await renderServerlessFunction(
-            {
-              id,
-              updated: Boolean(result),
-            },
-            services,
-            globalOptions,
-          );
-          break;
-        }
-        case "packages":
-        case "available-packages": {
-          if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
-
-          const result = await executeCompatibleOperation<unknown>(services, {
-            current: {
-              query: `query($input: ServerlessFunctionIdInput!) { getAvailablePackages(input: $input) }`,
-              variables: { input: { id } },
-              resultKey: "getAvailablePackages",
-              schemaSymbols: ["ServerlessFunctionIdInput"],
-            },
-            legacy: {
-              query: `query($input: LogicFunctionIdInput!) { getAvailablePackages(input: $input) }`,
-              variables: { input: { id } },
-              resultKey: "getAvailablePackages",
-            },
-          });
-
-          await renderServerlessFunction(result ?? {}, services, globalOptions);
-          break;
-        }
-        case "delete": {
-          if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
-
-          await executeCompatibleOperation<unknown>(services, {
-            current: {
-              query: `mutation($input: ServerlessFunctionIdInput!) { deleteOneServerlessFunction(input: $input) { id } }`,
-              variables: { input: { id } },
-              resultKey: "deleteOneServerlessFunction",
-              schemaSymbols: ["deleteOneServerlessFunction", "ServerlessFunctionIdInput"],
-            },
-            legacy: {
-              query: `mutation($input: LogicFunctionIdInput!) { deleteOneLogicFunction(input: $input) { id } }`,
-              variables: { input: { id } },
-              resultKey: "deleteOneLogicFunction",
-            },
-          });
-
-          // eslint-disable-next-line no-console
-          console.log(`Serverless function ${id} deleted.`);
-          break;
-        }
-        case "execute": {
-          if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
-
-          const payload = await buildExecutePayload(options);
-          const result = await executeCompatibleOperation<unknown>(services, {
-            current: {
-              query: `mutation($input: ExecuteServerlessFunctionInput!) { executeOneServerlessFunction(input: $input) { data logs duration status error } }`,
-              variables: { input: { id, payload } },
-              resultKey: "executeOneServerlessFunction",
-              schemaSymbols: ["executeOneServerlessFunction", "ExecuteServerlessFunctionInput"],
-            },
-            legacy: {
-              query: `mutation($input: ExecuteOneLogicFunctionInput!) { executeOneLogicFunction(input: $input) { data logs duration status error } }`,
-              variables: { input: { id, payload } },
-              resultKey: "executeOneLogicFunction",
-            },
-          });
-
-          await renderServerlessFunction(result, services, globalOptions);
-          break;
-        }
-        case "source": {
-          if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
-
-          const sourceCode = await executeCompatibleOperation<string | null>(services, {
-            current: {
-              query: `query($input: GetServerlessFunctionSourceCodeInput!) { getServerlessFunctionSourceCode(input: $input) }`,
-              variables: { input: { id } },
-              resultKey: "getServerlessFunctionSourceCode",
-              schemaSymbols: [
-                "getServerlessFunctionSourceCode",
-                "GetServerlessFunctionSourceCodeInput",
-              ],
-            },
-            legacy: {
-              query: `query($input: LogicFunctionIdInput!) { getLogicFunctionSourceCode(input: $input) }`,
-              variables: { input: { id } },
-              resultKey: "getLogicFunctionSourceCode",
-            },
-          });
-
-          if (globalOptions.output === "json" || globalOptions.output === "csv") {
-            await renderServerlessFunction(
-              { sourceCode: sourceCode ?? "" },
-              services,
-              globalOptions,
-            );
-            break;
-          }
-
-          // eslint-disable-next-line no-console
-          console.log(sourceCode ?? "");
-          break;
-        }
-        case "logs": {
-          await streamLogicFunctionLogs(id, options, globalOptions, services);
-          break;
-        }
-        case "publish": {
-          if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
-
-          const result = await executeCompatibleOperation<unknown>(services, {
-            current: {
-              query: `mutation($input: PublishServerlessFunctionInput!) { publishServerlessFunction(input: $input) { ${SERVERLESS_FUNCTION_FIELDS} } }`,
-              variables: { input: { id } },
-              resultKey: "publishServerlessFunction",
-              schemaSymbols: ["publishServerlessFunction", "PublishServerlessFunctionInput"],
-            },
-            unavailableOnLegacyMessage:
-              "Publish is not available on this workspace because it still exposes the legacy LogicFunction schema.",
-          });
-
-          await renderServerlessFunction(result, services, globalOptions);
-          break;
-        }
-        case "create-layer": {
-          const input = await buildCreateLayerInput(options);
-
-          const result = await executeCompatibleOperation<unknown>(services, {
-            current: {
-              query: `mutation($packageJson: JSON!, $yarnLock: String!) {
-                createOneServerlessFunctionLayer(packageJson: $packageJson, yarnLock: $yarnLock) {
-                  id
-                  applicationId
-                  createdAt
-                  updatedAt
-                }
-              }`,
-              variables: input,
-              resultKey: "createOneServerlessFunctionLayer",
-              schemaSymbols: [
-                "createOneServerlessFunctionLayer",
-                "CreateServerlessFunctionLayerInput",
-              ],
-            },
-            unavailableOnLegacyMessage:
-              "Serverless layers are not available on this workspace because it does not expose createOneServerlessFunctionLayer.",
-          });
-
-          await renderServerlessFunction(result, services, globalOptions);
-          break;
-        }
-        default:
-          throw new CliError(`Unknown operation: ${operation}`, "INVALID_ARGUMENTS");
-      }
+  const result = await executeCompatibleOperation<unknown[]>(services, {
+    current: {
+      query: `query { findManyServerlessFunctions { ${SERVERLESS_FUNCTION_FIELDS} } }`,
+      resultKey: "findManyServerlessFunctions",
+      schemaSymbols: ["findManyServerlessFunctions"],
     },
+    legacy: {
+      query: `query { findManyLogicFunctions { ${LEGACY_LOGIC_FUNCTION_FIELDS} } }`,
+      resultKey: "findManyLogicFunctions",
+    },
+  });
+
+  await renderServerlessFunction(Array.isArray(result) ? result : [], services, globalOptions);
+}
+
+async function runServerlessGetCommand(id: string | undefined, command: Command): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+
+  if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
+
+  const result = await executeCompatibleOperation<unknown>(services, {
+    current: {
+      query: `query($input: ServerlessFunctionIdInput!) { findOneServerlessFunction(input: $input) { ${SERVERLESS_FUNCTION_FIELDS} } }`,
+      variables: { input: { id } },
+      resultKey: "findOneServerlessFunction",
+      schemaSymbols: ["findOneServerlessFunction", "ServerlessFunctionIdInput"],
+    },
+    legacy: {
+      query: `query($input: LogicFunctionIdInput!) { findOneLogicFunction(input: $input) { ${LEGACY_LOGIC_FUNCTION_FIELDS} } }`,
+      variables: { input: { id } },
+      resultKey: "findOneLogicFunction",
+    },
+  });
+
+  await renderServerlessFunction(result, services, globalOptions);
+}
+
+async function runServerlessCreateCommand(command: Command): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+  const options = getServerlessOptions(command);
+  const currentInput = await buildCreateInput(options, "current");
+
+  const result = await executeCompatibleOperation<unknown>(services, {
+    current: {
+      query: `mutation($input: CreateServerlessFunctionInput!) { createOneServerlessFunction(input: $input) { ${SERVERLESS_FUNCTION_FIELDS} } }`,
+      variables: { input: currentInput },
+      resultKey: "createOneServerlessFunction",
+      schemaSymbols: ["createOneServerlessFunction", "CreateServerlessFunctionInput"],
+    },
+    legacy: {
+      query: `mutation($input: CreateLogicFunctionFromSourceInput!) { createOneLogicFunction(input: $input) { ${LEGACY_LOGIC_FUNCTION_FIELDS} } }`,
+      variables: { input: await buildCreateInput(options, "legacy") },
+      resultKey: "createOneLogicFunction",
+    },
+  });
+
+  await renderServerlessFunction(result, services, globalOptions);
+}
+
+async function runServerlessUpdateCommand(id: string | undefined, command: Command): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+  const options = getServerlessOptions(command);
+
+  if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
+
+  const currentInput = await buildUpdateInput(id, options, "current");
+
+  const result = await executeCompatibleOperation<unknown>(services, {
+    current: {
+      query: `mutation($input: UpdateServerlessFunctionInput!) { updateOneServerlessFunction(input: $input) { ${SERVERLESS_FUNCTION_FIELDS} } }`,
+      variables: { input: currentInput },
+      resultKey: "updateOneServerlessFunction",
+      schemaSymbols: ["updateOneServerlessFunction", "UpdateServerlessFunctionInput"],
+    },
+    legacy: {
+      query: `mutation($input: UpdateLogicFunctionFromSourceInput!) { updateOneLogicFunction(input: $input) }`,
+      variables: { input: await buildUpdateInput(id, options, "legacy") },
+      resultKey: "updateOneLogicFunction",
+    },
+  });
+
+  await renderServerlessFunction(
+    {
+      id,
+      updated: Boolean(result),
+    },
+    services,
+    globalOptions,
   );
+}
+
+async function runServerlessPackagesCommand(
+  id: string | undefined,
+  command: Command,
+): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+
+  if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
+
+  const result = await executeCompatibleOperation<unknown>(services, {
+    current: {
+      query: `query($input: ServerlessFunctionIdInput!) { getAvailablePackages(input: $input) }`,
+      variables: { input: { id } },
+      resultKey: "getAvailablePackages",
+      schemaSymbols: ["ServerlessFunctionIdInput"],
+    },
+    legacy: {
+      query: `query($input: LogicFunctionIdInput!) { getAvailablePackages(input: $input) }`,
+      variables: { input: { id } },
+      resultKey: "getAvailablePackages",
+    },
+  });
+
+  await renderServerlessFunction(result ?? {}, services, globalOptions);
+}
+
+async function runServerlessDeleteCommand(
+  id: string | undefined,
+  command: Command,
+): Promise<void> {
+  const { services } = createCommandContext(command);
+
+  if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
+  requireYes(getServerlessOptions(command), "Delete");
+
+  await executeCompatibleOperation<unknown>(services, {
+    current: {
+      query: `mutation($input: ServerlessFunctionIdInput!) { deleteOneServerlessFunction(input: $input) { id } }`,
+      variables: { input: { id } },
+      resultKey: "deleteOneServerlessFunction",
+      schemaSymbols: ["deleteOneServerlessFunction", "ServerlessFunctionIdInput"],
+    },
+    legacy: {
+      query: `mutation($input: LogicFunctionIdInput!) { deleteOneLogicFunction(input: $input) { id } }`,
+      variables: { input: { id } },
+      resultKey: "deleteOneLogicFunction",
+    },
+  });
+
+  // eslint-disable-next-line no-console
+  console.log(`Serverless function ${id} deleted.`);
+}
+
+async function runServerlessExecuteCommand(
+  id: string | undefined,
+  command: Command,
+): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+  const options = getServerlessOptions(command);
+
+  if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
+
+  const payload = await buildExecutePayload(options);
+  const result = await executeCompatibleOperation<unknown>(services, {
+    current: {
+      query: `mutation($input: ExecuteServerlessFunctionInput!) { executeOneServerlessFunction(input: $input) { data logs duration status error } }`,
+      variables: { input: { id, payload } },
+      resultKey: "executeOneServerlessFunction",
+      schemaSymbols: ["executeOneServerlessFunction", "ExecuteServerlessFunctionInput"],
+    },
+    legacy: {
+      query: `mutation($input: ExecuteOneLogicFunctionInput!) { executeOneLogicFunction(input: $input) { data logs duration status error } }`,
+      variables: { input: { id, payload } },
+      resultKey: "executeOneLogicFunction",
+    },
+  });
+
+  await renderServerlessFunction(result, services, globalOptions);
+}
+
+async function runServerlessSourceCommand(
+  id: string | undefined,
+  command: Command,
+): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+
+  if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
+
+  const sourceCode = await executeCompatibleOperation<string | null>(services, {
+    current: {
+      query: `query($input: GetServerlessFunctionSourceCodeInput!) { getServerlessFunctionSourceCode(input: $input) }`,
+      variables: { input: { id } },
+      resultKey: "getServerlessFunctionSourceCode",
+      schemaSymbols: ["getServerlessFunctionSourceCode", "GetServerlessFunctionSourceCodeInput"],
+    },
+    legacy: {
+      query: `query($input: LogicFunctionIdInput!) { getLogicFunctionSourceCode(input: $input) }`,
+      variables: { input: { id } },
+      resultKey: "getLogicFunctionSourceCode",
+    },
+  });
+
+  if (globalOptions.output === "json" || globalOptions.output === "csv") {
+    await renderServerlessFunction({ sourceCode: sourceCode ?? "" }, services, globalOptions);
+    return;
+  }
+
+  // eslint-disable-next-line no-console
+  console.log(sourceCode ?? "");
+}
+
+async function runServerlessLogsCommand(
+  id: string | undefined,
+  command: Command,
+): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+
+  await streamLogicFunctionLogs(id, getServerlessOptions(command), globalOptions, services);
+}
+
+async function runServerlessPublishCommand(
+  id: string | undefined,
+  command: Command,
+): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+
+  if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
+
+  const result = await executeCompatibleOperation<unknown>(services, {
+    current: {
+      query: `mutation($input: PublishServerlessFunctionInput!) { publishServerlessFunction(input: $input) { ${SERVERLESS_FUNCTION_FIELDS} } }`,
+      variables: { input: { id } },
+      resultKey: "publishServerlessFunction",
+      schemaSymbols: ["publishServerlessFunction", "PublishServerlessFunctionInput"],
+    },
+    unavailableOnLegacyMessage:
+      "Publish is not available on this workspace because it still exposes the legacy LogicFunction schema.",
+  });
+
+  await renderServerlessFunction(result, services, globalOptions);
+}
+
+async function runServerlessCreateLayerCommand(command: Command): Promise<void> {
+  const { globalOptions, services } = createCommandContext(command);
+  const input = await buildCreateLayerInput(getServerlessOptions(command));
+
+  const result = await executeCompatibleOperation<unknown>(services, {
+    current: {
+      query: `mutation($packageJson: JSON!, $yarnLock: String!) {
+        createOneServerlessFunctionLayer(packageJson: $packageJson, yarnLock: $yarnLock) {
+          id
+          applicationId
+          createdAt
+          updatedAt
+        }
+      }`,
+      variables: input,
+      resultKey: "createOneServerlessFunctionLayer",
+      schemaSymbols: ["createOneServerlessFunctionLayer", "CreateServerlessFunctionLayerInput"],
+    },
+    unavailableOnLegacyMessage:
+      "Serverless layers are not available on this workspace because it does not expose createOneServerlessFunctionLayer.",
+  });
+
+  await renderServerlessFunction(result, services, globalOptions);
+}
+
+export function registerServerlessCommand(program: Command): void {
+  const serverless = program.command("serverless").description("Manage serverless functions");
+  applyGlobalOptions(serverless);
+
+  const listCmd = serverless.command("list").description("List serverless functions");
+  applyGlobalOptions(listCmd);
+  listCmd.action(async (_options: unknown, command: Command) => {
+    await runServerlessListCommand(command);
+  });
+
+  const getCmd = serverless
+    .command("get")
+    .description("Get a serverless function")
+    .argument("[id]", "Function ID");
+  applyGlobalOptions(getCmd);
+  getCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    await runServerlessGetCommand(id, command);
+  });
+
+  const createCmd = serverless.command("create").description("Create a serverless function");
+  applyMutationOptions(createCmd);
+  applyGlobalOptions(createCmd);
+  createCmd.action(async (_options: unknown, command: Command) => {
+    await runServerlessCreateCommand(command);
+  });
+
+  const updateCmd = serverless
+    .command("update")
+    .description("Update a serverless function")
+    .argument("[id]", "Function ID");
+  applyMutationOptions(updateCmd);
+  applyGlobalOptions(updateCmd);
+  updateCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    await runServerlessUpdateCommand(id, command);
+  });
+
+  const deleteCmd = serverless
+    .command("delete")
+    .description("Delete a serverless function")
+    .argument("[id]", "Function ID")
+    .option("--yes", "Confirm destructive operations");
+  applyGlobalOptions(deleteCmd);
+  deleteCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    await runServerlessDeleteCommand(id, command);
+  });
+
+  const publishCmd = serverless
+    .command("publish")
+    .description("Publish a serverless function")
+    .argument("[id]", "Function ID");
+  applyGlobalOptions(publishCmd);
+  publishCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    await runServerlessPublishCommand(id, command);
+  });
+
+  const executeCmd = serverless
+    .command("execute")
+    .description("Execute a serverless function")
+    .argument("[id]", "Function ID");
+  applyExecutionOptions(executeCmd);
+  applyGlobalOptions(executeCmd);
+  executeCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    await runServerlessExecuteCommand(id, command);
+  });
+
+  const packagesCmd = serverless
+    .command("packages")
+    .alias("available-packages")
+    .description("List available packages for a serverless function")
+    .argument("[id]", "Function ID");
+  applyGlobalOptions(packagesCmd);
+  packagesCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    await runServerlessPackagesCommand(id, command);
+  });
+
+  const sourceCmd = serverless
+    .command("source")
+    .description("Get serverless function source code")
+    .argument("[id]", "Function ID");
+  applyGlobalOptions(sourceCmd);
+  sourceCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    await runServerlessSourceCommand(id, command);
+  });
+
+  const logsCmd = serverless
+    .command("logs")
+    .description("Stream serverless function logs")
+    .argument("[id]", "Function ID");
+  applyLogsOptions(logsCmd);
+  applyGlobalOptions(logsCmd);
+  logsCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    await runServerlessLogsCommand(id, command);
+  });
+
+  const createLayerCmd = serverless
+    .command("create-layer")
+    .description("Create a serverless function layer");
+  applyLayerOptions(createLayerCmd);
+  applyGlobalOptions(createLayerCmd);
+  createLayerCmd.action(async (_options: unknown, command: Command) => {
+    await runServerlessCreateLayerCommand(command);
+  });
 }

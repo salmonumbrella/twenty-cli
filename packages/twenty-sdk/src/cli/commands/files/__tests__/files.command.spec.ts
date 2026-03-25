@@ -62,39 +62,56 @@ describe("files command", () => {
       expect(filesCmd?.description()).toBe(
         "Upload and download files through verified Twenty file APIs",
       );
+      expect(filesCmd?.registeredArguments ?? []).toHaveLength(0);
+
+      const subcommands = filesCmd?.commands.map((cmd) => cmd.name()) ?? [];
+      const help = filesCmd?.helpInformation() ?? "";
+
+      expect(subcommands).toEqual(expect.arrayContaining(["upload", "download", "public-asset"]));
+      expect(help).toContain("Commands:");
+      expect(help).toContain("upload");
+      expect(help).toContain("download");
+      expect(help).toContain("public-asset");
     });
 
-    it("has required operation argument", () => {
+    it("registers explicit subcommands with scoped arguments and options", () => {
       const filesCmd = program.commands.find((cmd) => cmd.name() === "files");
-      const args = filesCmd?.registeredArguments ?? [];
-      expect(args.length).toBe(2);
-      expect(args[0].name()).toBe("operation");
-      expect(args[0].required).toBe(true);
-    });
+      const uploadCmd = filesCmd?.commands.find((cmd) => cmd.name() === "upload");
+      const downloadCmd = filesCmd?.commands.find((cmd) => cmd.name() === "download");
+      const publicAssetCmd = filesCmd?.commands.find((cmd) => cmd.name() === "public-asset");
 
-    it("has optional path-or-id argument", () => {
-      const filesCmd = program.commands.find((cmd) => cmd.name() === "files");
-      const args = filesCmd?.registeredArguments ?? [];
-      expect(args[1].name()).toBe("path-or-id");
-      expect(args[1].required).toBe(false);
+      expect(uploadCmd?.registeredArguments.map((arg) => arg.name())).toEqual(["path-or-id"]);
+      expect(downloadCmd?.registeredArguments.map((arg) => arg.name())).toEqual(["path-or-id"]);
+      expect(publicAssetCmd?.registeredArguments.map((arg) => arg.name())).toEqual(["path-or-id"]);
+      expect(uploadCmd?.options.find((o) => o.long === "--target")).toBeDefined();
+      expect(downloadCmd?.options.find((o) => o.long === "--folder")).toBeDefined();
+      expect(downloadCmd?.options.find((o) => o.long === "--token")).toBeDefined();
+      expect(publicAssetCmd?.options.find((o) => o.long === "--workspace-id")).toBeDefined();
+      expect(publicAssetCmd?.options.find((o) => o.long === "--application-id")).toBeDefined();
     });
 
     it("has upload and download options", () => {
       const filesCmd = program.commands.find((cmd) => cmd.name() === "files");
-      const opts = filesCmd?.options ?? [];
-      expect(opts.find((o) => o.long === "--output-file")).toBeDefined();
-      expect(opts.find((o) => o.long === "--target")).toBeDefined();
-      expect(opts.find((o) => o.long === "--folder")).toBeDefined();
-      expect(opts.find((o) => o.long === "--token")).toBeDefined();
-      expect(opts.find((o) => o.long === "--workspace-id")).toBeDefined();
-      expect(opts.find((o) => o.long === "--application-id")).toBeDefined();
-      expect(opts.find((o) => o.long === "--field-metadata-id")).toBeDefined();
-      expect(opts.find((o) => o.long === "--field-metadata-universal-identifier")).toBeDefined();
+      const uploadCmd = filesCmd?.commands.find((cmd) => cmd.name() === "upload");
+      const downloadCmd = filesCmd?.commands.find((cmd) => cmd.name() === "download");
+      const publicAssetCmd = filesCmd?.commands.find((cmd) => cmd.name() === "public-asset");
+      const uploadOpts = uploadCmd?.options ?? [];
+      const downloadOpts = downloadCmd?.options ?? [];
+      const publicAssetOpts = publicAssetCmd?.options ?? [];
+      expect(downloadOpts.find((o) => o.long === "--output-file")).toBeDefined();
+      expect(uploadOpts.find((o) => o.long === "--target")).toBeDefined();
+      expect(downloadOpts.find((o) => o.long === "--folder")).toBeDefined();
+      expect(downloadOpts.find((o) => o.long === "--token")).toBeDefined();
+      expect(publicAssetOpts.find((o) => o.long === "--workspace-id")).toBeDefined();
+      expect(publicAssetOpts.find((o) => o.long === "--application-id")).toBeDefined();
+      expect(uploadOpts.find((o) => o.long === "--field-metadata-id")).toBeDefined();
+      expect(uploadOpts.find((o) => o.long === "--field-metadata-universal-identifier")).toBeDefined();
     });
 
     it("has global options applied", () => {
       const filesCmd = program.commands.find((cmd) => cmd.name() === "files");
-      const opts = filesCmd?.options ?? [];
+      const uploadCmd = filesCmd?.commands.find((cmd) => cmd.name() === "upload");
+      const opts = uploadCmd?.options ?? [];
       expect(opts.find((o) => o.long === "--output")).toBeDefined();
       expect(opts.find((o) => o.long === "--query")).toBeDefined();
       expect(opts.find((o) => o.long === "--workspace")).toBeDefined();
@@ -444,14 +461,18 @@ describe("files command", () => {
   });
 
   describe("unsupported operations", () => {
-    it("rejects list because no public generic endpoint exists", async () => {
-      await expect(program.parseAsync(["node", "test", "files", "list"])).rejects.toThrow(CliError);
+    it("rejects unsupported router-era commands as unknown subcommands", async () => {
+      await expect(program.parseAsync(["node", "test", "files", "list"])).rejects.toMatchObject({
+        code: "commander.unknownCommand",
+      });
     });
 
-    it("rejects delete because no public generic endpoint exists", async () => {
+    it("rejects delete as an unknown subcommand", async () => {
       await expect(
         program.parseAsync(["node", "test", "files", "delete", "file-123"]),
-      ).rejects.toThrow(CliError);
+      ).rejects.toMatchObject({
+        code: "commander.unknownCommand",
+      });
     });
   });
 
@@ -463,24 +484,23 @@ describe("files command", () => {
     it("throws for unknown operations", async () => {
       await expect(
         program.parseAsync(["node", "test", "files", "unknown", "some-id"]),
-      ).rejects.toThrow(CliError);
+      ).rejects.toMatchObject({
+        code: "commander.unknownCommand",
+      });
     });
 
-    it("handles case insensitive operations", async () => {
-      const fileContent = Buffer.from("file content");
-      mockGet.mockResolvedValue({ data: fileContent });
-      vi.mocked(fs.writeFile).mockResolvedValue(undefined as never);
-
-      await program.parseAsync([
-        "node",
-        "test",
-        "files",
-        "DOWNLOAD",
-        "https://api.twenty.com/file/files-field/file-123?token=signed-token",
-      ]);
-
-      expect(mockGet).toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith("Downloaded to file-123");
+    it("rejects mixed-case router-era operations as unknown subcommands", async () => {
+      await expect(
+        program.parseAsync([
+          "node",
+          "test",
+          "files",
+          "DOWNLOAD",
+          "https://api.twenty.com/file/files-field/file-123?token=signed-token",
+        ]),
+      ).rejects.toMatchObject({
+        code: "commander.unknownCommand",
+      });
     });
   });
 });

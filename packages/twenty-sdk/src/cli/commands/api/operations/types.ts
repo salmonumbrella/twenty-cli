@@ -14,7 +14,6 @@ export interface ApiCommandOptions {
   data?: string;
   file?: string;
   set?: string[];
-  force?: boolean;
   yes?: boolean;
   ids?: string;
   format?: string;

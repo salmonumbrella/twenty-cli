@@ -56,27 +56,40 @@ describe("route-triggers command", () => {
       expect(cmd?.description()).toBe("Manage route triggers");
     });
 
-    it("has required operation argument and optional id argument", () => {
+    it("registers explicit subcommands for each route trigger operation", () => {
       const cmd = program.commands.find((candidate) => candidate.name() === "route-triggers");
-      const args = cmd?.registeredArguments ?? [];
+      const subcommands = cmd?.commands.map((candidate) => candidate.name()) ?? [];
+      const help = cmd?.helpInformation() ?? "";
 
-      expect(args.length).toBe(2);
-      expect(args[0].name()).toBe("operation");
-      expect(args[0].required).toBe(true);
-      expect(args[1].name()).toBe("id");
-      expect(args[1].required).toBe(false);
+      expect(subcommands).toEqual(expect.arrayContaining(["list", "get", "create", "update", "delete"]));
+      expect(help).toContain("Commands:");
+      expect(help).toContain("list");
+      expect(help).toContain("get");
+      expect(help).toContain("create");
+      expect(help).toContain("update");
+      expect(help).toContain("delete");
     });
 
-    it("has payload options and global options", () => {
+    it("has payload options and global options on the appropriate subcommands", () => {
       const cmd = program.commands.find((candidate) => candidate.name() === "route-triggers");
-      const opts = cmd?.options ?? [];
+      const createCmd = cmd?.commands.find((candidate) => candidate.name() === "create");
+      const updateCmd = cmd?.commands.find((candidate) => candidate.name() === "update");
+      const getCmd = cmd?.commands.find((candidate) => candidate.name() === "get");
+      const deleteCmd = cmd?.commands.find((candidate) => candidate.name() === "delete");
 
-      expect(opts.find((option) => option.long === "--data")).toBeDefined();
-      expect(opts.find((option) => option.long === "--file")).toBeDefined();
-      expect(opts.find((option) => option.long === "--set")).toBeDefined();
-      expect(opts.find((option) => option.long === "--output")).toBeDefined();
-      expect(opts.find((option) => option.long === "--query")).toBeDefined();
-      expect(opts.find((option) => option.long === "--workspace")).toBeDefined();
+      expect(createCmd?.options.find((option) => option.long === "--data")).toBeDefined();
+      expect(createCmd?.options.find((option) => option.long === "--file")).toBeDefined();
+      expect(createCmd?.options.find((option) => option.long === "--set")).toBeDefined();
+      expect(createCmd?.options.find((option) => option.long === "--output")).toBeDefined();
+      expect(createCmd?.options.find((option) => option.long === "--query")).toBeDefined();
+      expect(createCmd?.options.find((option) => option.long === "--workspace")).toBeDefined();
+
+      expect(updateCmd?.options.find((option) => option.long === "--data")).toBeDefined();
+      expect(updateCmd?.options.find((option) => option.long === "--file")).toBeDefined();
+      expect(updateCmd?.options.find((option) => option.long === "--set")).toBeDefined();
+
+      expect(deleteCmd?.options.find((option) => option.long === "--yes")).toBeDefined();
+      expect(getCmd?.options.find((option) => option.long === "--output")).toBeDefined();
     });
   });
 
@@ -116,6 +129,22 @@ describe("route-triggers command", () => {
           updatedAt: "2026-03-21T00:00:00.000Z",
         },
       ]);
+    });
+
+    it("accepts parent-first global options before the list subcommand", async () => {
+      mockPost.mockResolvedValue({
+        data: {
+          data: {
+            findManyRouteTriggers: [],
+          },
+        },
+      });
+
+      await program.parseAsync(["node", "test", "route-triggers", "-o", "json", "list"]);
+
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("findManyRouteTriggers"),
+      });
     });
   });
 
@@ -284,6 +313,7 @@ describe("route-triggers command", () => {
         "route-triggers",
         "delete",
         "route-1",
+        "--yes",
         "-o",
         "json",
       ]);
@@ -313,13 +343,20 @@ describe("route-triggers command", () => {
         program.parseAsync(["node", "test", "route-triggers", "delete"]),
       ).rejects.toThrow(CliError);
     });
+
+    it("requires --yes for delete", async () => {
+      await expect(
+        program.parseAsync(["node", "test", "route-triggers", "delete", "route-1"]),
+      ).rejects.toMatchObject({
+        message: "Delete requires --yes.",
+        code: "INVALID_ARGUMENTS",
+      });
+    });
   });
 
   describe("unknown operations", () => {
-    it("throws for unknown operations", async () => {
-      await expect(
-        program.parseAsync(["node", "test", "route-triggers", "explode"]),
-      ).rejects.toThrow(CliError);
+    it("requires a subcommand", async () => {
+      await expect(program.parseAsync(["node", "test", "route-triggers"])).rejects.toThrow();
     });
   });
 });

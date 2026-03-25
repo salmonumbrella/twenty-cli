@@ -35,6 +35,7 @@ vi.mock("../../config/services/config.service", () => ({
   ConfigService: vi.fn(function MockConfigService() {
     return {
       getConfig: vi.fn(),
+      resolveApiConfig: vi.fn(),
     };
   }),
 }));
@@ -56,6 +57,22 @@ vi.mock("../../metadata/services/metadata.service", () => ({
     return {
       listObjects: vi.fn(),
       getObject: vi.fn(),
+    };
+  }),
+}));
+
+vi.mock("../../search/services/search.service", () => ({
+  SearchService: vi.fn(function MockSearchService() {
+    return {
+      search: vi.fn(),
+    };
+  }),
+}));
+
+vi.mock("../../api/services/public-http.service", () => ({
+  PublicHttpService: vi.fn(function MockPublicHttpService() {
+    return {
+      request: vi.fn(),
     };
   }),
 }));
@@ -460,6 +477,17 @@ describe("global-options utilities", () => {
       const options = resolveGlobalOptions(workspace);
       expect(options.outputKind).toBe("twenty.auth.workspace");
     });
+
+    it("derives agent output kind for mcp help-center from the full command path", () => {
+      const root = new Command("twenty");
+      const mcp = root.command("mcp");
+      const helpCenter = mcp.command("help-center");
+      applyGlobalOptions(helpCenter);
+      root.parse(["node", "twenty", "mcp", "help-center", "-o", "agent"]);
+
+      const options = resolveGlobalOptions(helpCenter);
+      expect(options.outputKind).toBe("twenty.mcp.help-center");
+    });
   });
 });
 
@@ -592,8 +620,16 @@ describe("services factory", () => {
 
       expect(context.globalOptions.output).toBe("json");
       expect(context.globalOptions.workspace).toBe("prod");
+      expect(context.services).toHaveProperty("config");
       expect(context.services).toHaveProperty("api");
+      expect(context.services).toHaveProperty("publicHttp");
+      expect(context.services).toHaveProperty("search");
+      expect(context.services).toHaveProperty("records");
+      expect(context.services).toHaveProperty("metadata");
+      expect(context.services).toHaveProperty("mcp");
       expect(context.services).toHaveProperty("output");
+      expect(context.services).toHaveProperty("importer");
+      expect(context.services).toHaveProperty("exporter");
     });
 
     it("creates an output context with derived output kind", async () => {
@@ -626,9 +662,13 @@ describe("services factory", () => {
 
       const services = createServices(globalOptions);
 
+      expect(services).toHaveProperty("config");
       expect(services).toHaveProperty("api");
+      expect(services).toHaveProperty("publicHttp");
+      expect(services).toHaveProperty("search");
       expect(services).toHaveProperty("records");
       expect(services).toHaveProperty("metadata");
+      expect(services).toHaveProperty("mcp");
       expect(services).toHaveProperty("output");
       expect(services).toHaveProperty("importer");
       expect(services).toHaveProperty("exporter");
@@ -688,9 +728,13 @@ describe("services factory", () => {
 
       const services = createServices(globalOptions);
 
+      expect(services.config).toBeDefined();
       expect(services.api).toBeDefined();
+      expect(services.publicHttp).toBeDefined();
+      expect(services.search).toBeDefined();
       expect(services.records).toBeDefined();
       expect(services.metadata).toBeDefined();
+      expect(services.mcp).toBeDefined();
       expect(services.output).toBeDefined();
       expect(services.importer).toBeDefined();
       expect(services.exporter).toBeDefined();

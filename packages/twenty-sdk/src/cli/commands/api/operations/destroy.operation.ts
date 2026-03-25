@@ -1,19 +1,15 @@
 import { ApiOperationContext } from "./types";
 import { CliError } from "../../../utilities/errors/cli-error";
 import { resolveBulkFilter } from "./bulk-filter";
+import { requireYes } from "../../../utilities/shared/confirmation";
 
 export async function runDestroyOperation(ctx: ApiOperationContext): Promise<void> {
   const id = ctx.arg;
-  if (!ctx.options.force) {
-    if (!id && !ctx.options.filter && !ctx.options.ids) {
-      throw new CliError("Missing record ID.", "INVALID_ARGUMENTS");
-    }
-
-    const target = id ? `${ctx.object} ${id}` : `${ctx.object} matching the provided filter`;
-    // eslint-disable-next-line no-console
-    console.log(`About to destroy ${target}. Use --force to confirm.`);
-    return;
+  if (!id && !ctx.options.filter && !ctx.options.ids) {
+    throw new CliError("Missing record ID.", "INVALID_ARGUMENTS");
   }
+
+  requireYes(ctx.options, "Destroy");
 
   if (id) {
     const response = await ctx.services.records.destroy(ctx.object, id);

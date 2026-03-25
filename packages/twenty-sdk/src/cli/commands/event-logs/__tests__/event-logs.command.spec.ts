@@ -51,9 +51,17 @@ describe("event logs command", () => {
 
   it("registers the event-logs command", () => {
     const cmd = program.commands.find((candidate) => candidate.name() === "event-logs");
+    const listCmd = cmd?.commands[0];
 
     expect(cmd).toBeDefined();
     expect(cmd?.description()).toBe("Query enterprise event logs");
+    expect(cmd?.registeredArguments ?? []).toHaveLength(0);
+    expect(cmd?.commands.map((candidate) => candidate.name())).toEqual(["list"]);
+    expect(listCmd?.options.find((option) => option.long === "--table")).toBeDefined();
+    expect(listCmd?.options.find((option) => option.long === "--limit")).toBeDefined();
+    expect(listCmd?.options.find((option) => option.long === "--cursor")).toBeDefined();
+    expect(listCmd?.options.find((option) => option.long === "--first")).toBeUndefined();
+    expect(listCmd?.options.find((option) => option.long === "--after")).toBeUndefined();
   });
 
   it("queries event logs with normalized table and filters", async () => {
@@ -85,8 +93,10 @@ describe("event logs command", () => {
       "list",
       "--table",
       "workspace-event",
-      "--first",
+      "--limit",
       "25",
+      "--cursor",
+      "cursor-1",
       "--event-type",
       "workspace.member.created",
       "--start",
@@ -101,6 +111,7 @@ describe("event logs command", () => {
         input: {
           table: "WORKSPACE_EVENT",
           first: 25,
+          after: "cursor-1",
           filters: {
             eventType: "workspace.member.created",
             dateRange: {
@@ -158,10 +169,12 @@ describe("event logs command", () => {
     });
   });
 
-  it("throws for unsupported operations", async () => {
+  it("throws for unsupported subcommands", async () => {
     await expect(
       program.parseAsync(["node", "test", "event-logs", "explode", "--table", "workspace-event"]),
-    ).rejects.toThrow(CliError);
+    ).rejects.toMatchObject({
+      code: "commander.unknownCommand",
+    });
   });
 
   it("throws for invalid table names", async () => {
@@ -170,7 +183,7 @@ describe("event logs command", () => {
     ).rejects.toThrow(CliError);
   });
 
-  it("throws for invalid first values", async () => {
+  it("throws for invalid limit values", async () => {
     await expect(
       program.parseAsync([
         "node",
@@ -179,7 +192,7 @@ describe("event logs command", () => {
         "list",
         "--table",
         "usage-event",
-        "--first",
+        "--limit",
         "0",
       ]),
     ).rejects.toThrow(CliError);

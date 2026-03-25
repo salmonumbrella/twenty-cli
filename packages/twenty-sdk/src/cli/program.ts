@@ -2,8 +2,7 @@ import { Command } from "commander";
 import { registerApiCommand } from "./commands/api/api.command";
 import { registerApprovedAccessDomainsCommand } from "./commands/approved-access-domains/approved-access-domains.command";
 import { registerApiMetadataCommand } from "./commands/api-metadata/api-metadata.command";
-import { registerRestCommand } from "./commands/raw/rest.command";
-import { registerGraphqlCommand } from "./commands/raw/graphql.command";
+import { registerRawCommand } from "./commands/raw/raw.command";
 import { registerAuthCommand } from "./commands/auth/auth.command";
 import { registerSearchCommand } from "./commands/search/search.command";
 import { registerWebhooksCommand } from "./commands/webhooks/webhooks.command";
@@ -25,6 +24,7 @@ import { registerApplicationsCommand } from "./commands/applications/application
 import { registerApplicationRegistrationsCommand } from "./commands/application-registrations/application-registrations.command";
 import { registerSkillsCommand } from "./commands/skills/skills.command";
 import { registerMarketplaceAppsCommand } from "./commands/marketplace-apps/marketplace-apps.command";
+import { registerMcpCommand } from "./commands/mcp/mcp.command";
 import { registerWorkflowsCommand } from "./commands/workflows/workflows.command";
 import { registerOpenApiCommand } from "./commands/openapi/openapi.command";
 
@@ -38,8 +38,7 @@ export function buildProgram(): Command {
   registerApiCommand(program);
   registerApprovedAccessDomainsCommand(program);
   registerApiMetadataCommand(program);
-  registerRestCommand(program);
-  registerGraphqlCommand(program);
+  registerRawCommand(program);
   registerAuthCommand(program);
   registerSearchCommand(program);
   registerWebhooksCommand(program);
@@ -61,6 +60,7 @@ export function buildProgram(): Command {
   registerApplicationsCommand(program);
   registerApplicationRegistrationsCommand(program);
   registerMarketplaceAppsCommand(program);
+  registerMcpCommand(program);
   registerSkillsCommand(program);
   registerWorkflowsCommand(program);
 

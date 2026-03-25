@@ -146,10 +146,10 @@ describe("API Operations", () => {
 
   // ==================== DELETE OPERATION ====================
   describe("runDeleteOperation", () => {
-    it("deletes record when --force is provided", async () => {
+    it("deletes record when --yes is provided", async () => {
       const ctx = createMockContext({
         arg: "record-123",
-        options: { force: true },
+        options: { yes: true },
       });
 
       await runDeleteOperation(ctx);
@@ -158,24 +158,24 @@ describe("API Operations", () => {
       expect(consoleSpy).toHaveBeenCalledWith("Deleted people record-123");
     });
 
-    it("prints confirmation message without --force", async () => {
+    it("requires --yes before deleting", async () => {
       const ctx = createMockContext({
         arg: "record-123",
-        options: { force: false },
+        options: {},
       });
 
-      await runDeleteOperation(ctx);
-
+      await expect(runDeleteOperation(ctx)).rejects.toMatchObject({
+        message: "Delete requires --yes.",
+        code: "INVALID_ARGUMENTS",
+        suggestion: "Re-run with --yes to confirm delete.",
+      });
       expect(ctx.services.records.delete).not.toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "About to delete people record-123. Use --force to confirm.",
-      );
     });
 
     it("throws CliError when ID is missing", async () => {
       const ctx = createMockContext({
         arg: undefined,
-        options: { force: true },
+        options: { yes: true },
       });
 
       await expect(runDeleteOperation(ctx)).rejects.toThrow(CliError);
@@ -185,7 +185,7 @@ describe("API Operations", () => {
     it("renders response if delete returns data", async () => {
       const ctx = createMockContext({
         arg: "record-123",
-        options: { force: true },
+        options: { yes: true },
       });
       (ctx.services.records.delete as ReturnType<typeof vi.fn>).mockResolvedValue({
         id: "record-123",
@@ -298,10 +298,10 @@ describe("API Operations", () => {
 
   // ==================== DESTROY OPERATION ====================
   describe("runDestroyOperation", () => {
-    it("destroys record when --force is provided", async () => {
+    it("destroys record when --yes is provided", async () => {
       const ctx = createMockContext({
         arg: "record-123",
-        options: { force: true },
+        options: { yes: true },
       });
 
       await runDestroyOperation(ctx);
@@ -310,33 +310,33 @@ describe("API Operations", () => {
       expect(consoleSpy).toHaveBeenCalledWith("Destroyed people record-123");
     });
 
-    it("prints confirmation message without --force", async () => {
+    it("requires --yes before destroying", async () => {
       const ctx = createMockContext({
         arg: "record-123",
-        options: { force: false },
+        options: {},
       });
 
-      await runDestroyOperation(ctx);
-
+      await expect(runDestroyOperation(ctx)).rejects.toMatchObject({
+        message: "Destroy requires --yes.",
+        code: "INVALID_ARGUMENTS",
+        suggestion: "Re-run with --yes to confirm destroy.",
+      });
       expect(ctx.services.records.destroy).not.toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "About to destroy people record-123. Use --force to confirm.",
-      );
     });
 
     it("throws CliError when ID is missing", async () => {
       const ctx = createMockContext({
         arg: undefined,
-        options: { force: true },
+        options: { yes: true },
       });
 
       await expect(runDestroyOperation(ctx)).rejects.toThrow(CliError);
     });
 
-    it("destroys many records when ids are provided", async () => {
+    it("destroys many records when ids are provided with --yes", async () => {
       const ctx = createMockContext({
         arg: undefined,
-        options: { force: true, ids: "record-1,record-2" },
+        options: { yes: true, ids: "record-1,record-2" },
       });
 
       await runDestroyOperation(ctx);
@@ -345,6 +345,14 @@ describe("API Operations", () => {
         filter: "id[in]:[record-1,record-2]",
       });
       expect(ctx.services.output.render).toHaveBeenCalled();
+    });
+    it("requires a target before checking --yes", async () => {
+      const ctx = createMockContext({
+        arg: undefined,
+        options: {},
+      });
+
+      await expect(runDestroyOperation(ctx)).rejects.toThrow("Missing record ID");
     });
   });
 
@@ -732,9 +740,9 @@ describe("API Operations", () => {
 
   // ==================== BATCH DELETE OPERATION ====================
   describe("runBatchDeleteOperation", () => {
-    it("batch deletes records with --ids when --force is provided", async () => {
+    it("batch deletes records with --ids when --yes is provided", async () => {
       const ctx = createMockContext({
-        options: { ids: "id-1,id-2,id-3", force: true },
+        options: { ids: "id-1,id-2,id-3", yes: true },
       });
 
       await runBatchDeleteOperation(ctx);
@@ -749,7 +757,7 @@ describe("API Operations", () => {
 
     it("batch deletes records with --data JSON array", async () => {
       const ctx = createMockContext({
-        options: { data: '["id-a","id-b"]', force: true },
+        options: { data: '["id-a","id-b"]', yes: true },
       });
 
       await runBatchDeleteOperation(ctx);
@@ -757,22 +765,33 @@ describe("API Operations", () => {
       expect(ctx.services.records.batchDelete).toHaveBeenCalledWith("people", ["id-a", "id-b"]);
     });
 
-    it("prints confirmation message without --force", async () => {
+    it("requires --yes before batch deleting", async () => {
       const ctx = createMockContext({
         options: { ids: "id-1,id-2" },
       });
 
-      await runBatchDeleteOperation(ctx);
-
+      await expect(runBatchDeleteOperation(ctx)).rejects.toMatchObject({
+        message: "Batch delete requires --yes.",
+        code: "INVALID_ARGUMENTS",
+        suggestion: "Re-run with --yes to confirm batch delete.",
+      });
       expect(ctx.services.records.batchDelete).not.toHaveBeenCalled();
-      expect(consoleSpy).toHaveBeenCalledWith(
-        "About to batch delete people. Use --force to confirm.",
-      );
+    });
+
+    it("checks for --yes before payload validation", async () => {
+      const ctx = createMockContext({
+        options: {},
+      });
+
+      await expect(runBatchDeleteOperation(ctx)).rejects.toMatchObject({
+        message: "Batch delete requires --yes.",
+        code: "INVALID_ARGUMENTS",
+      });
     });
 
     it("throws CliError when no IDs provided", async () => {
       const ctx = createMockContext({
-        options: { force: true },
+        options: { yes: true },
       });
 
       await expect(runBatchDeleteOperation(ctx)).rejects.toThrow(CliError);
@@ -781,7 +800,7 @@ describe("API Operations", () => {
 
     it("throws CliError when payload is not an array", async () => {
       const ctx = createMockContext({
-        options: { data: '{"id":"1"}', force: true },
+        options: { data: '{"id":"1"}', yes: true },
       });
 
       await expect(runBatchDeleteOperation(ctx)).rejects.toThrow(CliError);
@@ -792,7 +811,7 @@ describe("API Operations", () => {
 
     it("throws CliError when IDs array is empty", async () => {
       const ctx = createMockContext({
-        options: { ids: "  ,  , ", force: true },
+        options: { ids: "  ,  , ", yes: true },
       });
 
       await expect(runBatchDeleteOperation(ctx)).rejects.toThrow(CliError);

@@ -9,9 +9,14 @@ import {
 } from "../../../utilities/config/services/config.service";
 import { CliError } from "../../../utilities/errors/cli-error";
 import { mockConstructor } from "../../../test-utils/mock-constructor";
+import { loadCliEnvironment } from "../../../utilities/config/services/environment.service";
 
 vi.mock("../../../utilities/config/services/config.service");
 vi.mock("../../../utilities/api/services/api.service");
+vi.mock("../../../utilities/config/services/environment.service", () => ({
+  loadCliEnvironment: vi.fn(),
+  resolveEnvFileFromArgv: vi.fn(),
+}));
 
 describe("auth commands", () => {
   let program: Command;
@@ -24,6 +29,7 @@ describe("auth commands", () => {
     registerAuthCommand(program);
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mockPost = vi.fn();
+    vi.mocked(loadCliEnvironment).mockReset();
     vi.mocked(ApiService).mockImplementation(
       mockConstructor(
         () =>
@@ -73,6 +79,26 @@ describe("auth commands", () => {
         { name: "production", default: "Y", apiUrl: "https://api.twenty.com" },
         { name: "staging", default: "", apiUrl: "https://staging.twenty.com" },
       ]);
+    });
+
+    it("loads env handling once through shared output context", async () => {
+      vi.mocked(ConfigService.prototype.listWorkspaces).mockResolvedValue([]);
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "auth",
+        "list",
+        "--env-file",
+        ".env.test",
+      ]);
+
+      expect(loadCliEnvironment).toHaveBeenCalledTimes(1);
+      expect(loadCliEnvironment).toHaveBeenCalledWith({
+        argv: process.argv,
+        cwd: process.cwd(),
+        explicitEnvFile: ".env.test",
+      });
     });
   });
 
@@ -180,7 +206,9 @@ describe("auth commands", () => {
 
       await program.parseAsync(["node", "test", "auth", "status", "-o", "json"]);
 
-      expect(ConfigService.prototype.getConfig).toHaveBeenCalled();
+      expect(ConfigService.prototype.getConfig).toHaveBeenCalledWith({
+        workspace: undefined,
+      });
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
@@ -189,6 +217,36 @@ describe("auth commands", () => {
         workspace: "production",
         apiUrl: "https://api.twenty.com",
         apiKey: "abcd****5678",
+      });
+    });
+
+    it("uses the selected workspace profile when provided", async () => {
+      const config: ResolvedConfig = {
+        apiUrl: "https://smoke.example.com",
+        apiKey: "abcd1234efgh5678",
+        workspace: "smoke",
+      };
+      vi.mocked(ConfigService.prototype.getConfig).mockResolvedValue(config);
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "auth",
+        "status",
+        "--workspace",
+        "smoke",
+        "-o",
+        "json",
+      ]);
+
+      expect(ConfigService.prototype.getConfig).toHaveBeenCalledWith({
+        workspace: "smoke",
+      });
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(JSON.parse(output)).toMatchObject({
+        authenticated: true,
+        workspace: "smoke",
+        apiUrl: "https://smoke.example.com",
       });
     });
 
@@ -245,6 +303,33 @@ describe("auth commands", () => {
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
       expect(parsed.apiKey).toBe("****");
+    });
+
+    it("loads env handling once through shared output context", async () => {
+      const config: ResolvedConfig = {
+        apiUrl: "https://api.twenty.com",
+        apiKey: "short",
+        workspace: "production",
+      };
+      vi.mocked(ConfigService.prototype.getConfig).mockResolvedValue(config);
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "auth",
+        "status",
+        "--env-file",
+        ".env.test",
+        "-o",
+        "json",
+      ]);
+
+      expect(loadCliEnvironment).toHaveBeenCalledTimes(1);
+      expect(loadCliEnvironment).toHaveBeenCalledWith({
+        argv: process.argv,
+        cwd: process.cwd(),
+        explicitEnvFile: ".env.test",
+      });
     });
   });
 

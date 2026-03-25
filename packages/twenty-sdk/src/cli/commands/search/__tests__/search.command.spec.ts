@@ -9,8 +9,20 @@ import {
 import { mockConstructor } from "../../../test-utils/mock-constructor";
 import { CliError } from "../../../utilities/errors/cli-error";
 
+const mockCreateCommandContext = vi.hoisted(() => vi.fn());
+
 vi.mock("../../../utilities/search/services/search.service");
 vi.mock("../../../utilities/api/services/api.service");
+vi.mock("../../../utilities/shared/context", async () => {
+  const actual = await vi.importActual<typeof import("../../../utilities/shared/context")>(
+    "../../../utilities/shared/context",
+  );
+
+  return {
+    ...actual,
+    createCommandContext: mockCreateCommandContext,
+  };
+});
 vi.mock("../../../utilities/shared/io", () => ({
   readJsonInput: vi.fn(),
 }));
@@ -39,6 +51,23 @@ describe("search command", () => {
     registerSearchCommand(program);
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mockSearch = vi.fn();
+    mockCreateCommandContext.mockReset();
+    mockCreateCommandContext.mockReturnValue({
+      globalOptions: {
+        output: "json",
+        query: undefined,
+      },
+      services: {
+        search: {
+          search: mockSearch,
+        },
+        output: {
+          render: vi.fn(async (value: unknown) => {
+            console.log(JSON.stringify(value));
+          }),
+        },
+      },
+    } as never);
     vi.mocked(readJsonInput).mockResolvedValue(undefined);
     vi.mocked(SearchService).mockImplementation(
       mockConstructor(
@@ -92,10 +121,11 @@ describe("search command", () => {
       expect(excludeOpt).toBeDefined();
     });
 
-    it("has pagination and filter options", () => {
+    it("uses canonical pagination and filter option names", () => {
       const searchCmd = program.commands.find((cmd) => cmd.name() === "search");
       const opts = searchCmd?.options ?? [];
-      expect(opts.find((o) => o.long === "--after")).toBeDefined();
+      expect(opts.find((o) => o.long === "--cursor")).toBeDefined();
+      expect(opts.find((o) => o.long === "--after")).toBeUndefined();
       expect(opts.find((o) => o.long === "--include-page-info")).toBeDefined();
       expect(opts.find((o) => o.long === "--filter")).toBeDefined();
       expect(opts.find((o) => o.long === "--filter-file")).toBeDefined();
@@ -119,6 +149,8 @@ describe("search command", () => {
 
       await program.parseAsync(["node", "test", "search", "john", "-o", "json"]);
 
+      expect(mockCreateCommandContext).toHaveBeenCalled();
+      expect(SearchService).not.toHaveBeenCalled();
       expect(mockSearch).toHaveBeenCalledWith({
         query: "john",
         limit: 20,
@@ -220,7 +252,7 @@ describe("search command", () => {
       });
     });
 
-    it("passes after cursor and filter JSON to the search service", async () => {
+    it("passes cursor and filter JSON to the search service", async () => {
       mockSearch.mockResolvedValue({ data: [] });
       vi.mocked(readJsonInput).mockResolvedValue({
         id: { eq: "rec-1" },
@@ -231,7 +263,7 @@ describe("search command", () => {
         "test",
         "search",
         "hello",
-        "--after",
+        "--cursor",
         "cursor-1",
         "--filter",
         '{"id":{"eq":"rec-1"}}',

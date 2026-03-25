@@ -1,11 +1,9 @@
-import axios from "axios";
 import { Command } from "commander";
-import { ConfigService } from "../../utilities/config/services/config.service";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { readJsonInput } from "../../utilities/shared/io";
 import { parseKeyValuePairs } from "../../utilities/shared/parse";
-import { createOutputContext } from "../../utilities/shared/context";
+import { createCommandContext } from "../../utilities/shared/context";
 
 interface RouteInvokeOptions {
   method?: string;
@@ -13,11 +11,6 @@ interface RouteInvokeOptions {
   file?: string;
   param?: string[];
   header?: string[];
-}
-
-interface PublicConnection {
-  apiUrl: string;
-  apiKey?: string;
 }
 
 type RouteMethod = "delete" | "get" | "patch" | "post" | "put";
@@ -38,22 +31,21 @@ export function registerRoutesCommand(program: Command): void {
   applyGlobalOptions(invokeCmd);
 
   invokeCmd.action(async (routePath: string, options: RouteInvokeOptions, command: Command) => {
-    const { globalOptions, output } = createOutputContext(command);
+    const { globalOptions, services } = createCommandContext(command);
     const method = normalizeMethod(options.method);
-    const connection = await resolvePublicConnection(globalOptions.workspace);
     const payload = await readPayload(method, options);
     const params = normalizeQueryParams(parseKeyValuePairs(options.param));
-    const headers = buildHeaders(connection.apiKey, options.header);
 
-    const response = await axios.request({
+    const response = await services.publicHttp.request({
+      authMode: "optional",
       method,
-      url: buildRouteUrl(connection.apiUrl, routePath),
+      path: buildRoutePath(routePath),
       data: method === "get" ? undefined : payload,
       params: Object.keys(params).length > 0 ? params : undefined,
-      headers,
+      headers: normalizeHeaders(options.header),
     });
 
-    await output.render(response.data, {
+    await services.output.render(response.data, {
       format: globalOptions.output,
       query: globalOptions.query,
     });
@@ -77,33 +69,19 @@ function normalizeMethod(rawMethod: string | undefined): RouteMethod {
   return method as RouteMethod;
 }
 
-async function resolvePublicConnection(workspace: string | undefined): Promise<PublicConnection> {
-  const configService = new ConfigService();
-  const config = await configService.loadConfigFile();
-  const workspaceName =
-    workspace ?? process.env.TWENTY_PROFILE ?? config?.defaultWorkspace ?? "default";
-  const workspaceConfig = config?.workspaces?.[workspaceName] ?? {};
-
-  return {
-    apiUrl: process.env.TWENTY_BASE_URL ?? workspaceConfig.apiUrl ?? "https://api.twenty.com",
-    apiKey: process.env.TWENTY_TOKEN ?? workspaceConfig.apiKey ?? undefined,
-  };
-}
-
-function buildRouteUrl(apiUrl: string, routePath: string): string {
+function buildRoutePath(routePath: string): string {
   const trimmedPath = routePath.trim();
   if (!trimmedPath) {
     throw new CliError("Route path must not be empty.", "INVALID_ARGUMENTS");
   }
 
-  const normalizedBaseUrl = apiUrl.replace(/\/+$/, "");
   const normalizedPath = trimmedPath.replace(/^\/+/, "");
 
   if (normalizedPath === "s" || normalizedPath.startsWith("s/")) {
-    return `${normalizedBaseUrl}/${normalizedPath}`;
+    return `/${normalizedPath}`;
   }
 
-  return `${normalizedBaseUrl}/s/${normalizedPath}`;
+  return `/s/${normalizedPath}`;
 }
 
 function normalizeQueryParams(params: Record<string, string[]>): Record<string, string | string[]> {
@@ -139,14 +117,8 @@ async function readPayload(
   return payload as Record<string, unknown>;
 }
 
-function buildHeaders(
-  apiKey: string | undefined,
-  rawHeaders: string[] | undefined,
-): Record<string, string> | undefined {
+function normalizeHeaders(rawHeaders: string[] | undefined): Record<string, string> | undefined {
   const headers = normalizeStringMap(parseKeyValuePairs(rawHeaders));
-  if (apiKey) {
-    headers.Authorization = `Bearer ${apiKey}`;
-  }
 
   return Object.keys(headers).length > 0 ? headers : undefined;
 }

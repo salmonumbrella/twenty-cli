@@ -72,68 +72,95 @@ describe("serverless command", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       expect(serverlessCmd).toBeDefined();
       expect(serverlessCmd?.description()).toBe("Manage serverless functions");
-    });
+      expect(serverlessCmd?.registeredArguments ?? []).toHaveLength(0);
 
-    it("has required operation argument", () => {
-      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const args = serverlessCmd?.registeredArguments ?? [];
-      expect(args.length).toBe(2);
-      expect(args[0].name()).toBe("operation");
-      expect(args[0].required).toBe(true);
-    });
+      const subcommands = serverlessCmd?.commands.map((cmd) => cmd.name()) ?? [];
+      const help = serverlessCmd?.helpInformation() ?? "";
 
-    it("has optional id argument", () => {
-      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const args = serverlessCmd?.registeredArguments ?? [];
-      expect(args[1].name()).toBe("id");
-      expect(args[1].required).toBe(false);
+      expect(subcommands).toEqual(
+        expect.arrayContaining([
+          "list",
+          "get",
+          "create",
+          "update",
+          "delete",
+          "publish",
+          "execute",
+          "packages",
+          "source",
+          "logs",
+          "create-layer",
+        ]),
+      );
+      expect(help).toContain("Commands:");
+      expect(help).toContain("list");
+      expect(help).toContain("create");
+      expect(help).toContain("create-layer");
+      expect(help).toContain("publish");
+      expect(help).toContain("source");
+      expect(help).toContain("logs");
     });
 
     it("has --data option", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const opts = serverlessCmd?.options ?? [];
+      const createCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "create");
+      const opts = createCmd?.options ?? [];
       const dataOpt = opts.find((o) => o.long === "--data");
       expect(dataOpt).toBeDefined();
     });
 
     it("has --file option", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const opts = serverlessCmd?.options ?? [];
+      const createCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "create");
+      const opts = createCmd?.options ?? [];
       const fileOpt = opts.find((o) => o.long === "--file");
       expect(fileOpt).toBeDefined();
     });
 
+    it("has --yes on delete", () => {
+      const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
+      const deleteCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "delete");
+      const opts = deleteCmd?.options ?? [];
+      const yesOpt = opts.find((o) => o.long === "--yes");
+      expect(yesOpt).toBeDefined();
+    });
+
     it("has --name option", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const opts = serverlessCmd?.options ?? [];
+      const createCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "create");
+      const opts = createCmd?.options ?? [];
       const nameOpt = opts.find((o) => o.long === "--name");
       expect(nameOpt).toBeDefined();
     });
 
     it("has --description option", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const opts = serverlessCmd?.options ?? [];
+      const createCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "create");
+      const opts = createCmd?.options ?? [];
       const descOpt = opts.find((o) => o.long === "--description");
       expect(descOpt).toBeDefined();
     });
 
     it("has --set option", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const opts = serverlessCmd?.options ?? [];
+      const createCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "create");
+      const opts = createCmd?.options ?? [];
       const setOpt = opts.find((o) => o.long === "--set");
       expect(setOpt).toBeDefined();
     });
 
     it("has --timeout-seconds option", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const opts = serverlessCmd?.options ?? [];
+      const createCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "create");
+      const opts = createCmd?.options ?? [];
       const timeoutOpt = opts.find((o) => o.long === "--timeout-seconds");
       expect(timeoutOpt).toBeDefined();
     });
 
     it("has layer creation options", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const opts = serverlessCmd?.options ?? [];
+      const createLayerCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "create-layer");
+      const opts = createLayerCmd?.options ?? [];
 
       expect(opts.find((option) => option.long === "--package-json")).toBeDefined();
       expect(opts.find((option) => option.long === "--package-json-file")).toBeDefined();
@@ -143,7 +170,8 @@ describe("serverless command", () => {
 
     it("has global options applied", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
-      const opts = serverlessCmd?.options ?? [];
+      const listCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "list");
+      const opts = listCmd?.options ?? [];
       const outputOpt = opts.find((o) => o.long === "--output");
       const queryOpt = opts.find((o) => o.long === "--query");
       const workspaceOpt = opts.find((o) => o.long === "--workspace");
@@ -439,7 +467,7 @@ describe("serverless command", () => {
         data: { data: { deleteOneServerlessFunction: { id: "fn-1" } } },
       });
 
-      await program.parseAsync(["node", "test", "serverless", "delete", "fn-1"]);
+      await program.parseAsync(["node", "test", "serverless", "delete", "fn-1", "--yes"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("deleteOneServerlessFunction(input: $input)"),
@@ -452,6 +480,15 @@ describe("serverless command", () => {
       await expect(program.parseAsync(["node", "test", "serverless", "delete"])).rejects.toThrow(
         CliError,
       );
+    });
+
+    it("requires --yes for delete", async () => {
+      await expect(
+        program.parseAsync(["node", "test", "serverless", "delete", "fn-1"]),
+      ).rejects.toMatchObject({
+        message: "Delete requires --yes.",
+        code: "INVALID_ARGUMENTS",
+      });
     });
   });
 
@@ -722,8 +759,10 @@ describe("serverless command", () => {
     });
 
     it("throws error for unknown operation", async () => {
-      await expect(program.parseAsync(["node", "test", "serverless", "unknown"])).rejects.toThrow(
-        CliError,
+      await expect(program.parseAsync(["node", "test", "serverless", "unknown"])).rejects.toMatchObject(
+        {
+          code: "commander.unknownCommand",
+        },
       );
     });
 
@@ -754,25 +793,12 @@ describe("serverless command", () => {
       ).rejects.toThrow("Publish is not available on this workspace");
     });
 
-    it("handles case insensitive operations", async () => {
-      const functions = [
-        {
-          id: "fn-1",
-          name: "Function",
-          description: "",
-          runtime: "nodejs22.x",
-          timeoutSeconds: 30,
-          handlerPath: "src/index.ts",
-          handlerName: "handler",
-          createdAt: "",
-          updatedAt: "",
-        },
-      ];
-      mockPost.mockResolvedValue({ data: { data: { findManyServerlessFunctions: functions } } });
-
-      await program.parseAsync(["node", "test", "serverless", "LIST", "-o", "json"]);
-
-      expect(mockPost).toHaveBeenCalled();
+    it("rejects mixed-case router-era operations as unknown subcommands", async () => {
+      await expect(
+        program.parseAsync(["node", "test", "serverless", "LIST", "-o", "json"]),
+      ).rejects.toMatchObject({
+        code: "commander.unknownCommand",
+      });
     });
   });
 });

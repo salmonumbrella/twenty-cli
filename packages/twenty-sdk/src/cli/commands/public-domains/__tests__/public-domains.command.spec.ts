@@ -50,9 +50,18 @@ describe("public-domains command", () => {
 
   it("registers the public-domains command", () => {
     const command = program.commands.find((candidate) => candidate.name() === "public-domains");
+    const deleteCmd = command?.commands.find((candidate) => candidate.name() === "delete");
 
     expect(command).toBeDefined();
     expect(command?.description()).toBe("Manage public domains");
+    expect(command?.registeredArguments ?? []).toHaveLength(0);
+    expect(command?.commands.map((candidate) => candidate.name())).toEqual([
+      "list",
+      "create",
+      "delete",
+      "check-records",
+    ]);
+    expect(deleteCmd?.options.find((option) => option.long === "--yes")).toBeDefined();
   });
 
   it("lists public domains", async () => {
@@ -139,6 +148,7 @@ describe("public-domains command", () => {
       "delete",
       "--domain",
       "app.example.com",
+      "--yes",
       "-o",
       "json",
     ]);
@@ -211,5 +221,21 @@ describe("public-domains command", () => {
     await expect(program.parseAsync(["node", "test", "public-domains", "create"])).rejects.toThrow(
       "Missing --domain option.",
     );
+  });
+
+  it("requires --yes for delete", async () => {
+    await expect(
+      program.parseAsync([
+        "node",
+        "test",
+        "public-domains",
+        "delete",
+        "--domain",
+        "app.example.com",
+      ]),
+    ).rejects.toMatchObject({
+      message: "Delete requires --yes.",
+      code: "INVALID_ARGUMENTS",
+    });
   });
 });

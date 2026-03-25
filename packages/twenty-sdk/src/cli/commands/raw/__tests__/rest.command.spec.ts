@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Command } from "commander";
-import { registerRestCommand } from "../rest.command";
+import { buildProgram } from "../../../program";
 
 // Mock the services module
 vi.mock("../../../utilities/shared/services", () => ({
@@ -32,9 +32,7 @@ describe("rest command", () => {
   let mockServices: ReturnType<typeof createMockServices>;
 
   beforeEach(() => {
-    program = new Command();
-    program.exitOverride();
-    registerRestCommand(program);
+    program = buildProgram();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
 
     mockServices = createMockServices();
@@ -49,7 +47,7 @@ describe("rest command", () => {
 
   describe("GET request", () => {
     it("makes GET request to specified path", async () => {
-      await program.parseAsync(["node", "test", "rest", "GET", "/people"]);
+      await program.parseAsync(["node", "test", "raw", "rest", "GET", "/people"]);
 
       expect(mockServices.api.request).toHaveBeenCalledWith({
         method: "get",
@@ -60,10 +58,11 @@ describe("rest command", () => {
       expect(mockServices.output.render).toHaveBeenCalled();
     });
 
-    it("makes GET request with query params", async () => {
+    it("makes GET request with scalar query params", async () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "rest",
         "GET",
         "/people",
@@ -76,13 +75,35 @@ describe("rest command", () => {
       expect(mockServices.api.request).toHaveBeenCalledWith({
         method: "get",
         url: "/people",
-        params: { limit: ["10"], offset: ["20"] },
+        params: { limit: "10", offset: "20" },
+        data: undefined,
+      });
+    });
+
+    it("keeps repeated query params as arrays", async () => {
+      await program.parseAsync([
+        "node",
+        "test",
+        "raw",
+        "rest",
+        "GET",
+        "/people",
+        "--param",
+        "tag=one",
+        "--param",
+        "tag=two",
+      ]);
+
+      expect(mockServices.api.request).toHaveBeenCalledWith({
+        method: "get",
+        url: "/people",
+        params: { tag: ["one", "two"] },
         data: undefined,
       });
     });
 
     it("adds leading slash to path if missing", async () => {
-      await program.parseAsync(["node", "test", "rest", "GET", "people"]);
+      await program.parseAsync(["node", "test", "raw", "rest", "GET", "people"]);
 
       expect(mockServices.api.request).toHaveBeenCalledWith(
         expect.objectContaining({ url: "/people" }),
@@ -97,6 +118,7 @@ describe("rest command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "rest",
         "POST",
         "/people",
@@ -118,6 +140,7 @@ describe("rest command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "rest",
         "POST",
         "/people",
@@ -142,6 +165,7 @@ describe("rest command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "rest",
         "PATCH",
         "/people/123",
@@ -160,7 +184,7 @@ describe("rest command", () => {
 
   describe("DELETE request", () => {
     it("makes DELETE request to specified path", async () => {
-      await program.parseAsync(["node", "test", "rest", "DELETE", "/people/123"]);
+      await program.parseAsync(["node", "test", "raw", "rest", "DELETE", "/people/123"]);
 
       expect(mockServices.api.request).toHaveBeenCalledWith({
         method: "delete",
@@ -173,7 +197,7 @@ describe("rest command", () => {
 
   describe("output format", () => {
     it("passes output format to render", async () => {
-      await program.parseAsync(["node", "test", "rest", "GET", "/people", "-o", "json"]);
+      await program.parseAsync(["node", "test", "raw", "rest", "GET", "/people", "-o", "json"]);
 
       expect(mockServices.output.render).toHaveBeenCalledWith(
         { id: "test-id" },
@@ -182,7 +206,16 @@ describe("rest command", () => {
     });
 
     it("passes query filter to render", async () => {
-      await program.parseAsync(["node", "test", "rest", "GET", "/people", "--query", "data[0]"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "raw",
+        "rest",
+        "GET",
+        "/people",
+        "--query",
+        "data[0]",
+      ]);
 
       expect(mockServices.output.render).toHaveBeenCalledWith(
         { id: "test-id" },
@@ -195,7 +228,7 @@ describe("rest command", () => {
     it("propagates API errors", async () => {
       mockServices.api.request.mockRejectedValue(new Error("API request failed"));
 
-      await expect(program.parseAsync(["node", "test", "rest", "GET", "/people"])).rejects.toThrow(
+      await expect(program.parseAsync(["node", "test", "raw", "rest", "GET", "/people"])).rejects.toThrow(
         "API request failed",
       );
     });
@@ -204,14 +237,23 @@ describe("rest command", () => {
       vi.mocked(readJsonInput).mockRejectedValue(new SyntaxError("Invalid JSON"));
 
       await expect(
-        program.parseAsync(["node", "test", "rest", "POST", "/people", "--data", "invalid json"]),
+        program.parseAsync([
+          "node",
+          "test",
+          "raw",
+          "rest",
+          "POST",
+          "/people",
+          "--data",
+          "invalid json",
+        ]),
       ).rejects.toThrow("Invalid JSON");
     });
   });
 
   describe("method case insensitivity", () => {
     it("converts method to lowercase", async () => {
-      await program.parseAsync(["node", "test", "rest", "Get", "/people"]);
+      await program.parseAsync(["node", "test", "raw", "rest", "Get", "/people"]);
 
       expect(mockServices.api.request).toHaveBeenCalledWith(
         expect.objectContaining({ method: "get" }),
@@ -219,7 +261,7 @@ describe("rest command", () => {
     });
 
     it("handles uppercase method", async () => {
-      await program.parseAsync(["node", "test", "rest", "PUT", "/people/123"]);
+      await program.parseAsync(["node", "test", "raw", "rest", "PUT", "/people/123"]);
 
       expect(mockServices.api.request).toHaveBeenCalledWith(
         expect.objectContaining({ method: "put" }),

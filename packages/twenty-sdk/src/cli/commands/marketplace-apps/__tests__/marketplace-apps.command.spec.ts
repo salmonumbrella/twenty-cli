@@ -51,17 +51,25 @@ describe("marketplace-apps command", () => {
 
   it("registers the command with install options", () => {
     const cmd = program.commands.find((candidate) => candidate.name() === "marketplace-apps");
+    const help = cmd?.helpInformation() ?? "";
 
     expect(cmd).toBeDefined();
     expect(cmd?.description()).toBe("Manage marketplace apps");
-    expect(cmd?.options.find((option) => option.long === "--version")).toBeDefined();
+    expect(cmd?.commands.map((candidate) => candidate.name())).toEqual(
+      expect.arrayContaining(["list", "get", "install"]),
+    );
+    expect(help).toContain("Commands:");
+    expect(help).toContain("list");
+    expect(help).toContain("get");
+    expect(help).toContain("install");
+    expect(cmd?.commands.find((candidate) => candidate.name() === "install")?.options.find((option) => option.long === "--version")).toBeDefined();
   });
 
   it("lists marketplace apps", async () => {
     const apps = [{ id: "app-1", name: "Inbox", version: "1.0.0" }];
     mockPost.mockResolvedValue({ data: { data: { findManyMarketplaceApps: apps } } });
 
-    await program.parseAsync(["node", "test", "marketplace-apps", "list", "-o", "json"]);
+    await program.parseAsync(["node", "test", "marketplace-apps", "-o", "json", "list"]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
       query: expect.stringContaining("findManyMarketplaceApps"),

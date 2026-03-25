@@ -4,8 +4,22 @@ import { registerConnectedAccountsCommand } from "../connected-accounts.command"
 import { ApiService } from "../../../utilities/api/services/api.service";
 import { CliError } from "../../../utilities/errors/cli-error";
 import { mockConstructor } from "../../../test-utils/mock-constructor";
+import { RecordsService } from "../../../utilities/records/services/records.service";
+
+const mockCreateCommandContext = vi.hoisted(() => vi.fn());
 
 vi.mock("../../../utilities/api/services/api.service");
+vi.mock("../../../utilities/records/services/records.service");
+vi.mock("../../../utilities/shared/context", async () => {
+  const actual = await vi.importActual<typeof import("../../../utilities/shared/context")>(
+    "../../../utilities/shared/context",
+  );
+
+  return {
+    ...actual,
+    createCommandContext: mockCreateCommandContext,
+  };
+});
 vi.mock("../../../utilities/config/services/config.service", () => ({
   ConfigService: vi.fn(function MockConfigService() {
     return {
@@ -23,6 +37,8 @@ describe("connected-accounts command", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let mockGet: ReturnType<typeof vi.fn>;
   let mockPost: ReturnType<typeof vi.fn>;
+  let mockRecordsList: ReturnType<typeof vi.fn>;
+  let mockRecordsGet: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     program = new Command();
@@ -31,6 +47,29 @@ describe("connected-accounts command", () => {
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mockGet = vi.fn();
     mockPost = vi.fn();
+    mockRecordsList = vi.fn();
+    mockRecordsGet = vi.fn();
+    mockCreateCommandContext.mockReset();
+    mockCreateCommandContext.mockReturnValue({
+      globalOptions: {
+        output: "json",
+        query: undefined,
+      },
+      services: {
+        api: {
+          post: mockPost,
+        },
+        records: {
+          list: mockRecordsList,
+          get: mockRecordsGet,
+        },
+        output: {
+          render: vi.fn(async (value: unknown) => {
+            console.log(JSON.stringify(value));
+          }),
+        },
+      },
+    } as never);
     vi.mocked(ApiService).mockImplementation(
       mockConstructor(
         () =>
@@ -42,6 +81,15 @@ describe("connected-accounts command", () => {
             delete: vi.fn(),
             request: vi.fn(),
           }) as unknown as ApiService,
+      ),
+    );
+    vi.mocked(RecordsService).mockImplementation(
+      mockConstructor(
+        () =>
+          ({
+            list: mockRecordsList,
+            get: mockRecordsGet,
+          }) as unknown as RecordsService,
       ),
     );
   });
@@ -86,21 +134,17 @@ describe("connected-accounts command", () => {
 
   describe("list operation", () => {
     it("lists connected accounts and masks sensitive fields by default", async () => {
-      mockGet.mockResolvedValue({
-        data: {
-          data: {
-            connectedAccounts: [
-              {
-                id: "ca-1",
-                handle: "owner@example.com",
-                provider: "google",
-                accessToken: "secret-access-token",
-                refreshToken: "secret-refresh-token",
-                connectionParameters: { SMTP: { password: "smtp-password" } },
-              },
-            ],
+      mockRecordsList.mockResolvedValue({
+        data: [
+          {
+            id: "ca-1",
+            handle: "owner@example.com",
+            provider: "google",
+            accessToken: "secret-access-token",
+            refreshToken: "secret-refresh-token",
+            connectionParameters: { SMTP: { password: "smtp-password" } },
           },
-        },
+        ],
       });
 
       await program.parseAsync([
@@ -114,8 +158,11 @@ describe("connected-accounts command", () => {
         "json",
       ]);
 
-      expect(mockGet).toHaveBeenCalledWith("/rest/connectedAccounts", {
-        params: { limit: "5" },
+      expect(mockCreateCommandContext).toHaveBeenCalled();
+      expect(RecordsService).not.toHaveBeenCalled();
+      expect(mockRecordsList).toHaveBeenCalledWith("connectedAccounts", {
+        limit: 5,
+        cursor: undefined,
       });
 
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -138,7 +185,7 @@ describe("connected-accounts command", () => {
         refreshToken: "secret-refresh-token",
         connectionParameters: { SMTP: { password: "smtp-password" } },
       };
-      mockGet.mockResolvedValue({ data: { data: { connectedAccounts: [account] } } });
+      mockRecordsList.mockResolvedValue({ data: [account] });
 
       await program.parseAsync([
         "node",
@@ -157,22 +204,18 @@ describe("connected-accounts command", () => {
 
   describe("get operation", () => {
     it("gets one connected account and masks secrets by default", async () => {
-      mockGet.mockResolvedValue({
-        data: {
-          data: {
-            connectedAccount: {
-              id: "ca-1",
-              accessToken: "secret-access-token",
-              refreshToken: "secret-refresh-token",
-              connectionParameters: { SMTP: { password: "smtp-password" } },
-            },
-          },
-        },
+      mockRecordsGet.mockResolvedValue({
+        id: "ca-1",
+        accessToken: "secret-access-token",
+        refreshToken: "secret-refresh-token",
+        connectionParameters: { SMTP: { password: "smtp-password" } },
       });
 
       await program.parseAsync(["node", "test", "connected-accounts", "get", "ca-1", "-o", "json"]);
 
-      expect(mockGet).toHaveBeenCalledWith("/rest/connectedAccounts/ca-1", { params: {} });
+      expect(mockCreateCommandContext).toHaveBeenCalled();
+      expect(RecordsService).not.toHaveBeenCalled();
+      expect(mockRecordsGet).toHaveBeenCalledWith("connectedAccounts", "ca-1");
       const output = consoleSpy.mock.calls[0][0] as string;
       expect(JSON.parse(output)).toEqual({
         id: "ca-1",

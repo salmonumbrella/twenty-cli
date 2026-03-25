@@ -11,6 +11,7 @@ interface HelpOperationMetadata {
 interface HelpMetadata {
   examples?: string[];
   operations?: HelpOperationMetadata[];
+  mutates?: boolean;
 }
 
 export interface HelpArgument {
@@ -99,6 +100,18 @@ Agent Use:
 
 Env Precedence:
   .env then .env.local then the explicit env file; existing environment variables win.
+
+Integrations:
+  twenty mcp status
+  twenty mcp catalog -o json
+  twenty mcp learn find_companies
+  twenty mcp call execute_tool --data '{"toolName":"find_companies","arguments":{}}'
+
+Raw Access:
+  twenty openapi core
+  twenty raw graphql query --document 'query { currentWorkspace { id } }'
+  twenty raw graphql schema --output-file schema.json
+  twenty raw rest GET /health
 `;
 
 const HELP_JSON_FLAG_ALIASES = ["--help-json", "--hj"];
@@ -170,7 +183,7 @@ const METADATA: Record<string, HelpMetadata> = {
   twenty: {
     examples: [
       "twenty auth status",
-      "twenty api person list -o json",
+      "twenty api list people -o json",
       "twenty dashboards duplicate <dashboard-id>",
       "twenty public-domains list",
       "twenty emailing-domains list",
@@ -236,11 +249,21 @@ const METADATA: Record<string, HelpMetadata> = {
       },
     ],
     examples: [
-      "twenty api person list --limit 10 -o json",
-      'twenty api note create --data \'{"title":"Hello"}\'',
+      "twenty api list people --limit 10 -o json",
+      'twenty api create notes --data \'{"title":"Hello"}\'',
     ],
   },
-  "twenty graphql": {
+  "twenty raw": {
+    examples: [
+      "twenty raw graphql query --document 'query { currentWorkspace { id } }'",
+      "twenty raw graphql schema --output-file schema.json",
+      "twenty raw rest GET /health",
+    ],
+  },
+  "twenty raw rest": {
+    mutates: true,
+  },
+  "twenty raw graphql": {
     operations: [
       { name: "query", summary: "Run a GraphQL query", mutates: false },
       { name: "mutate", summary: "Run a GraphQL mutation", mutates: true },
@@ -251,6 +274,22 @@ const METADATA: Record<string, HelpMetadata> = {
     examples: [
       "twenty routes invoke public/ping",
       'twenty routes invoke hooks/import --method post --data \'{"source":"cli"}\'',
+    ],
+  },
+  "twenty mcp": {
+    operations: [
+      { name: "status", summary: "Show MCP status", mutates: false },
+      { name: "catalog", summary: "List available MCP tools", mutates: false },
+      { name: "learn", summary: "Look up MCP tool guidance", mutates: false },
+      { name: "call", summary: "Call an MCP tool directly", mutates: true },
+      { name: "load-skills", summary: "Load MCP skills", mutates: true },
+      { name: "help-center", summary: "Open MCP help resources", mutates: false },
+    ],
+    examples: [
+      "twenty mcp status",
+      "twenty mcp catalog -o json",
+      "twenty mcp learn find_companies",
+      'twenty mcp call execute_tool --data \'{"toolName":"find_companies","arguments":{}}\'',
     ],
   },
   "twenty roles": {
@@ -283,6 +322,15 @@ const METADATA: Record<string, HelpMetadata> = {
     ],
   },
   "twenty skills": {
+    operations: [
+      { name: "list", summary: "List skills", mutates: false },
+      { name: "get", summary: "Get a skill", mutates: false },
+      { name: "create", summary: "Create a skill", mutates: true },
+      { name: "update", summary: "Update a skill", mutates: true },
+      { name: "delete", summary: "Delete a skill", mutates: true },
+      { name: "activate", summary: "Activate a skill", mutates: true },
+      { name: "deactivate", summary: "Deactivate a skill", mutates: true },
+    ],
     examples: [
       "twenty skills list",
       "twenty skills get <skill-id> -o json",
@@ -307,6 +355,10 @@ const METADATA: Record<string, HelpMetadata> = {
   },
   "twenty api-keys": {
     operations: [
+      { name: "list", summary: "List API keys", mutates: false },
+      { name: "get", summary: "Get an API key", mutates: false },
+      { name: "create", summary: "Create an API key", mutates: true },
+      { name: "update", summary: "Update an API key", mutates: true },
       { name: "revoke", summary: "Revoke an API key" },
       { name: "assign-role", summary: "Assign a role to an API key" },
     ],
@@ -318,6 +370,8 @@ const METADATA: Record<string, HelpMetadata> = {
   },
   "twenty applications": {
     operations: [
+      { name: "list", summary: "List applications", mutates: false },
+      { name: "get", summary: "Get one application", mutates: false },
       { name: "sync", summary: "Sync an application manifest" },
       { name: "uninstall", summary: "Uninstall an application" },
       {
@@ -338,7 +392,7 @@ const METADATA: Record<string, HelpMetadata> = {
       "twenty applications get <application-id>",
       "twenty applications sync --manifest-file ./manifest.json",
       "twenty applications create-development com.example.app --name 'Example App'",
-      "twenty applications uninstall com.example.app",
+      "twenty applications uninstall com.example.app --yes",
     ],
   },
   "twenty application-registrations": {
@@ -391,7 +445,11 @@ const METADATA: Record<string, HelpMetadata> = {
     ],
   },
   "twenty marketplace-apps": {
-    operations: [{ name: "install", summary: "Install a marketplace app" }],
+    operations: [
+      { name: "list", summary: "List marketplace apps", mutates: false },
+      { name: "get", summary: "Get a marketplace app", mutates: false },
+      { name: "install", summary: "Install a marketplace app", mutates: true },
+    ],
     examples: [
       "twenty marketplace-apps list",
       "twenty marketplace-apps get com.example.app",
@@ -403,6 +461,9 @@ const METADATA: Record<string, HelpMetadata> = {
   },
   "twenty public-domains": {
     operations: [
+      { name: "list", summary: "List public domains", mutates: false },
+      { name: "create", summary: "Create a public domain", mutates: true },
+      { name: "delete", summary: "Delete a public domain", mutates: true },
       {
         name: "check-records",
         summary: "Check DNS records for a public domain",
@@ -417,18 +478,28 @@ const METADATA: Record<string, HelpMetadata> = {
   },
   "twenty approved-access-domains": {
     operations: [
+      { name: "list", summary: "List approved access domains", mutates: false },
+      { name: "delete", summary: "Delete an approved access domain", mutates: true },
       {
         name: "validate",
         summary: "Validate an approved access domain",
-        mutates: false,
+        mutates: true,
       },
     ],
   },
   "twenty emailing-domains": {
     operations: [
+      { name: "list", summary: "List emailing domains", mutates: false },
+      { name: "create", summary: "Create an emailing domain", mutates: true },
       {
         name: "verify",
         summary: "Verify an emailing domain",
+        mutates: true,
+      },
+      {
+        name: "delete",
+        summary: "Delete an emailing domain",
+        mutates: true,
       },
     ],
     examples: [
@@ -439,13 +510,32 @@ const METADATA: Record<string, HelpMetadata> = {
   },
   "twenty postgres-proxy": {
     operations: [
+      { name: "get", summary: "Get Postgres proxy credentials", mutates: false },
       { name: "enable", summary: "Enable the Postgres proxy" },
       { name: "disable", summary: "Disable the Postgres proxy" },
     ],
     examples: [
-      "twenty postgres-proxy get",
-      "twenty postgres-proxy enable --show-password",
+      "twenty postgres-proxy get --show-password",
+      "twenty postgres-proxy enable",
       "twenty postgres-proxy disable",
+    ],
+  },
+  "twenty webhooks": {
+    operations: [
+      { name: "list", summary: "List webhooks", mutates: false },
+      { name: "get", summary: "Get a webhook", mutates: false },
+      { name: "create", summary: "Create a webhook", mutates: true },
+      { name: "update", summary: "Update a webhook", mutates: true },
+      { name: "delete", summary: "Delete a webhook", mutates: true },
+    ],
+  },
+  "twenty route-triggers": {
+    operations: [
+      { name: "list", summary: "List route triggers", mutates: false },
+      { name: "get", summary: "Get a route trigger", mutates: false },
+      { name: "create", summary: "Create a route trigger", mutates: true },
+      { name: "update", summary: "Update a route trigger", mutates: true },
+      { name: "delete", summary: "Delete a route trigger", mutates: true },
     ],
   },
   "twenty connected-accounts": {
@@ -558,7 +648,7 @@ export function buildHelpJson(program: Command, args: string[]): HelpDocument {
   const options = getHelpOptions(command);
   const operations = getHelpOperations(command, commandKey, metadata);
   const capabilities = {
-    mutates: operations.some((operation) => operation.mutates),
+    mutates: metadata.mutates ?? operations.some((operation) => operation.mutates),
     supports_query: options.some((option) => option.name === "query"),
     supports_workspace: options.some((option) => option.name === "workspace"),
     supports_output: options.some((option) => option.name === "output"),
@@ -635,7 +725,7 @@ function resolveTargetCommand(
     }
 
     const nextCommand = current.commands.find(
-      (candidate) => !candidate.name().startsWith("help") && candidate.name() === token,
+      (candidate) => candidate.name() !== "help" && candidate.name() === token,
     );
 
     if (!nextCommand) {

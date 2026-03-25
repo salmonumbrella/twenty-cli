@@ -18,10 +18,11 @@ export function createCommandContext(
   overrides?: Parameters<typeof resolveGlobalOptions>[1],
 ): CommandContext {
   const globalOptions = resolveGlobalOptions(command, overrides);
+  const services = createServices(globalOptions);
 
   return {
     globalOptions,
-    services: createServices(globalOptions),
+    services,
   };
 }
 

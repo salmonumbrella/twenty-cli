@@ -1,13 +1,12 @@
-import axios from "axios";
 import { Command } from "commander";
 import { type GraphQLResponse } from "../../utilities/api/graphql-response";
-import { ConfigService } from "../../utilities/config/services/config.service";
+import { PublicHttpService } from "../../utilities/api/services/public-http.service";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
 import { readJsonInput } from "../../utilities/shared/io";
 import { parseKeyValuePairs } from "../../utilities/shared/parse";
 import { createServices } from "../../utilities/shared/services";
-import { createOutputContext } from "../../utilities/shared/context";
+import { createCommandContext } from "../../utilities/shared/context";
 
 interface WorkflowWebhookOptions {
   workspaceId?: string;
@@ -21,11 +20,6 @@ interface WorkflowRunOptions {
   workflowRunId?: string;
   data?: string;
   file?: string;
-}
-
-interface PublicConnection {
-  apiUrl: string;
-  apiKey?: string;
 }
 
 const CURRENT_WORKSPACE_QUERY = `query CurrentWorkspace {
@@ -74,22 +68,21 @@ export function registerWorkflowsCommand(program: Command): void {
 
   invokeWebhookCmd.action(
     async (workflowId: string, options: WorkflowWebhookOptions, command: Command) => {
-      const { globalOptions, output } = createOutputContext(command);
+      const { globalOptions, services } = createCommandContext(command);
       const method = normalizeMethod(options.method);
-      const connection = await resolvePublicConnection(globalOptions.workspace);
-      const workspaceId = await resolveWorkspaceId(options.workspaceId, connection);
+      const workspaceId = await resolveWorkspaceId(options.workspaceId, services.publicHttp);
       const payload = await readPayload(method, options);
       const params = normalizeQueryParams(parseKeyValuePairs(options.param));
 
-      const response = await axios.request({
+      const response = await services.publicHttp.request({
+        authMode: "optional",
         method,
-        url: `${connection.apiUrl}/webhooks/workflows/${workspaceId}/${workflowId}`,
+        path: `/webhooks/workflows/${workspaceId}/${workflowId}`,
         data: method === "post" ? payload : undefined,
         params: Object.keys(params).length > 0 ? params : undefined,
-        headers: buildHeaders(connection.apiKey),
       });
 
-      await output.render(response.data, {
+      await services.output.render(response.data, {
         format: globalOptions.output,
         query: globalOptions.query,
       });
@@ -242,43 +235,24 @@ function normalizeMethod(rawMethod: string | undefined): "get" | "post" {
   return method;
 }
 
-async function resolvePublicConnection(workspace: string | undefined): Promise<PublicConnection> {
-  const configService = new ConfigService();
-  const config = await configService.loadConfigFile();
-  const workspaceName =
-    workspace ?? process.env.TWENTY_PROFILE ?? config?.defaultWorkspace ?? "default";
-  const workspaceConfig = config?.workspaces?.[workspaceName] ?? {};
-
-  return {
-    apiUrl: process.env.TWENTY_BASE_URL ?? workspaceConfig.apiUrl ?? "https://api.twenty.com",
-    apiKey: process.env.TWENTY_TOKEN ?? workspaceConfig.apiKey ?? undefined,
-  };
-}
-
 async function resolveWorkspaceId(
   explicitWorkspaceId: string | undefined,
-  connection: PublicConnection,
+  publicHttp: Pick<PublicHttpService, "request">,
 ): Promise<string> {
   if (explicitWorkspaceId) {
     return explicitWorkspaceId;
   }
 
-  if (!connection.apiKey) {
-    throw new CliError(
-      "Missing workspace ID. Provide --workspace-id or configure auth so the current workspace can be discovered.",
-      "INVALID_ARGUMENTS",
-    );
-  }
-
-  const response = await axios.post<{ data?: { currentWorkspace?: { id?: string } } }>(
-    `${connection.apiUrl}/graphql`,
-    {
+  const response = await publicHttp.request<{
+    data?: { currentWorkspace?: { id?: string } };
+  }>({
+    authMode: "required",
+    method: "post",
+    path: "/graphql",
+    data: {
       query: CURRENT_WORKSPACE_QUERY,
     },
-    {
-      headers: buildHeaders(connection.apiKey),
-    },
-  );
+  });
 
   const workspaceId = response.data?.data?.currentWorkspace?.id;
   if (!workspaceId) {
@@ -316,16 +290,6 @@ async function readPayload(
   }
 
   return payload as Record<string, unknown>;
-}
-
-function buildHeaders(apiKey: string | undefined): Record<string, string> | undefined {
-  if (!apiKey) {
-    return undefined;
-  }
-
-  return {
-    Authorization: `Bearer ${apiKey}`,
-  };
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

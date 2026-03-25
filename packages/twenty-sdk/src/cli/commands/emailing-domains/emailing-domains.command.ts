@@ -1,12 +1,14 @@
 import { Command } from "commander";
 import { type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
-import { createServices } from "../../utilities/shared/services";
+import { applyGlobalOptions } from "../../utilities/shared/global-options";
+import { requireYes } from "../../utilities/shared/confirmation";
+import { createCommandContext } from "../../utilities/shared/context";
 
 interface EmailingDomainsOptions {
   domain?: string;
   driver?: string;
+  yes?: boolean;
 }
 
 const EMAILING_DOMAIN_FIELDS = `
@@ -49,104 +51,105 @@ const DELETE_EMAILING_DOMAIN_MUTATION = `mutation DeleteEmailingDomain($id: Stri
 
 export function registerEmailingDomainsCommand(program: Command): void {
   const endpoint = "/graphql";
-  const cmd = program
-    .command("emailing-domains")
-    .description("Manage emailing domains")
-    .argument("<operation>", "list, create, verify, delete")
-    .argument("[id]", "Emailing domain ID")
-    .option("--domain <domain>", "Emailing domain name")
-    .option("--driver <driver>", "Emailing domain driver", "AWS_SES");
-
+  const cmd = program.command("emailing-domains").description("Manage emailing domains");
   applyGlobalOptions(cmd);
 
-  cmd.action(
-    async (
-      operation: string,
-      id: string | undefined,
-      options: EmailingDomainsOptions,
-      command: Command,
-    ) => {
-      const globalOptions = resolveGlobalOptions(command);
-      const services = createServices(globalOptions);
-      const op = operation.toLowerCase();
+  const listCmd = cmd.command("list").description("List emailing domains");
+  applyGlobalOptions(listCmd);
+  listCmd.action(async (_options: unknown, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    const response = await services.api.post<GraphQLResponse<{ getEmailingDomains?: unknown[] }>>(
+      endpoint,
+      {
+        query: LIST_EMAILING_DOMAINS_QUERY,
+      },
+    );
 
-      switch (op) {
-        case "list": {
-          const response = await services.api.post<
-            GraphQLResponse<{ getEmailingDomains?: unknown[] }>
-          >(endpoint, {
-            query: LIST_EMAILING_DOMAINS_QUERY,
-          });
+    await services.output.render(response.data?.data?.getEmailingDomains ?? [], {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
 
-          await services.output.render(response.data?.data?.getEmailingDomains ?? [], {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-          break;
-        }
-        case "create": {
-          const domain = requireDomain(options.domain);
-          const driver = normalizeDriver(options.driver);
-          const response = await services.api.post<
-            GraphQLResponse<{ createEmailingDomain?: unknown }>
-          >(endpoint, {
-            query: CREATE_EMAILING_DOMAIN_MUTATION,
-            variables: { domain, driver },
-          });
+  const createCmd = cmd.command("create").description("Create an emailing domain");
+  createCmd
+    .option("--domain <domain>", "Emailing domain name")
+    .option("--driver <driver>", "Emailing domain driver", "AWS_SES");
+  applyGlobalOptions(createCmd);
+  createCmd.action(async (options: EmailingDomainsOptions, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    const domain = requireDomain(options.domain);
+    const driver = normalizeDriver(options.driver);
+    const response = await services.api.post<GraphQLResponse<{ createEmailingDomain?: unknown }>>(
+      endpoint,
+      {
+        query: CREATE_EMAILING_DOMAIN_MUTATION,
+        variables: { domain, driver },
+      },
+    );
 
-          await services.output.render(response.data?.data?.createEmailingDomain, {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-          break;
-        }
-        case "verify": {
-          if (!id) {
-            throw new CliError("Missing emailing domain ID.", "INVALID_ARGUMENTS");
-          }
+    await services.output.render(response.data?.data?.createEmailingDomain, {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
 
-          const response = await services.api.post<
-            GraphQLResponse<{ verifyEmailingDomain?: unknown }>
-          >(endpoint, {
-            query: VERIFY_EMAILING_DOMAIN_MUTATION,
-            variables: { id },
-          });
+  const verifyCmd = cmd
+    .command("verify")
+    .description("Verify an emailing domain")
+    .argument("[id]", "Emailing domain ID");
+  applyGlobalOptions(verifyCmd);
+  verifyCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    if (!id) {
+      throw new CliError("Missing emailing domain ID.", "INVALID_ARGUMENTS");
+    }
 
-          await services.output.render(response.data?.data?.verifyEmailingDomain, {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-          break;
-        }
-        case "delete": {
-          if (!id) {
-            throw new CliError("Missing emailing domain ID.", "INVALID_ARGUMENTS");
-          }
+    const response = await services.api.post<GraphQLResponse<{ verifyEmailingDomain?: unknown }>>(
+      endpoint,
+      {
+        query: VERIFY_EMAILING_DOMAIN_MUTATION,
+        variables: { id },
+      },
+    );
 
-          const response = await services.api.post<
-            GraphQLResponse<{ deleteEmailingDomain?: boolean }>
-          >(endpoint, {
-            query: DELETE_EMAILING_DOMAIN_MUTATION,
-            variables: { id },
-          });
+    await services.output.render(response.data?.data?.verifyEmailingDomain, {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
 
-          await services.output.render(
-            {
-              success: response.data?.data?.deleteEmailingDomain ?? false,
-              id,
-            },
-            {
-              format: globalOptions.output,
-              query: globalOptions.query,
-            },
-          );
-          break;
-        }
-        default:
-          throw new CliError(`Unknown operation: ${operation}`, "INVALID_ARGUMENTS");
-      }
-    },
-  );
+  const deleteCmd = cmd
+    .command("delete")
+    .description("Delete an emailing domain")
+    .argument("[id]", "Emailing domain ID")
+    .option("--yes", "Confirm destructive operations");
+  applyGlobalOptions(deleteCmd);
+  deleteCmd.action(async (id: string | undefined, options: EmailingDomainsOptions, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    if (!id) {
+      throw new CliError("Missing emailing domain ID.", "INVALID_ARGUMENTS");
+    }
+    requireYes(options, "Delete");
+
+    const response = await services.api.post<
+      GraphQLResponse<{ deleteEmailingDomain?: boolean }>
+    >(endpoint, {
+      query: DELETE_EMAILING_DOMAIN_MUTATION,
+      variables: { id },
+    });
+
+    await services.output.render(
+      {
+        success: response.data?.data?.deleteEmailingDomain ?? false,
+        id,
+      },
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
+  });
 }
 
 function requireDomain(domain: string | undefined): string {

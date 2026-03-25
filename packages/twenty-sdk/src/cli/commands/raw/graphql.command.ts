@@ -5,27 +5,25 @@ import fs from "fs-extra";
 import { readFileOrStdin, readJsonInput } from "../../utilities/shared/io";
 import { CliError } from "../../utilities/errors/cli-error";
 
-export function registerGraphqlCommand(program: Command): void {
-  const cmd = program
+export function registerGraphqlCommand(parent: Command): void {
+  const cmd = parent
     .command("graphql")
     .description("Raw GraphQL API access")
     .argument("<operation>", "query, mutate, or schema")
-    .option("-q, --query <query>", "GraphQL query string")
-    .option("-f, --file <path>", "GraphQL query file (use - for stdin)")
+    .option("-d, --document <query>", "GraphQL document string")
+    .option("-f, --file <path>", "GraphQL document file")
     .option("--variables <json>", "JSON variables")
     .option("--variables-file <path>", "JSON variables file (use - for stdin)")
     .option("--operation-name <name>", "GraphQL operation name")
     .option("--endpoint <path>", "GraphQL endpoint path", "graphql")
-    .option("--output-query <expression>", "JMESPath query filter")
     .option("--output-file <path>", "Output file (schema command)");
 
-  applyGlobalOptions(cmd, { includeQuery: false });
+  applyGlobalOptions(cmd);
 
   cmd.action(async (operation: string, options: GraphqlOptions | Command, command?: Command) => {
     const resolvedCommand = command ?? (options instanceof Command ? options : cmd);
     const rawOptions = resolvedCommand.opts() as GraphqlOptions;
-    const outputQuery = rawOptions.outputQuery;
-    const globalOptions = resolveGlobalOptions(resolvedCommand, { outputQuery });
+    const globalOptions = resolveGlobalOptions(resolvedCommand);
     const services = createServices(globalOptions);
 
     const op = operation.toLowerCase();
@@ -43,7 +41,7 @@ export function registerGraphqlCommand(program: Command): void {
       );
     }
 
-    const query = await readGraphqlQuery(rawOptions.query, rawOptions.file);
+    const query = await readGraphqlQuery(rawOptions.document, rawOptions.file);
     const variables = await readVariables(rawOptions.variables, rawOptions.variablesFile);
 
     const payload: Record<string, unknown> = { query };
@@ -60,34 +58,41 @@ export function registerGraphqlCommand(program: Command): void {
 }
 
 interface GraphqlOptions {
-  query?: string;
+  document?: string;
   file?: string;
   variables?: string;
   variablesFile?: string;
   operationName?: string;
   endpoint: string;
-  outputQuery?: string;
   outputFile?: string;
 }
 
-async function readGraphqlQuery(query?: string, filePath?: string): Promise<string> {
+async function readGraphqlQuery(document?: string, filePath?: string): Promise<string> {
   if (filePath) {
     const content = await readFileOrStdin(filePath);
-    return content.trim();
+    return normalizeGraphqlDocument(content);
   }
-  if (!query) {
-    throw new CliError("Missing GraphQL query; use --query or --file.", "INVALID_ARGUMENTS");
+  if (!document) {
+    throw new CliError("Missing GraphQL document; use --document or --file.", "INVALID_ARGUMENTS");
   }
-  return query;
+  return normalizeGraphqlDocument(document);
 }
 
 async function readVariables(raw?: string, filePath?: string): Promise<Record<string, unknown>> {
   const payload = await readJsonInput(raw, filePath);
-  if (!payload) return {};
-  if (typeof payload !== "object" || Array.isArray(payload)) {
+  if (payload === undefined) return {};
+  if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
     throw new CliError("GraphQL variables must be a JSON object.", "INVALID_ARGUMENTS");
   }
   return payload as Record<string, unknown>;
+}
+
+function normalizeGraphqlDocument(document: string): string {
+  const normalized = document.trim();
+  if (normalized === "") {
+    throw new CliError("GraphQL document must not be empty.", "INVALID_ARGUMENTS");
+  }
+  return normalized;
 }
 
 function normalizeEndpoint(endpoint: string): string {

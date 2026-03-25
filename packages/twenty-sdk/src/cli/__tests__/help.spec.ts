@@ -11,6 +11,9 @@ describe("CLI help contracts", () => {
     expect(help.kind).toBe("root");
     expect(help.name).toBe("twenty");
     expect(help.aliases).toEqual([]);
+    expect(help.subcommands.some((command) => command.name === "raw")).toBe(true);
+    expect(help.subcommands.some((command) => command.name === "rest")).toBe(false);
+    expect(help.subcommands.some((command) => command.name === "graphql")).toBe(false);
     expect(help.subcommands.some((command) => command.name === "skills")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "auth")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "dashboards")).toBe(true);
@@ -20,10 +23,34 @@ describe("CLI help contracts", () => {
     expect(help.subcommands.some((command) => command.name === "postgres-proxy")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "openapi")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "routes")).toBe(true);
+    expect(help.subcommands.some((command) => command.name === "mcp")).toBe(true);
     expect(help.exit_codes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: 0 }),
         expect.objectContaining({ code: 5 }),
+      ]),
+    );
+  });
+
+  it("includes mcp in the root help JSON contract", () => {
+    const help = buildHelpJson(buildProgram(), []);
+
+    expect(help.subcommands.some((command) => command.name === "mcp")).toBe(true);
+  });
+
+  it("builds raw help JSON for the escape-hatch namespace", () => {
+    const help = buildHelpJson(buildProgram(), ["raw", "--help-json"]);
+
+    expect(help.kind).toBe("command");
+    expect(help.path).toEqual(["twenty", "raw"]);
+    expect(help.summary).toBe("Escape-hatch raw API commands");
+    expect(help.subcommands.map((command) => command.name)).toEqual(
+      expect.arrayContaining(["rest", "graphql"]),
+    );
+    expect(help.examples).toEqual(
+      expect.arrayContaining([
+        "twenty raw graphql query --document 'query { currentWorkspace { id } }'",
+        "twenty raw rest GET /health",
       ]),
     );
   });
@@ -74,6 +101,51 @@ describe("CLI help contracts", () => {
     );
   });
 
+  it("builds command help JSON for mcp", () => {
+    const help = buildHelpJson(buildProgram(), ["mcp", "--help-json"]);
+
+    expect(help.path).toEqual(["twenty", "mcp"]);
+    expect(help.operations.map((operation) => operation.name)).toEqual(
+      expect.arrayContaining(["status", "catalog", "learn", "call", "load-skills", "help-center"]),
+    );
+    expect(help.operations.find((operation) => operation.name === "call")).toEqual(
+      expect.objectContaining({
+        summary: "Call an MCP tool directly",
+        mutates: true,
+      }),
+    );
+  });
+
+  it("describes the mcp call escape hatch options", () => {
+    const help = buildHelpJson(buildProgram(), ["mcp", "call", "--help-json"]);
+
+    expect(help.options.some((option) => option.name === "data")).toBe(true);
+    expect(help.options.some((option) => option.name === "file")).toBe(true);
+    expect(help.options.some((option) => option.name === "args")).toBe(false);
+    expect(help.options.some((option) => option.name === "args-file")).toBe(false);
+  });
+
+  it("builds command help JSON for mcp help-center", () => {
+    const help = buildHelpJson(buildProgram(), ["mcp", "help-center", "--help-json"]);
+
+    expect(help.kind).toBe("command");
+    expect(help.path).toEqual(["twenty", "mcp", "help-center"]);
+    expect(help.name).toBe("help-center");
+    expect(help.args.map((argument) => argument.name)).toEqual(["query"]);
+  });
+
+  it("builds command help JSON for approved access domain admin commands", () => {
+    const help = buildHelpJson(buildProgram(), ["approved-access-domains", "--help-json"]);
+
+    expect(help.kind).toBe("command");
+    expect(help.path).toEqual(["twenty", "approved-access-domains"]);
+    expect(help.operations).toEqual([
+      expect.objectContaining({ name: "list", mutates: false }),
+      expect.objectContaining({ name: "delete", mutates: true }),
+      expect.objectContaining({ name: "validate", mutates: true }),
+    ]);
+  });
+
   it("builds command help JSON for dashboard duplication", () => {
     const program = buildProgram();
 
@@ -93,9 +165,12 @@ describe("CLI help contracts", () => {
 
     expect(help.kind).toBe("command");
     expect(help.path).toEqual(["twenty", "public-domains"]);
-    expect(help.operations.map((operation) => operation.name)).toEqual(
-      expect.arrayContaining(["list", "create", "delete", "check-records"]),
-    );
+    expect(help.operations).toEqual([
+      expect.objectContaining({ name: "list", mutates: false }),
+      expect.objectContaining({ name: "create", mutates: true }),
+      expect.objectContaining({ name: "delete", mutates: true }),
+      expect.objectContaining({ name: "check-records", mutates: false }),
+    ]);
     expect(help.examples).toContain("twenty public-domains check-records --domain app.example.com");
   });
 
@@ -106,10 +181,60 @@ describe("CLI help contracts", () => {
 
     expect(help.kind).toBe("command");
     expect(help.path).toEqual(["twenty", "emailing-domains"]);
-    expect(help.operations.map((operation) => operation.name)).toEqual(
-      expect.arrayContaining(["list", "create", "verify", "delete"]),
-    );
+    expect(help.operations).toEqual([
+      expect.objectContaining({ name: "list", mutates: false }),
+      expect.objectContaining({ name: "create", mutates: true }),
+      expect.objectContaining({ name: "verify", mutates: true }),
+      expect.objectContaining({ name: "delete", mutates: true }),
+    ]);
     expect(help.examples).toContain("twenty emailing-domains create --domain mail.example.com");
+  });
+
+  it("uses canonical pagination naming in help JSON for search and event logs", () => {
+    const searchHelp = buildHelpJson(buildProgram(), ["search", "--help-json"]);
+    const eventLogsHelp = buildHelpJson(buildProgram(), ["event-logs", "list", "--help-json"]);
+
+    expect(searchHelp.options.some((option) => option.name === "cursor")).toBe(true);
+    expect(searchHelp.options.some((option) => option.name === "after")).toBe(false);
+    expect(searchHelp.options.some((option) => option.name === "filter-file")).toBe(true);
+
+    expect(eventLogsHelp.options.some((option) => option.name === "limit")).toBe(true);
+    expect(eventLogsHelp.options.some((option) => option.name === "cursor")).toBe(true);
+    expect(eventLogsHelp.options.some((option) => option.name === "first")).toBe(false);
+    expect(eventLogsHelp.options.some((option) => option.name === "after")).toBe(false);
+  });
+
+  it("documents canonical destructive confirmation and payload vocabulary", () => {
+    const apiDeleteHelp = buildHelpJson(buildProgram(), ["api", "delete", "--help-json"]);
+    const apiListHelp = buildHelpJson(buildProgram(), ["api", "list", "--help-json"]);
+    const mcpHelp = buildHelpJson(buildProgram(), ["mcp", "--help-json"]);
+
+    expect(apiDeleteHelp.options.some((option) => option.name === "yes")).toBe(true);
+    expect(apiDeleteHelp.options.some((option) => option.name === "force")).toBe(false);
+    expect(apiListHelp.options.some((option) => option.name === "yes")).toBe(false);
+
+    expect(mcpHelp.examples).toEqual(
+      expect.arrayContaining([
+        'twenty mcp call execute_tool --data \'{"toolName":"find_companies","arguments":{}}\'',
+      ]),
+    );
+  });
+
+  it("builds command help JSON for skills admin commands", () => {
+    const help = buildHelpJson(buildProgram(), ["skills", "--help-json"]);
+
+    expect(help.kind).toBe("command");
+    expect(help.path).toEqual(["twenty", "skills"]);
+    expect(help.operations).toEqual([
+      expect.objectContaining({ name: "list", mutates: false }),
+      expect.objectContaining({ name: "get", mutates: false }),
+      expect.objectContaining({ name: "create", mutates: true }),
+      expect.objectContaining({ name: "update", mutates: true }),
+      expect.objectContaining({ name: "delete", mutates: true }),
+      expect.objectContaining({ name: "activate", mutates: true }),
+      expect.objectContaining({ name: "deactivate", mutates: true }),
+    ]);
+    expect(help.examples).toContain("twenty skills list");
   });
 
   it("builds command help JSON for Postgres proxy commands", () => {
@@ -122,7 +247,56 @@ describe("CLI help contracts", () => {
     expect(help.operations.map((operation) => operation.name)).toEqual(
       expect.arrayContaining(["get", "enable", "disable"]),
     );
-    expect(help.examples).toContain("twenty postgres-proxy get");
+    expect(help.examples).toContain("twenty postgres-proxy get --show-password");
+  });
+
+  it.each([
+    {
+      args: ["api-keys", "--help-json"],
+      path: ["twenty", "api-keys"],
+      subcommands: ["list", "get", "create", "update", "revoke", "assign-role"],
+      options: ["output", "query", "workspace"],
+    },
+    {
+      args: ["webhooks", "--help-json"],
+      path: ["twenty", "webhooks"],
+      subcommands: ["list", "get", "create", "update", "delete"],
+      options: ["output", "query", "workspace"],
+    },
+    {
+      args: ["route-triggers", "--help-json"],
+      path: ["twenty", "route-triggers"],
+      subcommands: ["list", "get", "create", "update", "delete"],
+      options: ["output", "query", "workspace"],
+    },
+    {
+      args: ["marketplace-apps", "--help-json"],
+      path: ["twenty", "marketplace-apps"],
+      subcommands: ["list", "get", "install"],
+      options: ["output", "query", "workspace"],
+    },
+    {
+      args: ["postgres-proxy", "--help-json"],
+      path: ["twenty", "postgres-proxy"],
+      subcommands: ["get", "enable", "disable"],
+      options: ["output", "query", "workspace"],
+    },
+  ])("builds parent help JSON for $path[1] explicit subcommands", ({ args, path, subcommands, options }) => {
+    const help = buildHelpJson(buildProgram(), args);
+
+    expect(help.kind).toBe("command");
+    expect(help.path).toEqual(path);
+    expect(help.subcommands.map((command) => command.name)).toEqual(
+      expect.arrayContaining(subcommands),
+    );
+    expect(help.operations.map((operation) => operation.name)).toEqual(
+      expect.arrayContaining(subcommands),
+    );
+    expect(help.options.map((option) => option.name)).toEqual(expect.arrayContaining(options));
+    expect(help.capabilities.supports_output).toBe(true);
+    expect(help.capabilities.supports_query).toBe(true);
+    expect(help.capabilities.supports_workspace).toBe(true);
+    expect(help.capabilities.mutates).toBe(true);
   });
 
   it("builds command help JSON for event log commands", () => {
@@ -303,6 +477,11 @@ describe("CLI help contracts", () => {
     expect(write.mock.calls[0][0]).toContain(
       "path, args, options, operations, capabilities, exit_codes, output_contract",
     );
+    expect(write.mock.calls[0][0]).toContain("Raw Access:");
+    expect(write.mock.calls[0][0]).toContain("twenty raw graphql query --document");
+    expect(write.mock.calls[0][0]).toContain("twenty raw rest GET /health");
+    expect(write.mock.calls[0][0]).not.toContain("twenty graphql query --query");
+    expect(write.mock.calls[0][0]).not.toContain("twenty rest GET /health");
     expect(write.mock.calls[0][0]).toContain("Env Precedence:");
     expect(write.mock.calls[0][0]).toContain(
       ".env then .env.local then the explicit env file; existing environment variables win",

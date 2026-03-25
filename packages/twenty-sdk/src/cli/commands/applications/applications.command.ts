@@ -8,6 +8,7 @@ import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared
 import { createServices } from "../../utilities/shared/services";
 import { CliError } from "../../utilities/errors/cli-error";
 import { readFileOrStdin, readJsonInput } from "../../utilities/shared/io";
+import { requireYes } from "../../utilities/shared/confirmation";
 
 interface ApplicationsOptions {
   manifest?: string;
@@ -18,6 +19,7 @@ interface ApplicationsOptions {
   name?: string;
   key?: string;
   value?: string;
+  yes?: boolean;
 }
 
 const endpoint = "/metadata";
@@ -76,7 +78,8 @@ export function registerApplicationsCommand(program: Command): void {
     .option("--yarn-lock-file <path>", "Legacy yarn.lock file for older syncApplication schemas")
     .option("--name <name>", "Application display name for create-development")
     .option("--key <key>", "Application variable key")
-    .option("--value <value>", "Application variable value");
+    .option("--value <value>", "Application variable value")
+    .option("--yes", "Confirm destructive operations");
 
   applyGlobalOptions(cmd);
 
@@ -209,6 +212,7 @@ export function registerApplicationsCommand(program: Command): void {
         case "uninstall": {
           if (!target)
             throw new CliError("Missing application universal identifier.", "INVALID_ARGUMENTS");
+          requireYes(options, "Uninstall");
           const response = await services.api.post<
             GraphQLResponse<{ uninstallApplication: boolean }>
           >(endpoint, {

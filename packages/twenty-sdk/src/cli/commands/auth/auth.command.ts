@@ -1,11 +1,9 @@
 import { Command } from "commander";
 import { type GraphQLResponse } from "../../utilities/api/graphql-response";
-import { ConfigService } from "../../utilities/config/services/config.service";
 import { CliError } from "../../utilities/errors/cli-error";
-import { loadCliEnvironment } from "../../utilities/config/services/environment.service";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
-import { createOutputService, createServices } from "../../utilities/shared/services";
-import { createOutputContext } from "../../utilities/shared/context";
+import { createServices } from "../../utilities/shared/services";
+import { createCommandContext } from "../../utilities/shared/context";
 
 const CURRENT_WORKSPACE_QUERY = `query CurrentWorkspace {
   currentWorkspace {
@@ -92,14 +90,6 @@ function applyEnvFileOption(command: Command): Command {
   return command.option("--env-file <path>", "Load environment variables from file");
 }
 
-function hydrateEnvironment(options: { envFile?: string }): void {
-  loadCliEnvironment({
-    argv: process.argv,
-    cwd: process.cwd(),
-    explicitEnvFile: options.envFile,
-  });
-}
-
 export function registerAuthCommand(program: Command): void {
   const authCmd = program.command("auth").description("Manage authentication and workspaces");
 
@@ -110,11 +100,9 @@ export function registerAuthCommand(program: Command): void {
     .option("-o, --output <format>", "Output format (text, json, jsonl, agent, csv)", "text")
     .option("--env-file <path>", "Load environment variables from file")
     .action(async (options: { output: string; envFile?: string }, command: Command) => {
-      hydrateEnvironment(options);
-      const configService = new ConfigService();
-      const { globalOptions, output } = createOutputContext(command);
+      const { globalOptions, services } = createCommandContext(command);
 
-      const workspaces = await configService.listWorkspaces();
+      const workspaces = await services.config.listWorkspaces();
 
       if (workspaces.length === 0) {
         // eslint-disable-next-line no-console
@@ -128,7 +116,7 @@ export function registerAuthCommand(program: Command): void {
         apiUrl: ws.apiUrl ?? "",
       }));
 
-      await output.render(displayData, {
+      await services.output.render(displayData, {
         format: globalOptions.output,
         query: globalOptions.query,
       });
@@ -140,59 +128,57 @@ export function registerAuthCommand(program: Command): void {
       .command("switch")
       .description("Set default workspace")
       .argument("<workspace>", "Workspace name"),
-  ).action(async (workspace: string, options: { envFile?: string }) => {
-    hydrateEnvironment(options);
-    const configService = new ConfigService();
-    await configService.setDefaultWorkspace(workspace);
+  ).action(async (workspace: string, _options: { envFile?: string }, command: Command) => {
+    const { services } = createCommandContext(command);
+    await services.config.setDefaultWorkspace(workspace);
     // eslint-disable-next-line no-console
     console.log(`Switched to workspace "${workspace}".`);
   });
 
   // auth status
-  authCmd
+  const statusCmd = authCmd
     .command("status")
     .description("Show current authentication status")
-    .option("--show-token", "Show full API token")
-    .option("-o, --output <format>", "Output format (text, json, jsonl, agent, csv)", "text")
-    .option("--env-file <path>", "Load environment variables from file")
-    .action(
-      async (
-        options: { showToken?: boolean; output: string; envFile?: string },
-        command: Command,
-      ) => {
-        hydrateEnvironment(options);
-        const configService = new ConfigService();
-        const { globalOptions, output } = createOutputContext(command);
+    .option("--show-token", "Show full API token");
+  applyGlobalOptions(statusCmd);
+  statusCmd.action(
+    async (
+      options: { showToken?: boolean },
+      command: Command,
+    ) => {
+      const { globalOptions, services } = createCommandContext(command);
 
-        try {
-          const config = await configService.getConfig();
+      try {
+        const config = await services.config.getConfig({
+          workspace: globalOptions.workspace,
+        });
+        const statusData = {
+          authenticated: true,
+          workspace: config.workspace,
+          apiUrl: config.apiUrl,
+          apiKey: options.showToken ? config.apiKey : maskToken(config.apiKey),
+        };
+
+        await services.output.render(statusData, {
+          format: globalOptions.output,
+          query: globalOptions.query,
+        });
+      } catch (error) {
+        if (error instanceof CliError && error.code === "AUTH") {
           const statusData = {
-            authenticated: true,
-            workspace: config.workspace,
-            apiUrl: config.apiUrl,
-            apiKey: options.showToken ? config.apiKey : maskToken(config.apiKey),
+            authenticated: false,
+            error: error.message,
           };
-
-          await output.render(statusData, {
+          await services.output.render(statusData, {
             format: globalOptions.output,
             query: globalOptions.query,
           });
-        } catch (error) {
-          if (error instanceof CliError && error.code === "AUTH") {
-            const statusData = {
-              authenticated: false,
-              error: error.message,
-            };
-            await output.render(statusData, {
-              format: globalOptions.output,
-              query: globalOptions.query,
-            });
-          } else {
-            throw error;
-          }
+        } else {
+          throw error;
         }
-      },
-    );
+      }
+    },
+  );
 
   const workspaceCmd = authCmd
     .command("workspace")
@@ -302,11 +288,13 @@ export function registerAuthCommand(program: Command): void {
     .option("--workspace <name>", "Workspace name", "default")
     .option("--env-file <path>", "Load environment variables from file")
     .action(
-      async (options: { token: string; baseUrl: string; workspace: string; envFile?: string }) => {
-        hydrateEnvironment(options);
-        const configService = new ConfigService();
+      async (
+        options: { token: string; baseUrl: string; workspace: string; envFile?: string },
+        command: Command,
+      ) => {
+        const { services } = createCommandContext(command);
 
-        await configService.saveWorkspace(options.workspace, {
+        await services.config.saveWorkspace(options.workspace, {
           apiKey: options.token,
           apiUrl: options.baseUrl,
         });
@@ -325,14 +313,13 @@ export function registerAuthCommand(program: Command): void {
     .option("--workspace <name>", "Workspace name to remove")
     .option("--all", "Remove all workspaces")
     .option("--env-file <path>", "Load environment variables from file")
-    .action(async (options: { workspace?: string; all?: boolean; envFile?: string }) => {
-      hydrateEnvironment(options);
-      const configService = new ConfigService();
+    .action(async (options: { workspace?: string; all?: boolean; envFile?: string }, command: Command) => {
+      const { services } = createCommandContext(command);
 
       if (options.all) {
-        const workspaces = await configService.listWorkspaces();
+        const workspaces = await services.config.listWorkspaces();
         for (const ws of workspaces) {
-          await configService.removeWorkspace(ws.name);
+          await services.config.removeWorkspace(ws.name);
         }
         // eslint-disable-next-line no-console
         console.log("All workspaces removed.");
@@ -345,7 +332,7 @@ export function registerAuthCommand(program: Command): void {
       } else {
         // Get current default workspace
         try {
-          const config = await configService.getConfig();
+          const config = await services.config.getConfig();
           workspaceToRemove = config.workspace ?? "default";
         } catch {
           throw new CliError(
@@ -356,7 +343,7 @@ export function registerAuthCommand(program: Command): void {
         }
       }
 
-      await configService.removeWorkspace(workspaceToRemove);
+      await services.config.removeWorkspace(workspaceToRemove);
       // eslint-disable-next-line no-console
       console.log(`Workspace "${workspaceToRemove}" removed.`);
     });

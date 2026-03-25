@@ -23,9 +23,9 @@ Auth & Workspace:
   twenty auth discover ORIGIN   Discover a public workspace by domain
 
 Records:
-  twenty api person list -o json
-  twenty api company get RECORD_ID
-  twenty api note create --data '{"title":"Hello"}'
+  twenty api list people -o json
+  twenty api get companies RECORD_ID
+  twenty api create notes --data '{"title":"Hello"}'
   twenty search "acme" --objects person,company
 
 Metadata & Admin:
@@ -62,12 +62,16 @@ Integrations:
   twenty calendar-channels list
   twenty files upload PATH --target application-file
   twenty files upload PATH --target app-tarball
+  twenty mcp status
+  twenty mcp catalog -o json
+  twenty mcp learn find_companies
+  twenty mcp call execute_tool --data '{"toolName":"find_companies","arguments":{}}'
 
 Raw Access:
   twenty openapi core
-  twenty graphql query --query 'query { currentWorkspace { id } }'
-  twenty graphql schema --output-file schema.json
-  twenty rest GET /health
+  twenty raw graphql query --document 'query { currentWorkspace { id } }'
+  twenty raw graphql schema --output-file schema.json
+  twenty raw rest GET /health
 
 Common Flags:
   -o, --output <text|json|jsonl|agent|csv>  Output format

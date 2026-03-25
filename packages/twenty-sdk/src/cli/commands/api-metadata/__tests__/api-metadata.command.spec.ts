@@ -54,13 +54,52 @@ describe("api-metadata command", () => {
 
       expect(command).toBeDefined();
       expect(command?.description()).toBe("Schema operations");
+      expect(command?.registeredArguments ?? []).toHaveLength(0);
 
-      const options = command?.options ?? [];
-      expect(options.find((opt) => opt.long === "--object")).toBeDefined();
-      expect(options.find((opt) => opt.long === "--view")).toBeDefined();
-      expect(options.find((opt) => opt.long === "--page-layout")).toBeDefined();
-      expect(options.find((opt) => opt.long === "--page-layout-tab")).toBeDefined();
-      expect(options.find((opt) => opt.long === "--page-layout-type")?.description).toContain(
+      const subcommands = command?.commands.map((cmd) => cmd.name()) ?? [];
+      const help = command?.helpInformation() ?? "";
+
+      expect(subcommands).toEqual(
+        expect.arrayContaining([
+          "objects",
+          "fields",
+          "command-menu-items",
+          "front-components",
+          "navigation-menu-items",
+          "views",
+          "view-fields",
+          "view-filters",
+          "view-filter-groups",
+          "view-groups",
+          "view-sorts",
+          "page-layouts",
+          "page-layout-tabs",
+          "page-layout-widgets",
+        ]),
+      );
+      expect(help).toContain("Commands:");
+      expect(help).toContain("objects");
+      expect(help).toContain("fields");
+
+      const objectsCmd = command?.commands.find((cmd) => cmd.name() === "objects");
+      const fieldsCmd = command?.commands.find((cmd) => cmd.name() === "fields");
+      const viewsCmd = command?.commands.find((cmd) => cmd.name() === "views");
+      const pageLayoutsCmd = command?.commands.find((cmd) => cmd.name() === "page-layouts");
+      const pageLayoutTabsCmd = command?.commands.find((cmd) => cmd.name() === "page-layout-tabs");
+      const viewsListCmd = viewsCmd?.commands.find((cmd) => cmd.name() === "list");
+      const pageLayoutsListCmd = pageLayoutsCmd?.commands.find((cmd) => cmd.name() === "list");
+      const pageLayoutTabsListCmd = pageLayoutTabsCmd?.commands.find((cmd) => cmd.name() === "list");
+
+      expect(objectsCmd?.commands.map((cmd) => cmd.name())).toEqual(
+        expect.arrayContaining(["list", "get", "create", "update", "delete"]),
+      );
+      expect(fieldsCmd?.commands.map((cmd) => cmd.name())).toEqual(
+        expect.arrayContaining(["list", "get", "create", "update", "delete"]),
+      );
+      expect(viewsListCmd?.options.find((opt) => opt.long === "--object")).toBeDefined();
+      expect(pageLayoutsListCmd?.options.find((opt) => opt.long === "--object")).toBeDefined();
+      expect(pageLayoutTabsListCmd?.options.find((opt) => opt.long === "--page-layout")).toBeDefined();
+      expect(pageLayoutsListCmd?.options.find((opt) => opt.long === "--page-layout-type")?.description).toContain(
         "requires --object",
       );
     });

@@ -1,10 +1,9 @@
 import { Command } from "commander";
 import { type GraphQLResponse } from "../../utilities/api/graphql-response";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
-import { createServices } from "../../utilities/shared/services";
+import { applyGlobalOptions } from "../../utilities/shared/global-options";
+import { createCommandContext } from "../../utilities/shared/context";
 import { parseBody } from "../../utilities/shared/body";
 import { CliError } from "../../utilities/errors/cli-error";
-import { RecordsService } from "../../utilities/records/services/records.service";
 
 interface ConnectedAccountsOptions {
   limit?: string;
@@ -93,14 +92,12 @@ export function registerConnectedAccountsCommand(program: Command): void {
       options: ConnectedAccountsOptions,
       command: Command,
     ) => {
-      const globalOptions = resolveGlobalOptions(command);
-      const services = createServices(globalOptions);
-      const records = new RecordsService(services.api);
+      const { globalOptions, services } = createCommandContext(command);
       const op = operation.toLowerCase();
 
       switch (op) {
         case "list": {
-          const response = await records.list("connectedAccounts", {
+          const response = await services.records.list("connectedAccounts", {
             limit: options.limit ? Number.parseInt(options.limit, 10) : undefined,
             cursor: options.cursor,
           });
@@ -115,7 +112,7 @@ export function registerConnectedAccountsCommand(program: Command): void {
         }
         case "get": {
           if (!id) throw new CliError("Missing connected account ID.", "INVALID_ARGUMENTS");
-          const response = await records.get("connectedAccounts", id);
+          const response = await services.records.get("connectedAccounts", id);
           await services.output.render(sanitizeConnectedAccount(response, options), {
             format: globalOptions.output,
             query: globalOptions.query,

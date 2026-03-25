@@ -58,30 +58,30 @@ describe("approved-access-domains command", () => {
       expect(cmd?.description()).toBe("Manage approved access domains");
     });
 
-    it("has required operation argument and optional id argument", () => {
+    it("registers list/delete/validate as explicit subcommands", () => {
       const cmd = program.commands.find(
         (candidate) => candidate.name() === "approved-access-domains",
       );
-      const args = cmd?.registeredArguments ?? [];
+      const subcommandNames = cmd?.commands.map((candidate) => candidate.name()) ?? [];
 
-      expect(args.length).toBe(2);
-      expect(args[0].name()).toBe("operation");
-      expect(args[0].required).toBe(true);
-      expect(args[1].name()).toBe("id");
-      expect(args[1].required).toBe(false);
+      expect(subcommandNames).toEqual(["list", "delete", "validate"]);
+      expect(cmd?.registeredArguments ?? []).toHaveLength(0);
     });
 
     it("has validate options", () => {
       const cmd = program.commands.find(
         (candidate) => candidate.name() === "approved-access-domains",
       );
-      const opts = cmd?.options ?? [];
+      const deleteCmd = cmd?.commands.find((candidate) => candidate.name() === "delete");
+      const validateCmd = cmd?.commands.find((candidate) => candidate.name() === "validate");
+      const opts = validateCmd?.options ?? [];
 
+      expect(deleteCmd?.options.find((option) => option.long === "--yes")).toBeDefined();
       expect(opts.find((option) => option.long === "--validation-token")).toBeDefined();
     });
   });
 
-  describe("list operation", () => {
+  describe("list subcommand", () => {
     it("lists approved access domains", async () => {
       mockPost.mockResolvedValue({
         data: {
@@ -116,7 +116,7 @@ describe("approved-access-domains command", () => {
     });
   });
 
-  describe("delete operation", () => {
+  describe("delete subcommand", () => {
     it("deletes an approved access domain by id", async () => {
       mockPost.mockResolvedValue({
         data: {
@@ -132,6 +132,7 @@ describe("approved-access-domains command", () => {
         "approved-access-domains",
         "delete",
         "domain-1",
+        "--yes",
         "-o",
         "json",
       ]);
@@ -157,9 +158,18 @@ describe("approved-access-domains command", () => {
         program.parseAsync(["node", "test", "approved-access-domains", "delete"]),
       ).rejects.toThrow(CliError);
     });
+
+    it("requires --yes for delete", async () => {
+      await expect(
+        program.parseAsync(["node", "test", "approved-access-domains", "delete", "domain-1"]),
+      ).rejects.toMatchObject({
+        message: "Delete requires --yes.",
+        code: "INVALID_ARGUMENTS",
+      });
+    });
   });
 
-  describe("validate operation", () => {
+  describe("validate subcommand", () => {
     it("validates an approved access domain by id and token", async () => {
       mockPost.mockResolvedValue({
         data: {
@@ -212,11 +222,13 @@ describe("approved-access-domains command", () => {
     });
   });
 
-  describe("unknown operations", () => {
-    it("throws for unknown operations", async () => {
+  describe("unknown subcommands", () => {
+    it("throws for unknown subcommands", async () => {
       await expect(
         program.parseAsync(["node", "test", "approved-access-domains", "explode"]),
-      ).rejects.toThrow(CliError);
+      ).rejects.toMatchObject({
+        code: "commander.unknownCommand",
+      });
     });
   });
 });

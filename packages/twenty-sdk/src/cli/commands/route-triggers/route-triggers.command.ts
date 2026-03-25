@@ -2,13 +2,15 @@ import { Command } from "commander";
 import { type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { parseBody } from "../../utilities/shared/body";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
-import { createServices } from "../../utilities/shared/services";
+import { requireYes } from "../../utilities/shared/confirmation";
+import { applyGlobalOptions } from "../../utilities/shared/global-options";
+import { createCommandContext } from "../../utilities/shared/context";
 
 interface RouteTriggersOptions {
   data?: string;
   file?: string;
   set?: string[];
+  yes?: boolean;
 }
 
 const ROUTE_TRIGGER_FIELDS = `
@@ -56,124 +58,126 @@ function collect(value: string, previous: string[] = []): string[] {
 
 export function registerRouteTriggersCommand(program: Command): void {
   const endpoint = "/metadata";
-  const cmd = program
-    .command("route-triggers")
-    .description("Manage route triggers")
-    .argument("<operation>", "list, get, create, update, delete")
-    .argument("[id]", "Route trigger ID")
-    .option("-d, --data <json>", "JSON payload")
-    .option("-f, --file <path>", "JSON file")
-    .option("--set <key=value>", "Set a field value", collect);
-
+  const cmd = program.command("route-triggers").description("Manage route triggers");
   applyGlobalOptions(cmd);
 
-  cmd.action(
-    async (
-      operation: string,
-      id: string | undefined,
-      options: RouteTriggersOptions,
-      command: Command,
-    ) => {
-      const globalOptions = resolveGlobalOptions(command);
-      const services = createServices(globalOptions);
-      const op = operation.toLowerCase();
+  const listCmd = cmd.command("list").description("List route triggers");
+  applyGlobalOptions(listCmd);
+  listCmd.action(async (_options: unknown, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    const response = await services.api.post<
+      GraphQLResponse<{ findManyRouteTriggers?: unknown[] }>
+    >(endpoint, {
+      query: FIND_MANY_ROUTE_TRIGGERS_QUERY,
+    });
 
-      switch (op) {
-        case "list": {
-          const response = await services.api.post<
-            GraphQLResponse<{ findManyRouteTriggers?: unknown[] }>
-          >(endpoint, {
-            query: FIND_MANY_ROUTE_TRIGGERS_QUERY,
-          });
+    await services.output.render(response.data?.data?.findManyRouteTriggers ?? [], {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
 
-          await services.output.render(response.data?.data?.findManyRouteTriggers ?? [], {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-          break;
-        }
-        case "get": {
-          if (!id) {
-            throw new CliError("Missing route trigger ID.", "INVALID_ARGUMENTS");
-          }
+  const getCmd = cmd.command("get").description("Get a route trigger").argument("[id]", "Route trigger ID");
+  applyGlobalOptions(getCmd);
+  getCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    if (!id) {
+      throw new CliError("Missing route trigger ID.", "INVALID_ARGUMENTS");
+    }
 
-          const response = await services.api.post<
-            GraphQLResponse<{ findOneRouteTrigger?: unknown }>
-          >(endpoint, {
-            query: FIND_ONE_ROUTE_TRIGGER_QUERY,
-            variables: { id },
-          });
+    const response = await services.api.post<
+      GraphQLResponse<{ findOneRouteTrigger?: unknown }>
+    >(endpoint, {
+      query: FIND_ONE_ROUTE_TRIGGER_QUERY,
+      variables: { id },
+    });
 
-          await services.output.render(response.data?.data?.findOneRouteTrigger, {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-          break;
-        }
-        case "create": {
-          const payload = await parseBody(options.data, options.file, options.set);
-          const response = await services.api.post<
-            GraphQLResponse<{ createOneRouteTrigger?: unknown }>
-          >(endpoint, {
-            query: CREATE_ONE_ROUTE_TRIGGER_MUTATION,
-            variables: { input: payload },
-          });
+    await services.output.render(response.data?.data?.findOneRouteTrigger, {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
 
-          await services.output.render(response.data?.data?.createOneRouteTrigger, {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-          break;
-        }
-        case "update": {
-          if (!id) {
-            throw new CliError("Missing route trigger ID.", "INVALID_ARGUMENTS");
-          }
+  const createCmd = cmd.command("create").description("Create a route trigger");
+  createCmd
+    .option("-d, --data <json>", "JSON payload")
+    .option("-f, --file <path>", "JSON file payload (use - for stdin)")
+    .option("--set <key=value>", "Set a field value", collect);
+  applyGlobalOptions(createCmd);
+  createCmd.action(async (options: RouteTriggersOptions, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    const payload = await parseBody(options.data, options.file, options.set);
+    const response = await services.api.post<
+      GraphQLResponse<{ createOneRouteTrigger?: unknown }>
+    >(endpoint, {
+      query: CREATE_ONE_ROUTE_TRIGGER_MUTATION,
+      variables: { input: payload },
+    });
 
-          const payload = await parseBody(options.data, options.file, options.set);
-          const response = await services.api.post<
-            GraphQLResponse<{ updateOneRouteTrigger?: unknown }>
-          >(endpoint, {
-            query: UPDATE_ONE_ROUTE_TRIGGER_MUTATION,
-            variables: {
-              input: {
-                id,
-                update: payload,
-              },
-            },
-          });
+    await services.output.render(response.data?.data?.createOneRouteTrigger, {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
 
-          await services.output.render(response.data?.data?.updateOneRouteTrigger, {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-          break;
-        }
-        case "delete": {
-          if (!id) {
-            throw new CliError("Missing route trigger ID.", "INVALID_ARGUMENTS");
-          }
+  const updateCmd = cmd.command("update").description("Update a route trigger").argument("[id]", "Route trigger ID");
+  updateCmd
+    .option("-d, --data <json>", "JSON payload")
+    .option("-f, --file <path>", "JSON file payload (use - for stdin)")
+    .option("--set <key=value>", "Set a field value", collect);
+  applyGlobalOptions(updateCmd);
+  updateCmd.action(async (id: string | undefined, options: RouteTriggersOptions, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    if (!id) {
+      throw new CliError("Missing route trigger ID.", "INVALID_ARGUMENTS");
+    }
 
-          const response = await services.api.post<
-            GraphQLResponse<{ deleteOneRouteTrigger?: unknown }>
-          >(endpoint, {
-            query: DELETE_ONE_ROUTE_TRIGGER_MUTATION,
-            variables: {
-              input: {
-                id,
-              },
-            },
-          });
+    const payload = await parseBody(options.data, options.file, options.set);
+    const response = await services.api.post<
+      GraphQLResponse<{ updateOneRouteTrigger?: unknown }>
+    >(endpoint, {
+      query: UPDATE_ONE_ROUTE_TRIGGER_MUTATION,
+      variables: {
+        input: {
+          id,
+          update: payload,
+        },
+      },
+    });
 
-          await services.output.render(response.data?.data?.deleteOneRouteTrigger, {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-          break;
-        }
-        default:
-          throw new CliError(`Unknown operation: ${operation}`, "INVALID_ARGUMENTS");
-      }
-    },
-  );
+    await services.output.render(response.data?.data?.updateOneRouteTrigger, {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
+
+  const deleteCmd = cmd
+    .command("delete")
+    .description("Delete a route trigger")
+    .argument("[id]", "Route trigger ID")
+    .option("--yes", "Confirm destructive operations");
+  applyGlobalOptions(deleteCmd);
+  deleteCmd.action(async (id: string | undefined, options: RouteTriggersOptions, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    if (!id) {
+      throw new CliError("Missing route trigger ID.", "INVALID_ARGUMENTS");
+    }
+    requireYes(options, "Delete");
+
+    const response = await services.api.post<
+      GraphQLResponse<{ deleteOneRouteTrigger?: unknown }>
+    >(endpoint, {
+      query: DELETE_ONE_ROUTE_TRIGGER_MUTATION,
+      variables: {
+        input: {
+          id,
+        },
+      },
+    });
+
+    await services.output.render(response.data?.data?.deleteOneRouteTrigger, {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
 }

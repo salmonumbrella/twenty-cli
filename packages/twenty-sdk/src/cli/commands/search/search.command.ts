@@ -1,7 +1,6 @@
 import { Command } from "commander";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
-import { createServices } from "../../utilities/shared/services";
-import { SearchService } from "../../utilities/search/services/search.service";
+import { applyGlobalOptions } from "../../utilities/shared/global-options";
+import { createCommandContext } from "../../utilities/shared/context";
 import { readJsonInput } from "../../utilities/shared/io";
 import { CliError } from "../../utilities/errors/cli-error";
 
@@ -13,7 +12,7 @@ export function registerSearchCommand(program: Command): void {
     .option("--limit <number>", "Maximum results", "20")
     .option("--objects <list>", "Comma-separated object names to include")
     .option("--exclude <list>", "Comma-separated object names to exclude")
-    .option("--after <cursor>", "Pagination cursor for the next page")
+    .option("--cursor <cursor>", "Pagination cursor for the next page")
     .option("--include-page-info", "Include top-level pageInfo in output")
     .option("--filter <json>", "JSON filter object")
     .option("--filter-file <path>", "JSON filter file (use - for stdin)");
@@ -21,17 +20,15 @@ export function registerSearchCommand(program: Command): void {
   applyGlobalOptions(cmd);
 
   cmd.action(async (query: string, options: SearchOptions, command: Command) => {
-    const globalOptions = resolveGlobalOptions(command);
-    const services = createServices(globalOptions);
-    const searchService = new SearchService(services.api);
+    const { globalOptions, services } = createCommandContext(command);
     const filter = await parseSearchFilter(options.filter, options.filterFile);
 
-    const response = await searchService.search({
+    const response = await services.search.search({
       query,
       limit: parseInt(options.limit, 10),
       objects: options.objects?.split(","),
       excludeObjects: options.exclude?.split(","),
-      after: options.after,
+      after: options.cursor,
       filter,
     });
 
@@ -48,7 +45,7 @@ interface SearchOptions {
   limit: string;
   objects?: string;
   exclude?: string;
-  after?: string;
+  cursor?: string;
   includePageInfo?: boolean;
   filter?: string;
   filterFile?: string;

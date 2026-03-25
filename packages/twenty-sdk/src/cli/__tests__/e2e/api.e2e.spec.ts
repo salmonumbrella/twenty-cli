@@ -57,7 +57,7 @@ describeIf("twenty api e2e", () => {
 
     const output = execFileSync(
       "node",
-      [cliPath, "api", "people", "list", "--limit", "1", "--output", "json"],
+      [cliPath, "api", "list", "people", "--limit", "1", "--output", "json"],
       {
         env,
         encoding: "utf-8",
@@ -87,7 +87,7 @@ describeMutations("twenty api e2e mutations", () => {
     const createPayload = JSON.stringify({ name: { firstName: "E2E", lastName: "Test" } });
     const createdRaw = execFileSync(
       "node",
-      [cliPath, "api", "people", "create", "--data", createPayload, "--output", "json"],
+      [cliPath, "api", "create", "people", "--data", createPayload, "--output", "json"],
       {
         env,
         encoding: "utf-8",
@@ -96,7 +96,7 @@ describeMutations("twenty api e2e mutations", () => {
     const created = JSON.parse(createdRaw);
     expect(created.id).toBeTruthy();
 
-    execFileSync("node", [cliPath, "api", "people", "delete", created.id, "--force"], {
+    execFileSync("node", [cliPath, "api", "delete", "people", created.id, "--yes"], {
       env,
       encoding: "utf-8",
     });

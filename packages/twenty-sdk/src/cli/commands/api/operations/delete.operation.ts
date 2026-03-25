@@ -1,16 +1,14 @@
 import { ApiOperationContext } from "./types";
 import { CliError } from "../../../utilities/errors/cli-error";
+import { requireYes } from "../../../utilities/shared/confirmation";
 
 export async function runDeleteOperation(ctx: ApiOperationContext): Promise<void> {
   const id = ctx.arg;
   if (!id) {
     throw new CliError("Missing record ID.", "INVALID_ARGUMENTS");
   }
-  if (!ctx.options.force) {
-    // eslint-disable-next-line no-console
-    console.log(`About to delete ${ctx.object} ${id}. Use --force to confirm.`);
-    return;
-  }
+  requireYes(ctx.options, "Delete");
+
   const response = await ctx.services.records.delete(ctx.object, id);
   if (response == null || (typeof response === "string" && response === "")) {
     // eslint-disable-next-line no-console

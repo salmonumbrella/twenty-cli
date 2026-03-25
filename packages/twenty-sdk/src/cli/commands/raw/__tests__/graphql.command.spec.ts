@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Command } from "commander";
-import { registerGraphqlCommand } from "../graphql.command";
+import { buildProgram } from "../../../program";
 import { CliError } from "../../../utilities/errors/cli-error";
 import fs from "fs-extra";
 
@@ -44,9 +44,7 @@ describe("graphql command", () => {
   let mockServices: ReturnType<typeof createMockServices>;
 
   beforeEach(() => {
-    program = new Command();
-    program.exitOverride();
-    registerGraphqlCommand(program);
+    program = buildProgram();
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     consoleErrorSpy = vi.spyOn(console, "error").mockImplementation(() => {});
 
@@ -63,13 +61,14 @@ describe("graphql command", () => {
   });
 
   describe("query operation", () => {
-    it("executes query with --query option", async () => {
+    it("executes query with --document option", async () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
-        "--query",
+        "--document",
         "query { people { id name } }",
       ]);
 
@@ -79,12 +78,29 @@ describe("graphql command", () => {
       expect(mockServices.output.render).toHaveBeenCalled();
     });
 
+    it("executes query with -d alias for document input", async () => {
+      await program.parseAsync([
+        "node",
+        "test",
+        "raw",
+        "graphql",
+        "query",
+        "-d",
+        "query { people { id name } }",
+      ]);
+
+      expect(mockServices.api.post).toHaveBeenCalledWith("/graphql", {
+        query: "query { people { id name } }",
+      });
+    });
+
     it("executes query from file", async () => {
       vi.mocked(readFileOrStdin).mockResolvedValue("query { companies { id } }");
 
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
         "--file",
@@ -100,20 +116,21 @@ describe("graphql command", () => {
     it("throws error when query is missing", async () => {
       vi.mocked(readFileOrStdin).mockResolvedValue("");
 
-      await expect(program.parseAsync(["node", "test", "graphql", "query"])).rejects.toThrow(
+      await expect(program.parseAsync(["node", "test", "raw", "graphql", "query"])).rejects.toThrow(
         CliError,
       );
     });
   });
 
   describe("mutation operation", () => {
-    it("executes mutation with --query option", async () => {
+    it("executes mutation with --document option", async () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "mutate",
-        "--query",
+        "--document",
         'mutation { createPerson(name: "John") { id } }',
       ]);
 
@@ -126,9 +143,10 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "MUTATE",
-        "--query",
+        "--document",
         "mutation { updatePerson { id } }",
       ]);
 
@@ -138,7 +156,7 @@ describe("graphql command", () => {
 
   describe("schema operation", () => {
     it("fetches schema with introspection query", async () => {
-      await program.parseAsync(["node", "test", "graphql", "schema"]);
+      await program.parseAsync(["node", "test", "raw", "graphql", "schema"]);
 
       expect(mockServices.api.post).toHaveBeenCalledWith(
         "/graphql",
@@ -155,6 +173,7 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "schema",
         "--output-file",
@@ -169,7 +188,7 @@ describe("graphql command", () => {
     });
 
     it("handles schema operation case insensitively", async () => {
-      await program.parseAsync(["node", "test", "graphql", "SCHEMA"]);
+      await program.parseAsync(["node", "test", "raw", "graphql", "SCHEMA"]);
 
       expect(mockServices.api.post).toHaveBeenCalled();
     });
@@ -182,9 +201,10 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
-        "--query",
+        "--document",
         "query GetPerson($id: ID!) { person(id: $id) { name } }",
         "--variables",
         '{"id":"123"}',
@@ -202,9 +222,10 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
-        "--query",
+        "--document",
         "query ($filter: Filter) { people(filter: $filter) { id } }",
         "--variables-file",
         "/path/to/vars.json",
@@ -224,9 +245,10 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
-        "--query",
+        "--document",
         "query { people { id } }",
         "--variables",
         "{}",
@@ -244,12 +266,36 @@ describe("graphql command", () => {
         program.parseAsync([
           "node",
           "test",
+          "raw",
           "graphql",
           "query",
-          "--query",
+          "--document",
           "query { people { id } }",
           "--variables",
           '["not","an","object"]',
+        ]),
+      ).rejects.toThrow(CliError);
+    });
+
+    it.each([
+      { label: "false", value: false },
+      { label: "0", value: 0 },
+      { label: '""', value: "" },
+      { label: "null", value: null },
+    ])("rejects $label as invalid variables", async ({ value }) => {
+      vi.mocked(readJsonInput).mockResolvedValue(value as never);
+
+      await expect(
+        program.parseAsync([
+          "node",
+          "test",
+          "raw",
+          "graphql",
+          "query",
+          "--document",
+          "query { people { id } }",
+          "--variables",
+          JSON.stringify(value),
         ]),
       ).rejects.toThrow(CliError);
     });
@@ -260,9 +306,10 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
-        "--query",
+        "--document",
         "query GetPeople { people { id } } query GetCompanies { companies { id } }",
         "--operation-name",
         "GetPeople",
@@ -282,9 +329,10 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
-        "--query",
+        "--document",
         "query { people { id } }",
         "--endpoint",
         "/api/graphql",
@@ -297,9 +345,10 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
-        "--query",
+        "--document",
         "query { people { id } }",
         "--endpoint",
         "custom-graphql",
@@ -314,9 +363,10 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
-        "--query",
+        "--document",
         "query { people { id } }",
         "-o",
         "json",
@@ -328,15 +378,16 @@ describe("graphql command", () => {
       );
     });
 
-    it("passes output-query filter to render", async () => {
+    it("passes output query filter to render", async () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
-        "--query",
+        "--document",
         "query { people { id } }",
-        "--output-query",
+        "--query",
         "data.people[0]",
       ]);
 
@@ -353,6 +404,7 @@ describe("graphql command", () => {
         program.parseAsync([
           "node",
           "test",
+          "raw",
           "graphql",
           "unknown",
           "--query",
@@ -368,9 +420,10 @@ describe("graphql command", () => {
         program.parseAsync([
           "node",
           "test",
+          "raw",
           "graphql",
           "query",
-          "--query",
+          "--document",
           "query { people { id } }",
         ]),
       ).rejects.toThrow("GraphQL error");
@@ -381,12 +434,34 @@ describe("graphql command", () => {
     it("reads query from stdin when file is -", async () => {
       vi.mocked(readFileOrStdin).mockResolvedValue("query { notes { id } }");
 
-      await program.parseAsync(["node", "test", "graphql", "query", "--file", "-"]);
+      await program.parseAsync(["node", "test", "raw", "graphql", "query", "--file", "-"]);
 
       expect(readFileOrStdin).toHaveBeenCalledWith("-");
       expect(mockServices.api.post).toHaveBeenCalledWith("/graphql", {
         query: "query { notes { id } }",
       });
+    });
+
+    it("rejects whitespace-only file content", async () => {
+      vi.mocked(readFileOrStdin).mockResolvedValue("   \n\t  ");
+
+      await expect(
+        program.parseAsync(["node", "test", "raw", "graphql", "query", "--file", "/tmp/doc.gql"]),
+      ).rejects.toThrow(CliError);
+    });
+
+    it("rejects whitespace-only document input", async () => {
+      await expect(
+        program.parseAsync([
+          "node",
+          "test",
+          "raw",
+          "graphql",
+          "query",
+          "--document",
+          "   \n\t  ",
+        ]),
+      ).rejects.toThrow(CliError);
     });
 
     it("trims whitespace from file content", async () => {
@@ -395,6 +470,7 @@ describe("graphql command", () => {
       await program.parseAsync([
         "node",
         "test",
+        "raw",
         "graphql",
         "query",
         "--file",

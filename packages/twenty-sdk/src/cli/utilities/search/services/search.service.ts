@@ -1,5 +1,7 @@
 import { ApiService } from "../../api/services/api.service";
 
+type SearchApiClient = Pick<ApiService, "post">;
+
 export interface SearchResult {
   recordId: string;
   objectNameSingular: string;
@@ -34,7 +36,7 @@ interface GraphQLSearchResponse {
 }
 
 export class SearchService {
-  constructor(private api: ApiService) {}
+  constructor(private api: SearchApiClient) {}
 
   async search(options: {
     query: string;

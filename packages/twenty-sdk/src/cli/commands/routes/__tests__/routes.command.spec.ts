@@ -1,45 +1,57 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { Command } from "commander";
-import axios from "axios";
 import { registerRoutesCommand } from "../routes.command";
 import { CliError } from "../../../utilities/errors/cli-error";
 
-const mockLoadConfigFile = vi.fn();
+const mockCreateCommandContext = vi.hoisted(() => vi.fn());
+const mockPublicHttpRequest = vi.hoisted(() => vi.fn());
+const mockOutputRender = vi.hoisted(() => vi.fn());
 
-vi.mock("axios");
-vi.mock("../../../utilities/config/services/config.service", () => ({
-  ConfigService: vi.fn(function MockConfigService() {
-    return {
-      loadConfigFile: mockLoadConfigFile,
-    };
-  }),
-}));
+vi.mock("../../../utilities/shared/context", async () => {
+  const actual = await vi.importActual<typeof import("../../../utilities/shared/context")>(
+    "../../../utilities/shared/context",
+  );
 
-const defaultConfigFile = {
-  defaultWorkspace: "default",
-  workspaces: {
-    default: {
-      apiUrl: "https://api.twenty.com",
-      apiKey: "test-token",
+  return {
+    ...actual,
+    createCommandContext: mockCreateCommandContext,
+  };
+});
+
+function mockSharedCommandContext() {
+  mockCreateCommandContext.mockReturnValue({
+    globalOptions: {
+      output: "json",
+      query: undefined,
+      debug: false,
+      noRetry: false,
+      workspace: "default",
     },
-  },
-};
+    services: {
+      publicHttp: {
+        request: mockPublicHttpRequest,
+      },
+      output: {
+        render: mockOutputRender,
+      },
+    },
+  } as never);
+}
 
 describe("routes command", () => {
   let program: Command;
-  let consoleSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     program = new Command();
     program.exitOverride();
     registerRoutesCommand(program);
-    consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
-    vi.mocked(axios.request).mockReset();
-    mockLoadConfigFile.mockResolvedValue(defaultConfigFile);
+    mockCreateCommandContext.mockReset();
+    mockPublicHttpRequest.mockReset();
+    mockOutputRender.mockReset();
+    mockSharedCommandContext();
   });
 
   afterEach(() => {
-    consoleSpy.mockRestore();
     vi.clearAllMocks();
   });
 
@@ -80,8 +92,8 @@ describe("routes command", () => {
   });
 
   describe("invoke", () => {
-    it("invokes a route with GET by default and normalized path", async () => {
-      vi.mocked(axios.request).mockResolvedValue({
+    it("invokes a route through shared public transport with GET by default", async () => {
+      mockPublicHttpRequest.mockResolvedValue({
         data: {
           ok: true,
           source: "route",
@@ -102,27 +114,58 @@ describe("routes command", () => {
         "json",
       ]);
 
-      expect(axios.request).toHaveBeenCalledWith({
+      expect(mockCreateCommandContext).toHaveBeenCalled();
+      expect(mockPublicHttpRequest).toHaveBeenCalledWith({
+        authMode: "optional",
         method: "get",
-        url: "https://api.twenty.com/s/contacts/sync",
-        data: undefined,
+        path: "/s/contacts/sync",
         params: {
           source: "cli",
           dryRun: "true",
         },
-        headers: {
-          Authorization: "Bearer test-token",
-        },
+        data: undefined,
       });
 
-      expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual({
-        ok: true,
-        source: "route",
+      expect(mockOutputRender).toHaveBeenCalledWith(
+        {
+          ok: true,
+          source: "route",
+        },
+        {
+          format: "json",
+          query: undefined,
+        },
+      );
+    });
+
+    it("passes debug and no-retry through shared transport context", async () => {
+      mockPublicHttpRequest.mockResolvedValue({
+        data: {
+          ok: true,
+        },
+      } as never);
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "routes",
+        "invoke",
+        "public/ping",
+        "--debug",
+        "--no-retry",
+        "-o",
+        "json",
+      ]);
+
+      expect(mockCreateCommandContext).toHaveBeenCalledTimes(1);
+      expect(mockCreateCommandContext.mock.calls[0][0].opts()).toMatchObject({
+        debug: true,
+        retry: false,
       });
     });
 
-    it("invokes a route with a request body and custom headers", async () => {
-      vi.mocked(axios.request).mockResolvedValue({
+    it("invokes a route with a request body and custom headers through shared transport", async () => {
+      mockPublicHttpRequest.mockResolvedValue({
         data: {
           created: true,
         },
@@ -146,15 +189,15 @@ describe("routes command", () => {
         "json",
       ]);
 
-      expect(axios.request).toHaveBeenCalledWith({
+      expect(mockPublicHttpRequest).toHaveBeenCalledWith({
+        authMode: "optional",
         method: "post",
-        url: "https://api.twenty.com/s/hooks/import",
+        path: "/s/hooks/import",
         data: {
           batch: "one",
         },
         params: undefined,
         headers: {
-          Authorization: "Bearer test-token",
           "x-source": "cli",
           "x-trace-id": "trace-1",
         },
@@ -162,15 +205,7 @@ describe("routes command", () => {
     });
 
     it("omits the authorization header when no api key is configured", async () => {
-      mockLoadConfigFile.mockResolvedValue({
-        defaultWorkspace: "default",
-        workspaces: {
-          default: {
-            apiUrl: "https://api.twenty.com",
-          },
-        },
-      });
-      vi.mocked(axios.request).mockResolvedValue({
+      mockPublicHttpRequest.mockResolvedValue({
         data: {
           ok: true,
         },
@@ -178,9 +213,10 @@ describe("routes command", () => {
 
       await program.parseAsync(["node", "test", "routes", "invoke", "public/ping", "-o", "json"]);
 
-      expect(axios.request).toHaveBeenCalledWith({
+      expect(mockPublicHttpRequest).toHaveBeenCalledWith({
+        authMode: "optional",
         method: "get",
-        url: "https://api.twenty.com/s/public/ping",
+        path: "/s/public/ping",
         data: undefined,
         params: undefined,
         headers: undefined,

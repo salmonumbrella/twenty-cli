@@ -84,6 +84,69 @@ describe("ConfigService", () => {
     });
   });
 
+  describe("resolveApiConfig", () => {
+    it("resolves apiUrl from explicit workspace config without requiring auth", async () => {
+      const config: TwentyConfigFile = {
+        workspaces: {
+          smoke: { apiUrl: "https://smoke.example.com" },
+        },
+        defaultWorkspace: "default",
+      };
+      vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(config) as never);
+
+      const service = new ConfigService();
+      const result = await service.resolveApiConfig({
+        workspace: "smoke",
+        requireAuth: false,
+      });
+
+      expect(result).toEqual({
+        apiUrl: "https://smoke.example.com",
+        apiKey: "",
+        workspace: "smoke",
+      });
+    });
+
+    it("resolves apiUrl from TWENTY_BASE_URL without requiring auth", async () => {
+      const originalEnv = process.env;
+      process.env = {
+        ...originalEnv,
+        TWENTY_BASE_URL: "https://env.twenty.com",
+      };
+      vi.mocked(fs.pathExists).mockResolvedValue(false as never);
+
+      const service = new ConfigService();
+      const result = await service.resolveApiConfig({ requireAuth: false });
+
+      expect(result.apiUrl).toBe("https://env.twenty.com");
+      expect(result.apiKey).toBe("");
+
+      process.env = originalEnv;
+    });
+
+    it("throws the selected workspace auth guidance when auth is required and missing", async () => {
+      vi.mocked(fs.pathExists).mockResolvedValue(false as never);
+
+      const service = new ConfigService();
+
+      await expect(
+        service.resolveApiConfig({
+          workspace: "smoke",
+          requireAuth: true,
+          missingAuthSuggestion:
+            "Set TWENTY_TOKEN or configure an API key for the selected workspace.",
+        }),
+      ).rejects.toEqual(
+        new CliError(
+          "Missing API token.",
+          "AUTH",
+          "Set TWENTY_TOKEN or configure an API key for the selected workspace.",
+        ),
+      );
+    });
+  });
+
   describe("setDefaultWorkspace", () => {
     it("throws if workspace does not exist", async () => {
       const config: TwentyConfigFile = {

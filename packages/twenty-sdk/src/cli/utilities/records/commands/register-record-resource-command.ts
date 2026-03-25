@@ -1,9 +1,8 @@
 import { Command } from "commander";
 import { CliError } from "../../errors/cli-error";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../shared/global-options";
-import { createServices } from "../../shared/services";
+import { applyGlobalOptions } from "../../shared/global-options";
+import { createCommandContext } from "../../shared/context";
 import { parseBody } from "../../shared/body";
-import { RecordsService } from "../services/records.service";
 
 interface RecordResourceCommandOptions {
   limit?: string;
@@ -45,14 +44,12 @@ export function registerRecordResourceCommand(
       commandOptions: RecordResourceCommandOptions,
       command: Command,
     ) => {
-      const globalOptions = resolveGlobalOptions(command);
-      const services = createServices(globalOptions);
-      const records = new RecordsService(services.api);
+      const { globalOptions, services } = createCommandContext(command);
       const op = operation.toLowerCase();
 
       switch (op) {
         case "list": {
-          const response = await records.list(options.object, {
+          const response = await services.records.list(options.object, {
             limit: commandOptions.limit ? Number.parseInt(commandOptions.limit, 10) : undefined,
             cursor: commandOptions.cursor,
           });
@@ -68,7 +65,7 @@ export function registerRecordResourceCommand(
             throw new CliError(`Missing ${resourceLabel(options.name)} ID.`, "INVALID_ARGUMENTS");
           }
 
-          const response = await records.get(options.object, id);
+          const response = await services.records.get(options.object, id);
           await services.output.render(sanitize(response, options.sanitizeOutput), {
             format: globalOptions.output,
             query: globalOptions.query,
@@ -85,7 +82,7 @@ export function registerRecordResourceCommand(
             commandOptions.file,
             commandOptions.set,
           );
-          const response = await records.update(options.object, id, payload);
+          const response = await services.records.update(options.object, id, payload);
           await services.output.render(sanitize(response, options.sanitizeOutput), {
             format: globalOptions.output,
             query: globalOptions.query,

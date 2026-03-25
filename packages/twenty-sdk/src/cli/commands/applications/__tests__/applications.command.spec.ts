@@ -93,6 +93,7 @@ describe("applications command", () => {
 
       expect(opts.find((option) => option.long === "--key")).toBeDefined();
       expect(opts.find((option) => option.long === "--value")).toBeDefined();
+      expect(opts.find((option) => option.long === "--yes")).toBeDefined();
     });
 
     it("has global options applied", () => {
@@ -478,6 +479,7 @@ describe("applications command", () => {
         "applications",
         "uninstall",
         "calendar-sync",
+        "--yes",
         "-o",
         "json",
       ]);
@@ -495,6 +497,15 @@ describe("applications command", () => {
       await expect(
         program.parseAsync(["node", "test", "applications", "uninstall"]),
       ).rejects.toThrow(CliError);
+    });
+
+    it("requires --yes for uninstall", async () => {
+      await expect(
+        program.parseAsync(["node", "test", "applications", "uninstall", "calendar-sync"]),
+      ).rejects.toMatchObject({
+        message: "Uninstall requires --yes.",
+        code: "INVALID_ARGUMENTS",
+      });
     });
   });
 

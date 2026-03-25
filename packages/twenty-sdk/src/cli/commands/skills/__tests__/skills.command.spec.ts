@@ -56,20 +56,26 @@ describe("skills command", () => {
       expect(cmd?.description()).toBe("Manage workspace AI skills");
     });
 
-    it("has required operation argument and optional id argument", () => {
+    it("registers list/get/create/update/delete/activate/deactivate as explicit subcommands", () => {
       const cmd = program.commands.find((candidate) => candidate.name() === "skills");
-      const args = cmd?.registeredArguments ?? [];
+      const subcommandNames = cmd?.commands.map((candidate) => candidate.name()) ?? [];
 
-      expect(args.length).toBe(2);
-      expect(args[0].name()).toBe("operation");
-      expect(args[0].required).toBe(true);
-      expect(args[1].name()).toBe("id");
-      expect(args[1].required).toBe(false);
+      expect(subcommandNames).toEqual([
+        "list",
+        "get",
+        "create",
+        "update",
+        "delete",
+        "activate",
+        "deactivate",
+      ]);
+      expect(cmd?.registeredArguments ?? []).toHaveLength(0);
     });
 
-    it("has payload and global options", () => {
+    it("has payload options on the relevant subcommand and global options on child commands", () => {
       const cmd = program.commands.find((candidate) => candidate.name() === "skills");
-      const opts = cmd?.options ?? [];
+      const createCmd = cmd?.commands.find((candidate) => candidate.name() === "create");
+      const opts = createCmd?.options ?? [];
 
       expect(opts.find((option) => option.long === "--data")).toBeDefined();
       expect(opts.find((option) => option.long === "--file")).toBeDefined();
@@ -379,8 +385,10 @@ describe("skills command", () => {
 
   describe("unknown operations", () => {
     it("throws for unknown operations", async () => {
-      await expect(program.parseAsync(["node", "test", "skills", "explode"])).rejects.toThrow(
-        CliError,
+      await expect(program.parseAsync(["node", "test", "skills", "explode"])).rejects.toMatchObject(
+        {
+          code: "commander.unknownCommand",
+        },
       );
     });
   });

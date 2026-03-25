@@ -4,8 +4,8 @@ import { createServices } from "../../utilities/shared/services";
 import { readJsonInput } from "../../utilities/shared/io";
 import { parseKeyValuePairs } from "../../utilities/shared/parse";
 
-export function registerRestCommand(program: Command): void {
-  const cmd = program
+export function registerRestCommand(parent: Command): void {
+  const cmd = parent
     .command("rest")
     .description("Raw REST API access")
     .argument("<method>", "HTTP method")
@@ -33,7 +33,7 @@ export function registerRestCommand(program: Command): void {
         param?: string[];
       };
       const payload = await readJsonInput(rawOptions.data, rawOptions.file);
-      const params = parseKeyValuePairs(rawOptions.param);
+      const params = normalizeQueryParams(parseKeyValuePairs(rawOptions.param));
       const url = path.startsWith("/") ? path : `/${path}`;
 
       const response = await services.api.request({
@@ -53,4 +53,16 @@ export function registerRestCommand(program: Command): void {
 
 function collect(value: string, previous: string[] = []): string[] {
   return previous.concat([value]);
+}
+
+function normalizeQueryParams(
+  params: Record<string, string[]>,
+): Record<string, string | string[]> {
+  const normalized: Record<string, string | string[]> = {};
+
+  for (const [key, values] of Object.entries(params)) {
+    normalized[key] = values.length === 1 ? values[0] : values;
+  }
+
+  return normalized;
 }

@@ -94,7 +94,7 @@ function deriveCommandKind(command: Command): string {
 
   while (current) {
     const name = current.name();
-    if (name && !name.startsWith("help")) {
+    if (name && name !== "help") {
       path.unshift(name);
     }
     current = current.parent ?? null;
