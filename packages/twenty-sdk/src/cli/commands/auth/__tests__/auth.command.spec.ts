@@ -34,6 +34,11 @@ describe("auth commands", () => {
     mockPost = vi.fn();
     mockPublicRequest = vi.fn();
     vi.mocked(loadCliEnvironment).mockReset();
+    vi.mocked(ConfigService.prototype.resolveApiConfig).mockResolvedValue({
+      apiUrl: "https://api.twenty.com",
+      apiKey: "",
+      workspace: "production",
+    });
     vi.mocked(ApiService).mockImplementation(
       mockConstructor(
         () =>
@@ -430,7 +435,78 @@ describe("auth commands", () => {
   });
 
   describe("auth renew-token", () => {
-    it("renews an app token through the core auth GraphQL mutation", async () => {
+    it("targets /metadata on hosted api.twenty.com and renders the hosted metadata response shape", async () => {
+      vi.mocked(ConfigService.prototype.resolveApiConfig).mockResolvedValue({
+        apiUrl: "https://api.twenty.com",
+        apiKey: "",
+        workspace: "production",
+      });
+
+      const response = {
+        data: {
+          data: {
+            renewToken: {
+              tokens: {
+                accessOrWorkspaceAgnosticToken: {
+                  token: "access-token",
+                  expiresAt: "2026-04-01T00:00:00.000Z",
+                },
+                refreshToken: {
+                  token: "refresh-token",
+                  expiresAt: "2026-04-02T00:00:00.000Z",
+                },
+              },
+            },
+          },
+        },
+      };
+      mockPost.mockResolvedValue(response);
+      mockPublicRequest.mockResolvedValue(response);
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "auth",
+        "renew-token",
+        "--app-token",
+        "refresh-token",
+        "-o",
+        "json",
+      ]);
+
+      expect(mockPublicRequest).toHaveBeenCalledWith({
+        authMode: "none",
+        method: "post",
+        path: "/metadata",
+        data: {
+          query: expect.stringContaining("accessOrWorkspaceAgnosticToken"),
+          variables: { appToken: "refresh-token" },
+        },
+      });
+      expect(mockPost).not.toHaveBeenCalled();
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(JSON.parse(output)).toEqual({
+        tokens: {
+          accessOrWorkspaceAgnosticToken: {
+            token: "access-token",
+            expiresAt: "2026-04-01T00:00:00.000Z",
+          },
+          refreshToken: {
+            token: "refresh-token",
+            expiresAt: "2026-04-02T00:00:00.000Z",
+          },
+        },
+      });
+    });
+
+    it("preserves the graphql endpoint for non-hosted surfaces", async () => {
+      vi.mocked(ConfigService.prototype.resolveApiConfig).mockResolvedValue({
+        apiUrl: "https://smoke.example.com",
+        apiKey: "",
+        workspace: "smoke",
+      });
+
       const response = {
         data: {
           data: {
@@ -467,19 +543,17 @@ describe("auth commands", () => {
         },
       });
       expect(mockPost).not.toHaveBeenCalled();
-
-      const output = consoleSpy.mock.calls[0][0] as string;
-      expect(JSON.parse(output)).toEqual({
-        tokens: {
-          accessToken: "access-token",
-          refreshToken: "refresh-token",
-        },
-      });
     });
   });
 
   describe("auth sso-url", () => {
-    it("gets an SSO authorization URL for an identity provider", async () => {
+    it("targets /metadata on hosted api.twenty.com and renders the metadata response shape", async () => {
+      vi.mocked(ConfigService.prototype.resolveApiConfig).mockResolvedValue({
+        apiUrl: "https://api.twenty.com",
+        apiKey: "",
+        workspace: "production",
+      });
+
       const response = {
         data: {
           data: {
@@ -509,7 +583,7 @@ describe("auth commands", () => {
       expect(mockPublicRequest).toHaveBeenCalledWith({
         authMode: "none",
         method: "post",
-        path: "/graphql",
+        path: "/metadata",
         data: {
           query: expect.stringContaining("getAuthorizationUrlForSSO"),
           variables: {
@@ -530,7 +604,52 @@ describe("auth commands", () => {
       });
     });
 
+    it("preserves the graphql endpoint for non-hosted surfaces", async () => {
+      vi.mocked(ConfigService.prototype.resolveApiConfig).mockResolvedValue({
+        apiUrl: "https://smoke.example.com",
+        apiKey: "",
+        workspace: "smoke",
+      });
+
+      const response = {
+        data: {
+          data: {
+            getAuthorizationUrlForSSO: {
+              authorizationURL: "https://idp.example.com/login",
+              type: "OIDC",
+              id: "idp-1",
+            },
+          },
+        },
+      };
+      mockPost.mockResolvedValue(response);
+      mockPublicRequest.mockResolvedValue(response);
+
+      await program.parseAsync(["node", "test", "auth", "sso-url", "idp-1", "-o", "json"]);
+
+      expect(mockPublicRequest).toHaveBeenCalledWith({
+        authMode: "none",
+        method: "post",
+        path: "/graphql",
+        data: {
+          query: expect.stringContaining("getAuthorizationUrlForSSO"),
+          variables: {
+            input: {
+              identityProviderId: "idp-1",
+            },
+          },
+        },
+      });
+      expect(mockPost).not.toHaveBeenCalled();
+    });
+
     it("omits invite hash when not provided", async () => {
+      vi.mocked(ConfigService.prototype.resolveApiConfig).mockResolvedValue({
+        apiUrl: "https://smoke.example.com",
+        apiKey: "",
+        workspace: "smoke",
+      });
+
       const response = {
         data: {
           data: {
