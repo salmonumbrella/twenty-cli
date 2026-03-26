@@ -148,6 +148,16 @@ The following hosted-surface findings are part of the planning baseline and shou
 
 For `renew-token` and `sso-url`, tests should pin command transport selection and endpoint choice first, then pin the schema shape that is actually implemented after the red-green cycle confirms the correct hosted contract.
 
+### Non-Hosted Surface Rule
+
+For `auth renew-token` and `auth sso-url`, the implementation plan must preserve current non-hosted behavior by default.
+
+That means:
+
+- hosted `api.twenty.com` targets `/metadata`
+- non-hosted surfaces keep the current endpoint contract unless Track 2 produces direct verification that a broader change is correct
+- the first implementation should avoid speculative fallback frameworks or broad surface autodetection beyond what is needed to distinguish the hosted surface from everything else
+
 ## Track 3: Structural Cleanup
 
 ### Objective
