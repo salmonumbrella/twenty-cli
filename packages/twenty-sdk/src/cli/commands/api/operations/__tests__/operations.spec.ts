@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { Command } from "commander";
+import { registerApiCommand } from "../../api.command";
 import { runCreateOperation } from "../create.operation";
 import { runUpdateOperation } from "../update.operation";
 import { runDeleteOperation } from "../delete.operation";
@@ -14,6 +16,20 @@ import { runBatchUpdateOperation } from "../batch-update.operation";
 import { runBatchDeleteOperation } from "../batch-delete.operation";
 import { CliError } from "../../../../utilities/errors/cli-error";
 import { ApiOperationContext } from "../types";
+import { readJsonInput } from "../../../../utilities/shared/io";
+
+const mockCreateCommandContext = vi.hoisted(() => vi.fn());
+
+vi.mock("../../../../utilities/shared/context", async () => {
+  const actual = await vi.importActual<typeof import("../../../../utilities/shared/context")>(
+    "../../../../utilities/shared/context",
+  );
+
+  return {
+    ...actual,
+    createCommandContext: mockCreateCommandContext,
+  };
+});
 
 // Mock the body utility
 vi.mock("../../../../utilities/shared/body", () => ({
@@ -87,6 +103,86 @@ describe("API Operations", () => {
   afterEach(() => {
     consoleSpy.mockRestore();
     vi.clearAllMocks();
+  });
+
+  describe("registerApiCommand", () => {
+    let program: Command;
+    let mockDelete: ReturnType<typeof vi.fn>;
+    let mockDestroy: ReturnType<typeof vi.fn>;
+    let mockDestroyMany: ReturnType<typeof vi.fn>;
+    let mockBatchDelete: ReturnType<typeof vi.fn>;
+    let mockOutputRender: ReturnType<typeof vi.fn>;
+
+    beforeEach(() => {
+      program = new Command();
+      program.exitOverride();
+      registerApiCommand(program);
+      mockDelete = vi.fn();
+      mockDestroy = vi.fn();
+      mockDestroyMany = vi.fn();
+      mockBatchDelete = vi.fn();
+      mockOutputRender = vi.fn();
+      mockCreateCommandContext.mockReset();
+      mockCreateCommandContext.mockReturnValue({
+        globalOptions: {
+          output: "json",
+          query: undefined,
+        },
+        services: {
+          records: {
+            delete: mockDelete,
+            destroy: mockDestroy,
+            destroyMany: mockDestroyMany,
+            batchDelete: mockBatchDelete,
+          },
+          output: {
+            render: mockOutputRender,
+          },
+        },
+      } as never);
+    });
+
+    it("registers explicit subcommands for record operations", () => {
+      const apiCmd = program.commands.find((command) => command.name() === "api");
+      const subcommands = apiCmd?.commands.map((command) => command.name()) ?? [];
+
+      expect(subcommands).toEqual(
+        expect.arrayContaining([
+          "list",
+          "get",
+          "create",
+          "update",
+          "delete",
+          "destroy",
+          "batch-create",
+          "batch-update",
+          "batch-delete",
+          "import",
+          "export",
+          "find-duplicates",
+          "group-by",
+          "merge",
+          "restore",
+        ]),
+      );
+    });
+
+    it("routes delete through the registered command", async () => {
+      mockDelete.mockResolvedValue(undefined);
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "api",
+        "delete",
+        "people",
+        "record-123",
+        "--yes",
+      ]);
+
+      expect(mockDelete).toHaveBeenCalledWith("people", "record-123");
+      expect(mockOutputRender).not.toHaveBeenCalled();
+    });
   });
 
   // ==================== CREATE OPERATION ====================

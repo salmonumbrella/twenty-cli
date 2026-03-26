@@ -1,3 +1,5 @@
+import fs from "fs-extra";
+import { Command } from "commander";
 import { describe, expect, it, vi } from "vitest";
 import { buildProgram } from "../program";
 import { buildHelpJson, maybeHandleInlineHelp } from "../help";
@@ -491,6 +493,26 @@ describe("CLI help contracts", () => {
     );
   });
 
+  it("falls back to bundled root help text when help.txt is unavailable", async () => {
+    const program = buildProgram();
+    const write = vi.fn();
+    const pathExistsSpy = vi.spyOn(fs, "pathExistsSync").mockReturnValue(false);
+
+    try {
+      const handled = await maybeHandleInlineHelp(program, [], write);
+
+      expect(handled).toBe(true);
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(write.mock.calls[0][0]).toContain("Command names are canonical; only --help-json also has the short --hj alias.");
+      expect(write.mock.calls[0][0]).toContain(
+        "Stable JSON fields: path, args, options, operations, capabilities, exit_codes, output_contract.",
+      );
+      expect(write.mock.calls[0][0]).not.toContain("Machine-readable root command tree");
+    } finally {
+      pathExistsSpy.mockRestore();
+    }
+  });
+
   it("renders command help JSON without requiring positional operations", async () => {
     const program = buildProgram();
     const write = vi.fn();
@@ -539,6 +561,67 @@ describe("CLI help contracts", () => {
     };
 
     expect(payload.name).toBe("roles");
+  });
+
+  it("resolves help-json targets even when the flag appears before the command path", () => {
+    const help = buildHelpJson(buildProgram(), ["--help-json", "auth", "list"]);
+
+    expect(help.kind).toBe("command");
+    expect(help.path).toEqual(["twenty", "auth", "list"]);
+    expect(help.name).toBe("list");
+  });
+
+  it("serializes option details for command help JSON", () => {
+    const help = buildHelpJson(buildProgram(), ["routes", "invoke", "--help-json"]);
+    const methodOption = help.options.find((option) => option.name === "method");
+
+    expect(methodOption).toEqual(
+      expect.objectContaining({
+        flags: "--method <method>",
+        type: "string",
+        default: '"get"',
+        required: false,
+        description: "Route method: get, post, put, patch, or delete",
+      }),
+    );
+  });
+
+  it("infers operations from the command argument description", () => {
+    const program = new Command();
+    program.name("twenty");
+    program.command("widgets").description("Inspect widgets").argument(
+      "<operation>",
+      "list, get, or archive",
+    );
+
+    const help = buildHelpJson(program, ["widgets", "--help-json"]);
+
+    expect(help.kind).toBe("command");
+    expect(help.path).toEqual(["twenty", "widgets"]);
+    expect(help.operations).toEqual([
+      expect.objectContaining({
+        name: "list",
+        summary: "List widgets",
+        mutates: false,
+      }),
+      expect.objectContaining({
+        name: "get",
+        summary: "Get one widget",
+        mutates: false,
+      }),
+      expect.objectContaining({
+        name: "archive",
+        summary: "archive",
+        mutates: true,
+      }),
+    ]);
+  });
+
+  it("renders only visible subcommands in help JSON", () => {
+    const help = buildHelpJson(buildProgram(), ["mcp", "--help-json"]);
+
+    expect(help.subcommands.some((command) => command.name === "help")).toBe(false);
+    expect(help.subcommands.some((command) => command.name.startsWith("completion"))).toBe(false);
   });
 
   it("does not intercept subcommand detail help", async () => {

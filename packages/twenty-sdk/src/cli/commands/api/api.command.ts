@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { createCommandContext } from "../../utilities/shared/context";
+import { registerCommand } from "../../utilities/shared/register-command";
 import { ApiCommandOptions, ApiOperationContext } from "./operations/types";
 import { runListOperation } from "./operations/list.operation";
 import { runGetOperation } from "./operations/get.operation";
@@ -70,175 +71,160 @@ export function registerApiCommand(program: Command): void {
   const api = program.command("api").description("Record operations");
   applyGlobalOptions(api);
 
-  const listCmd = api
-    .command("list")
-    .description("List records")
-    .argument("<object>", "Object name (plural)");
-  applyApiOptions(listCmd);
-  applyGlobalOptions(listCmd);
-  listCmd.action(async (object: string, _options: unknown, command: Command) => {
-    await runListOperation(createApiOperationContext(command, object));
+  registerCommand(api, "list", "List records", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(async (object: string, _options: unknown, actionCommand: Command) => {
+      await runListOperation(createApiOperationContext(actionCommand, object));
+    });
   });
 
-  const getCmd = api
-    .command("get")
-    .description("Get a record")
-    .argument("<object>", "Object name (plural)")
-    .argument("[id]", "Record ID");
-  applyApiOptions(getCmd);
-  applyGlobalOptions(getCmd);
-  getCmd.action(
-    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-      await runGetOperation(createApiOperationContext(command, object, id));
-    },
-  );
-
-  const createCmd = api
-    .command("create")
-    .description("Create a record")
-    .argument("<object>", "Object name (plural)");
-  applyApiOptions(createCmd);
-  applyGlobalOptions(createCmd);
-  createCmd.action(async (object: string, _options: unknown, command: Command) => {
-    await runCreateOperation(createApiOperationContext(command, object));
+  registerCommand(api, "get", "Get a record", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    command.argument("[id]", "Record ID");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(
+      async (object: string, id: string | undefined, _options: unknown, actionCommand: Command) => {
+        await runGetOperation(createApiOperationContext(actionCommand, object, id));
+      },
+    );
   });
 
-  const updateCmd = api
-    .command("update")
-    .description("Update a record")
-    .argument("<object>", "Object name (plural)")
-    .argument("[id]", "Record ID");
-  applyApiOptions(updateCmd);
-  applyGlobalOptions(updateCmd);
-  updateCmd.action(
-    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-      await runUpdateOperation(createApiOperationContext(command, object, id));
-    },
-  );
-
-  const deleteCmd = api
-    .command("delete")
-    .description("Delete a record")
-    .argument("<object>", "Object name (plural)")
-    .argument("[id]", "Record ID");
-  applyApiOptions(deleteCmd);
-  applyApiDestructiveOptions(deleteCmd);
-  applyGlobalOptions(deleteCmd);
-  deleteCmd.action(
-    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-      await runDeleteOperation(createApiOperationContext(command, object, id));
-    },
-  );
-
-  const destroyCmd = api
-    .command("destroy")
-    .description("Permanently destroy a record")
-    .argument("<object>", "Object name (plural)")
-    .argument("[id]", "Record ID");
-  applyApiOptions(destroyCmd);
-  applyApiDestructiveOptions(destroyCmd);
-  applyGlobalOptions(destroyCmd);
-  destroyCmd.action(
-    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-      await runDestroyOperation(createApiOperationContext(command, object, id));
-    },
-  );
-
-  const restoreCmd = api
-    .command("restore")
-    .description("Restore a deleted record")
-    .argument("<object>", "Object name (plural)")
-    .argument("[id]", "Record ID");
-  applyApiOptions(restoreCmd);
-  applyGlobalOptions(restoreCmd);
-  restoreCmd.action(
-    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-      await runRestoreOperation(createApiOperationContext(command, object, id));
-    },
-  );
-
-  const batchCreateCmd = api
-    .command("batch-create")
-    .description("Create many records")
-    .argument("<object>", "Object name (plural)");
-  applyApiOptions(batchCreateCmd);
-  applyGlobalOptions(batchCreateCmd);
-  batchCreateCmd.action(async (object: string, _options: unknown, command: Command) => {
-    await runBatchCreateOperation(createApiOperationContext(command, object));
+  registerCommand(api, "create", "Create a record", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(async (object: string, _options: unknown, actionCommand: Command) => {
+      await runCreateOperation(createApiOperationContext(actionCommand, object));
+    });
   });
 
-  const batchUpdateCmd = api
-    .command("batch-update")
-    .description("Update many records")
-    .argument("<object>", "Object name (plural)");
-  applyApiOptions(batchUpdateCmd);
-  applyGlobalOptions(batchUpdateCmd);
-  batchUpdateCmd.action(async (object: string, _options: unknown, command: Command) => {
-    await runBatchUpdateOperation(createApiOperationContext(command, object));
+  registerCommand(api, "update", "Update a record", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    command.argument("[id]", "Record ID");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(
+      async (object: string, id: string | undefined, _options: unknown, actionCommand: Command) => {
+        await runUpdateOperation(createApiOperationContext(actionCommand, object, id));
+      },
+    );
   });
 
-  const batchDeleteCmd = api
-    .command("batch-delete")
-    .description("Delete many records")
-    .argument("<object>", "Object name (plural)");
-  applyApiOptions(batchDeleteCmd);
-  applyApiDestructiveOptions(batchDeleteCmd);
-  applyGlobalOptions(batchDeleteCmd);
-  batchDeleteCmd.action(async (object: string, _options: unknown, command: Command) => {
-    await runBatchDeleteOperation(createApiOperationContext(command, object));
+  registerCommand(api, "delete", "Delete a record", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    command.argument("[id]", "Record ID");
+    applyApiOptions(command);
+    applyApiDestructiveOptions(command);
+    applyGlobalOptions(command);
+    command.action(
+      async (object: string, id: string | undefined, _options: unknown, actionCommand: Command) => {
+        await runDeleteOperation(createApiOperationContext(actionCommand, object, id));
+      },
+    );
   });
 
-  const importCmd = api
-    .command("import")
-    .description("Import records from a file")
-    .argument("<object>", "Object name (plural)")
-    .argument("[filePath]", "Import file path");
-  applyApiOptions(importCmd);
-  applyGlobalOptions(importCmd);
-  importCmd.action(
-    async (object: string, filePath: string | undefined, _options: unknown, command: Command) => {
-      await runImportOperation(createApiOperationContext(command, object, filePath));
-    },
-  );
-
-  const exportCmd = api
-    .command("export")
-    .description("Export records")
-    .argument("<object>", "Object name (plural)");
-  applyApiOptions(exportCmd);
-  applyGlobalOptions(exportCmd);
-  exportCmd.action(async (object: string, _options: unknown, command: Command) => {
-    await runExportOperation(createApiOperationContext(command, object));
+  registerCommand(api, "destroy", "Permanently destroy a record", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    command.argument("[id]", "Record ID");
+    applyApiOptions(command);
+    applyApiDestructiveOptions(command);
+    applyGlobalOptions(command);
+    command.action(
+      async (object: string, id: string | undefined, _options: unknown, actionCommand: Command) => {
+        await runDestroyOperation(createApiOperationContext(actionCommand, object, id));
+      },
+    );
   });
 
-  const findDuplicatesCmd = api
-    .command("find-duplicates")
-    .description("Find duplicate records")
-    .argument("<object>", "Object name (plural)");
-  applyApiOptions(findDuplicatesCmd);
-  applyGlobalOptions(findDuplicatesCmd);
-  findDuplicatesCmd.action(async (object: string, _options: unknown, command: Command) => {
-    await runFindDuplicatesOperation(createApiOperationContext(command, object));
+  registerCommand(api, "restore", "Restore a deleted record", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    command.argument("[id]", "Record ID");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(
+      async (object: string, id: string | undefined, _options: unknown, actionCommand: Command) => {
+        await runRestoreOperation(createApiOperationContext(actionCommand, object, id));
+      },
+    );
   });
 
-  const groupByCmd = api
-    .command("group-by")
-    .description("Group records")
-    .argument("<object>", "Object name (plural)");
-  applyApiOptions(groupByCmd);
-  applyGlobalOptions(groupByCmd);
-  groupByCmd.action(async (object: string, _options: unknown, command: Command) => {
-    await runGroupByOperation(createApiOperationContext(command, object));
+  registerCommand(api, "batch-create", "Create many records", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(async (object: string, _options: unknown, actionCommand: Command) => {
+      await runBatchCreateOperation(createApiOperationContext(actionCommand, object));
+    });
   });
 
-  const mergeCmd = api
-    .command("merge")
-    .description("Merge records")
-    .argument("<object>", "Object name (plural)");
-  applyApiOptions(mergeCmd);
-  applyGlobalOptions(mergeCmd);
-  mergeCmd.action(async (object: string, _options: unknown, command: Command) => {
-    await runMergeOperation(createApiOperationContext(command, object));
+  registerCommand(api, "batch-update", "Update many records", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(async (object: string, _options: unknown, actionCommand: Command) => {
+      await runBatchUpdateOperation(createApiOperationContext(actionCommand, object));
+    });
+  });
+
+  registerCommand(api, "batch-delete", "Delete many records", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    applyApiOptions(command);
+    applyApiDestructiveOptions(command);
+    applyGlobalOptions(command);
+    command.action(async (object: string, _options: unknown, actionCommand: Command) => {
+      await runBatchDeleteOperation(createApiOperationContext(actionCommand, object));
+    });
+  });
+
+  registerCommand(api, "import", "Import records from a file", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    command.argument("[filePath]", "Import file path");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(
+      async (object: string, filePath: string | undefined, _options: unknown, actionCommand: Command) => {
+        await runImportOperation(createApiOperationContext(actionCommand, object, filePath));
+      },
+    );
+  });
+
+  registerCommand(api, "export", "Export records", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(async (object: string, _options: unknown, actionCommand: Command) => {
+      await runExportOperation(createApiOperationContext(actionCommand, object));
+    });
+  });
+
+  registerCommand(api, "find-duplicates", "Find duplicate records", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(async (object: string, _options: unknown, actionCommand: Command) => {
+      await runFindDuplicatesOperation(createApiOperationContext(actionCommand, object));
+    });
+  });
+
+  registerCommand(api, "group-by", "Group records", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(async (object: string, _options: unknown, actionCommand: Command) => {
+      await runGroupByOperation(createApiOperationContext(actionCommand, object));
+    });
+  });
+
+  registerCommand(api, "merge", "Merge records", (command) => {
+    command.argument("<object>", "Object name (plural)");
+    applyApiOptions(command);
+    applyGlobalOptions(command);
+    command.action(async (object: string, _options: unknown, actionCommand: Command) => {
+      await runMergeOperation(createApiOperationContext(actionCommand, object));
+    });
   });
 }
 

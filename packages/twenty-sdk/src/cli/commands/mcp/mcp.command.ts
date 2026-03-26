@@ -3,100 +3,99 @@ import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
 import { readFileOrStdin, safeJsonParse } from "../../utilities/shared/io";
 import { createServices } from "../../utilities/shared/services";
+import { registerCommand } from "../../utilities/shared/register-command";
 
 export function registerMcpCommand(program: Command): void {
   const cmd = program.command("mcp").description("Interact with the official Twenty MCP server");
 
-  const statusCmd = cmd
-    .command("status")
-    .description("Show MCP availability for the active workspace");
-  applyGlobalOptions(statusCmd);
-  statusCmd.action(async (_options, command: Command) => {
-    const globalOptions = resolveGlobalOptions(command);
-    const services = createServices(globalOptions);
-    const result = await services.mcp.status();
+  registerCommand(cmd, "status", "Show MCP availability for the active workspace", (command) => {
+    applyGlobalOptions(command);
+    command.action(async (_options, actionCommand: Command) => {
+      const globalOptions = resolveGlobalOptions(actionCommand);
+      const services = createServices(globalOptions);
+      const result = await services.mcp.status();
 
-    await services.output.render(result, {
-      format: globalOptions.output,
-      query: globalOptions.query,
+      await services.output.render(result, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
     });
   });
 
-  const catalogCmd = cmd.command("catalog").description("Show the official MCP tool catalog");
-  applyGlobalOptions(catalogCmd);
-  catalogCmd.action(async (_options, command: Command) => {
-    const globalOptions = resolveGlobalOptions(command);
-    const services = createServices(globalOptions);
-    const result = await services.mcp.callTool("get_tool_catalog", {});
+  registerCommand(cmd, "catalog", "Show the official MCP tool catalog", (command) => {
+    applyGlobalOptions(command);
+    command.action(async (_options, actionCommand: Command) => {
+      const globalOptions = resolveGlobalOptions(actionCommand);
+      const services = createServices(globalOptions);
+      const result = await services.mcp.callTool("get_tool_catalog", {});
 
-    await services.output.render(result, {
-      format: globalOptions.output,
-      query: globalOptions.query,
+      await services.output.render(result, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
     });
   });
 
-  const learnCmd = cmd
-    .command("learn")
-    .description("Get guidance for one or more MCP tools")
-    .argument("<toolNames...>", "Tool names to learn");
-  applyGlobalOptions(learnCmd);
-  learnCmd.action(async (toolNames: string[], _options, command: Command) => {
-    const globalOptions = resolveGlobalOptions(command);
-    const services = createServices(globalOptions);
-    const result = await services.mcp.callTool("learn_tools", { toolNames });
+  registerCommand(cmd, "learn", "Get guidance for one or more MCP tools", (command) => {
+    command.argument("<toolNames...>", "Tool names to learn");
+    applyGlobalOptions(command);
+    command.action(async (toolNames: string[], _options, actionCommand: Command) => {
+      const globalOptions = resolveGlobalOptions(actionCommand);
+      const services = createServices(globalOptions);
+      const result = await services.mcp.callTool("learn_tools", { toolNames });
 
-    await services.output.render(result, {
-      format: globalOptions.output,
-      query: globalOptions.query,
+      await services.output.render(result, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
     });
   });
 
-  const callCmd = cmd
-    .command("call")
-    .description("Call an official MCP tool by name")
-    .argument("<tool>", "Official MCP tool name")
-    .option("--data <json>", "Tool arguments as inline JSON")
-    .option("--file <path>", "Path to a JSON file containing tool arguments (use - for stdin)");
-  applyGlobalOptions(callCmd);
-  callCmd.action(async (tool: string, options: CallOptions, command: Command) => {
-    const globalOptions = resolveGlobalOptions(command);
-    const services = createServices(globalOptions);
-    const argumentsObject = await readMcpCallArguments(options);
-    const result = await services.mcp.callTool(tool, argumentsObject);
+  registerCommand(cmd, "call", "Call an official MCP tool by name", (command) => {
+    command.argument("<tool>", "Official MCP tool name");
+    command.option("--data <json>", "Tool arguments as inline JSON");
+    command.option("--file <path>", "Path to a JSON file containing tool arguments (use - for stdin)");
+    applyGlobalOptions(command);
+    command.action(async (tool: string, options: CallOptions, actionCommand: Command) => {
+      const globalOptions = resolveGlobalOptions(actionCommand);
+      const services = createServices(globalOptions);
+      const argumentsObject = await readMcpCallArguments(options);
+      const result = await services.mcp.callTool(tool, argumentsObject);
 
-    await services.output.render(result, {
-      format: globalOptions.output,
-      query: globalOptions.query,
+      await services.output.render(result, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
     });
   });
 
-  const loadSkillsCmd = cmd.command("load-skills").description("Load official MCP skills");
-  loadSkillsCmd.argument("<skillNames...>", "Skill names to load");
-  applyGlobalOptions(loadSkillsCmd);
-  loadSkillsCmd.action(async (skillNames: string[], _options, command: Command) => {
-    const globalOptions = resolveGlobalOptions(command);
-    const services = createServices(globalOptions);
-    const result = await services.mcp.callTool("load_skills", { skillNames });
+  registerCommand(cmd, "load-skills", "Load official MCP skills", (command) => {
+    command.argument("<skillNames...>", "Skill names to load");
+    applyGlobalOptions(command);
+    command.action(async (skillNames: string[], _options, actionCommand: Command) => {
+      const globalOptions = resolveGlobalOptions(actionCommand);
+      const services = createServices(globalOptions);
+      const result = await services.mcp.callTool("load_skills", { skillNames });
 
-    await services.output.render(result, {
-      format: globalOptions.output,
-      query: globalOptions.query,
+      await services.output.render(result, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
     });
   });
 
-  const helpCenterCmd = cmd
-    .command("help-center")
-    .description("Search the official MCP help center");
-  helpCenterCmd.argument("<query>", "Help center query");
-  applyGlobalOptions(helpCenterCmd);
-  helpCenterCmd.action(async (query: string, _options, command: Command) => {
-    const globalOptions = resolveGlobalOptions(command);
-    const services = createServices(globalOptions);
-    const result = await services.mcp.callTool("search_help_center", { query });
+  registerCommand(cmd, "help-center", "Search the official MCP help center", (command) => {
+    command.argument("<query>", "Help center query");
+    applyGlobalOptions(command);
+    command.action(async (query: string, _options, actionCommand: Command) => {
+      const globalOptions = resolveGlobalOptions(actionCommand);
+      const services = createServices(globalOptions);
+      const result = await services.mcp.callTool("search_help_center", { query });
 
-    await services.output.render(result, {
-      format: globalOptions.output,
-      query: globalOptions.query,
+      await services.output.render(result, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
     });
   });
 }

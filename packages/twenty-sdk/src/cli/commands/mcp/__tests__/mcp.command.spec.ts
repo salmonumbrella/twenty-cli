@@ -44,6 +44,22 @@ describe("mcp command", () => {
     expect(command).toBeDefined();
   });
 
+  it("registers the expected MCP subcommands", () => {
+    const command = program.commands.find((candidate) => candidate.name() === "mcp");
+    const subcommands = command?.commands.map((candidate) => candidate.name()) ?? [];
+
+    expect(subcommands).toEqual(
+      expect.arrayContaining([
+        "status",
+        "catalog",
+        "learn",
+        "call",
+        "load-skills",
+        "help-center",
+      ]),
+    );
+  });
+
   it("runs mcp status and renders the structured status object", async () => {
     mockServices.mcp.status.mockResolvedValue({
       state: "ok",
@@ -236,6 +252,15 @@ describe("mcp command", () => {
         format: "text",
       }),
     );
+  });
+
+  it("registers call with explicit tool argument and payload options", () => {
+    const command = program.commands.find((candidate) => candidate.name() === "mcp");
+    const callCommand = command?.commands.find((candidate) => candidate.name() === "call");
+
+    expect(callCommand?.registeredArguments?.[0]?.name()).toBe("tool");
+    expect(callCommand?.options.find((option) => option.long === "--data")).toBeDefined();
+    expect(callCommand?.options.find((option) => option.long === "--file")).toBeDefined();
   });
 
   it("rejects mcp learn when no tool names are provided", async () => {
