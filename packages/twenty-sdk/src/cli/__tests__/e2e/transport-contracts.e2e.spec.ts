@@ -2,14 +2,11 @@ import { describe, expect, it } from "vitest";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { createLocalRequestEnv, startMockBinaryServer, startMockGraphqlServer } from "./helpers/mock-http";
-import { runCliWithTempHome, runCliWithTempHomeAsync } from "./helpers/temp-home";
+import { resolveBuiltCliPath } from "./helpers/cli-runner";
+import { createLocalRequestEnv, startBinaryMockServer, startGraphqlMockServer } from "./helpers/mock-server";
+import { runBuiltCliWithTempHomeAsync } from "./helpers/temp-home";
 
-function resolveCliPath(): string {
-  return path.resolve(__dirname, "../../../../dist/cli/cli.js");
-}
-
-const cliPath = resolveCliPath();
+const cliPath = resolveBuiltCliPath();
 
 if (!fs.existsSync(cliPath)) {
   throw new Error(
@@ -18,16 +15,16 @@ if (!fs.existsSync(cliPath)) {
 }
 
 describe("twenty clean-home transport contracts", () => {
-  it("loads the full root help asset from the built CLI", () => {
-    const result = runCliWithTempHome(["--help"]);
+  it("loads the full root help asset from the built CLI", async () => {
+    const result = await runBuiltCliWithTempHomeAsync(["--help"]);
 
     expect(result.exitCode).toBe(0);
     expect(result.stdout).toContain("Auth & Workspace:");
     expect(result.stdout).toContain("Environment:");
   });
 
-  it("openapi core still requires auth in the clean-home red state", () => {
-    const result = runCliWithTempHome(["openapi", "core"]);
+  it("openapi core still requires auth in the clean-home red state", async () => {
+    const result = await runBuiltCliWithTempHomeAsync(["openapi", "core"]);
 
     expect(result.exitCode).toBe(3);
     expect(result.stderr).toContain("Missing API token.");
@@ -64,7 +61,7 @@ describe("twenty clean-home transport contracts", () => {
         microsoft: false,
       },
     };
-    const server = await startMockGraphqlServer((body) => {
+    const server = await startGraphqlMockServer((body) => {
       const payload = JSON.parse(body) as {
         query: string;
         variables?: { origin?: string };
@@ -83,7 +80,7 @@ describe("twenty clean-home transport contracts", () => {
     });
 
     try {
-      const result = await runCliWithTempHomeAsync(
+      const result = await runBuiltCliWithTempHomeAsync(
         ["auth", "discover", "https://acme.twenty.com", "-o", "json"],
         {
           env: createLocalRequestEnv(server.baseUrl),
@@ -92,7 +89,7 @@ describe("twenty clean-home transport contracts", () => {
 
       expect(result.stderr).not.toContain("Missing API token.");
       expect(result.exitCode).toBe(0);
-      expect(server.requests[0]?.pathname).toBe("/metadata");
+      expect(server.getOnlyRequest().pathname).toBe("/metadata");
       expect(JSON.parse(result.stdout)).toEqual(workspaceData);
     } finally {
       await server.close();
@@ -103,10 +100,10 @@ describe("twenty clean-home transport contracts", () => {
     const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "twenty-cli-download-"));
     const outputPath = path.join(outputDir, "payload.bin");
     const expectedBytes = Buffer.from([0x74, 0x77, 0x65, 0x6e, 0x74, 0x79, 0x00, 0xff]);
-    const server = await startMockBinaryServer(expectedBytes);
+    const server = await startBinaryMockServer(expectedBytes);
 
     try {
-      const result = await runCliWithTempHomeAsync(
+      const result = await runBuiltCliWithTempHomeAsync(
         [
           "files",
           "download",
@@ -122,7 +119,7 @@ describe("twenty clean-home transport contracts", () => {
       expect(result.stderr).not.toContain("Missing API token.");
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain(`Downloaded to ${outputPath}`);
-      expect(server.requests[0]?.path).toBe("/file/files-field/file-123?token=signed-token");
+      expect(server.getOnlyRequest().path).toBe("/file/files-field/file-123?token=signed-token");
       expect(fs.readFileSync(outputPath)).toEqual(expectedBytes);
     } finally {
       await server.close();
@@ -134,10 +131,10 @@ describe("twenty clean-home transport contracts", () => {
     const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "twenty-cli-public-asset-"));
     const outputPath = path.join(outputDir, "logo.svg");
     const expectedBytes = Buffer.from("<svg>twenty</svg>");
-    const server = await startMockBinaryServer(expectedBytes);
+    const server = await startBinaryMockServer(expectedBytes);
 
     try {
-      const result = await runCliWithTempHomeAsync(
+      const result = await runBuiltCliWithTempHomeAsync(
         [
           "files",
           "public-asset",
@@ -157,7 +154,7 @@ describe("twenty clean-home transport contracts", () => {
       expect(result.stderr).not.toContain("Missing API token.");
       expect(result.exitCode).toBe(0);
       expect(result.stdout).toContain(`Downloaded to ${outputPath}`);
-      expect(server.requests[0]?.path).toBe("/public-assets/ws-123/app-123/images/logo.svg");
+      expect(server.getOnlyRequest().path).toBe("/public-assets/ws-123/app-123/images/logo.svg");
       expect(fs.readFileSync(outputPath)).toEqual(expectedBytes);
     } finally {
       await server.close();
@@ -166,7 +163,7 @@ describe("twenty clean-home transport contracts", () => {
   });
 
   it("auth renew-token keeps the non-hosted graphql path without requiring auth", async () => {
-    const server = await startMockGraphqlServer((body) => {
+    const server = await startGraphqlMockServer((body) => {
       expect(body).toContain("renewToken");
       return {
         data: {
@@ -181,7 +178,7 @@ describe("twenty clean-home transport contracts", () => {
     });
 
     try {
-      const result = await runCliWithTempHomeAsync(
+      const result = await runBuiltCliWithTempHomeAsync(
         ["auth", "renew-token", "--app-token", "refresh-token", "-o", "json"],
         {
           env: createLocalRequestEnv(server.baseUrl),
@@ -190,7 +187,7 @@ describe("twenty clean-home transport contracts", () => {
 
       expect(result.stderr).not.toContain("Missing API token.");
       expect(result.exitCode).toBe(0);
-      expect(server.requests[0]?.pathname).toBe("/graphql");
+      expect(server.getOnlyRequest().pathname).toBe("/graphql");
       expect(JSON.parse(result.stdout)).toEqual({
         tokens: {
           accessToken: "access-token",
@@ -203,7 +200,7 @@ describe("twenty clean-home transport contracts", () => {
   });
 
   it("auth sso-url keeps the non-hosted graphql path without requiring auth", async () => {
-    const server = await startMockGraphqlServer((body) => {
+    const server = await startGraphqlMockServer((body) => {
       expect(body).toContain("getAuthorizationUrlForSSO");
       return {
         data: {
@@ -217,7 +214,7 @@ describe("twenty clean-home transport contracts", () => {
     });
 
     try {
-      const result = await runCliWithTempHomeAsync(
+      const result = await runBuiltCliWithTempHomeAsync(
         ["auth", "sso-url", "idp-1", "--workspace-invite-hash", "invite-123", "-o", "json"],
         {
           env: createLocalRequestEnv(server.baseUrl),
@@ -226,7 +223,7 @@ describe("twenty clean-home transport contracts", () => {
 
       expect(result.stderr).not.toContain("Missing API token.");
       expect(result.exitCode).toBe(0);
-      expect(server.requests[0]?.pathname).toBe("/graphql");
+      expect(server.getOnlyRequest().pathname).toBe("/graphql");
       expect(JSON.parse(result.stdout)).toEqual({
         authorizationURL: "https://idp.example.com/login",
         type: "OIDC",

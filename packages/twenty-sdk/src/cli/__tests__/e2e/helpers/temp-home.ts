@@ -10,7 +10,7 @@ import {
 
 export interface TempHomeCliRunOptions extends BuiltCliRunOptions {}
 
-export function runCliWithTempHome(
+export function runBuiltCliWithTempHome(
   args: string[],
   options: TempHomeCliRunOptions = {},
 ): BuiltCliRunResult {
@@ -27,7 +27,7 @@ export function runCliWithTempHome(
   }
 }
 
-export async function runCliWithTempHomeAsync(
+export async function runBuiltCliWithTempHomeAsync(
   args: string[],
   options: TempHomeCliRunOptions = {},
 ): Promise<BuiltCliRunResult> {
@@ -42,6 +42,20 @@ export async function runCliWithTempHomeAsync(
   } finally {
     fs.rmSync(homeDir, { recursive: true, force: true });
   }
+}
+
+export function runCliWithTempHome(
+  args: string[],
+  options: TempHomeCliRunOptions = {},
+): BuiltCliRunResult {
+  return runBuiltCliWithTempHome(args, options);
+}
+
+export async function runCliWithTempHomeAsync(
+  args: string[],
+  options: TempHomeCliRunOptions = {},
+): Promise<BuiltCliRunResult> {
+  return await runBuiltCliWithTempHomeAsync(args, options);
 }
 
 function createTempHomeDir(): string {
