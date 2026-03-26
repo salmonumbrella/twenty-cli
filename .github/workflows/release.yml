@@ -146,6 +146,7 @@ jobs:
           fi
 
       - name: Update Homebrew formula
+        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
         run: |
           gh api repos/${{ github.repository_owner }}/homebrew-tap/dispatches \
             -f event_type=update-formula \
