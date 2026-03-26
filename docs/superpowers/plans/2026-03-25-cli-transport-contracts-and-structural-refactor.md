@@ -201,6 +201,8 @@ Add explicit tests for:
 - hosted `openapi` remains auth-required
 - hosted `auth renew-token` targets `/metadata`
 - hosted `auth sso-url` targets `/metadata`
+- hosted `auth renew-token` pins the `/metadata` response-shape handling that the command expects after endpoint selection is corrected
+- hosted `auth sso-url` pins the `/metadata` response-shape handling that the command expects after endpoint selection is corrected
 - non-hosted surfaces preserve current behavior for `renew-token` and `sso-url`
 
 - [ ] **Step 2: Run the focused suites to verify failure**
@@ -224,7 +226,12 @@ Implement the narrowest logic that satisfies the spec:
 - otherwise preserve current endpoint behavior
 - avoid generic multi-surface fallback machinery in this task
 
-- [ ] **Step 4: Re-run focused suites and then the broader auth/openapi coverage**
+- [ ] **Step 4: Align hosted response parsing with the `/metadata` contract**
+
+After the endpoint switch is in place, update `renew-token` and `sso-url` parsing only as needed to satisfy the schema-shape tests added in Step 1.
+Do not broaden scope into speculative schema normalization for non-hosted surfaces.
+
+- [ ] **Step 5: Re-run focused suites and then the broader auth/openapi coverage**
 
 Run:
 ```bash
@@ -238,7 +245,7 @@ pnpm --filter twenty-sdk exec vitest run -c vitest.e2e.config.ts \
 Expected:
 - hosted and non-hosted expectations pass
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 Run:
 ```bash
@@ -491,11 +498,13 @@ Expected:
 - package test suite passes
 
 - [ ] **Step 4: Review git diff for unintended scope creep**
+ 
+- [ ] **Step 4: Review git diff for unintended scope creep**
 
 Run:
 ```bash
 git status --short
-git diff --stat HEAD~7..HEAD
+git diff --stat "$(git merge-base HEAD origin/HEAD 2>/dev/null || git rev-list --max-parents=0 HEAD | tail -n 1)"..HEAD
 ```
 
 Expected:
