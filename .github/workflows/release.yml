@@ -103,6 +103,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+    env:
+      HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -146,7 +148,7 @@ jobs:
           fi
 
       - name: Update Homebrew formula
-        if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}
+        if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}
         run: |
           gh api repos/${{ github.repository_owner }}/homebrew-tap/dispatches \
             -f event_type=update-formula \
@@ -157,4 +159,4 @@ jobs:
             -f 'client_payload[description]=CLI for Twenty CRM' \
             -f 'client_payload[archive_prefix]=twenty'
         env:
-          GH_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          GH_TOKEN: ${{ env.HOMEBREW_TAP_TOKEN }}

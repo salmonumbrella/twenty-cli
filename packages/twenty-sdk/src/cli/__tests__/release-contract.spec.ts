@@ -80,7 +80,8 @@ describe("repo release consistency", () => {
     expect(releaseWorkflow).toContain("actions/upload-artifact@v7");
     expect(releaseWorkflow).toContain("actions/download-artifact@v8");
     expect(releaseWorkflow).toContain("checksums.txt");
-    expect(releaseWorkflow).toContain("if: ${{ secrets.HOMEBREW_TAP_TOKEN != '' }}");
+    expect(releaseWorkflow).toContain("HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}");
+    expect(releaseWorkflow).toContain("if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}");
 
     expect(driftWorkflow).toContain("pnpm check:upstream-drift");
 
