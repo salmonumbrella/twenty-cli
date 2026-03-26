@@ -79,6 +79,19 @@ The first migration wave is limited to:
 - `files download`
 - `files public-asset`
 
+### Command Transport Matrix
+
+The initial migration wave must assign explicit transport intent as follows:
+
+| Command | Intended transport intent | Notes |
+|---------|----------------------------|-------|
+| `auth discover` | public no auth | This command is for public workspace auth discovery and should work without ambient credentials. |
+| `auth renew-token` | public no auth | On the hosted `api.twenty.com` surface, the verified target is `/metadata`, not `/graphql`. Availability may differ on other API surfaces. |
+| `auth sso-url` | public no auth | On the hosted `api.twenty.com` surface, the verified target is `/metadata`, not `/graphql`. Availability may differ on other API surfaces. |
+| `openapi` | private | On the hosted `api.twenty.com` surface, `/rest/open-api/*` currently requires authentication. |
+| `files download` | public no auth | Signed URLs and tokenized `/file/*` downloads should not require workspace credentials. |
+| `files public-asset` | public no auth | Public asset downloads should work without ambient credentials. |
+
 ### Constraints
 
 - Do not convert unrelated commands during this track.
@@ -121,6 +134,19 @@ This track may correct command behavior where live verification already showed m
 - `sso-url` endpoint/schema assumptions
 
 Changes in this track should be evidence-driven. If a behavior is not verified, do not redesign it speculatively.
+
+### Verified Hosted-Surface Contract Targets
+
+The following hosted-surface findings are part of the planning baseline and should be reflected in tests and implementation:
+
+| Command | Hosted target path | Hosted auth expectation | Verified hosted behavior to pin |
+|---------|--------------------|-------------------------|---------------------------------|
+| `openapi` | `/rest/open-api/core` and `/rest/open-api/metadata` | auth required | Unauthenticated requests on `api.twenty.com` return `403 Missing authentication token`. |
+| `auth discover` | `/metadata` | no auth required | `getPublicWorkspaceDataByDomain` is callable without auth and returns business-level GraphQL errors rather than auth rejection when the workspace is not found. |
+| `auth renew-token` | `/metadata` | no auth required on hosted surface | The mutation is not available on `/graphql` on hosted `api.twenty.com`; hosted planning should target `/metadata`. Response-shape expectations must be pinned from verified schema-compatible tests, not from the current implementation. |
+| `auth sso-url` | `/metadata` | no auth required on hosted surface | The mutation is not available on `/graphql` on hosted `api.twenty.com`; hosted planning should target `/metadata`. |
+
+For `renew-token` and `sso-url`, tests should pin command transport selection and endpoint choice first, then pin the schema shape that is actually implemented after the red-green cycle confirms the correct hosted contract.
 
 ## Track 3: Structural Cleanup
 
