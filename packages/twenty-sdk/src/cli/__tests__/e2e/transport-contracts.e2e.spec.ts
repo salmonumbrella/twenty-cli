@@ -20,6 +20,14 @@ if (!fs.existsSync(cliPath)) {
 }
 
 describe("twenty clean-home transport contracts", () => {
+  it("loads the full root help asset from the built CLI", () => {
+    const result = runCliWithTempHome(["--help"]);
+
+    expect(result.exitCode).toBe(0);
+    expect(result.stdout).toContain("Auth & Workspace:");
+    expect(result.stdout).toContain("Environment:");
+  });
+
   it("openapi core still requires auth in the clean-home red state", () => {
     const result = runCliWithTempHome(["openapi", "core"]);
 

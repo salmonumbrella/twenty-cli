@@ -65,7 +65,7 @@ export function buildHelpJson(program: Command, args: string[]): HelpDocument {
 }
 
 function loadRootHelpText(): string {
-  const helpPath = path.join(__dirname, "help.txt");
+  const helpPath = path.join(__dirname, "..", "help.txt");
   if (fs.pathExistsSync(helpPath)) {
     return fs.readFileSync(helpPath, "utf-8");
   }
