@@ -16,9 +16,6 @@ on:
         description: Workspace profile for the live environment
         required: true
         type: string
-    secrets:
-      TWENTY_LIVE_TOKEN:
-        required: true
 
 permissions:
   contents: read

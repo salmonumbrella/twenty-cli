@@ -65,6 +65,7 @@ describe("repo release consistency", () => {
     expect(liveSmokeWorkflow).toContain("concurrency:");
     expect(liveSmokeWorkflow).toContain("environment: live-smoke");
     expect(liveSmokeWorkflow).toContain("TWENTY_TOKEN: ${{ secrets.TWENTY_LIVE_TOKEN }}");
+    expect(liveSmokeWorkflow).not.toContain("secrets:\n      TWENTY_LIVE_TOKEN:");
 
     expect(releaseWorkflow).toContain("actions/setup-node");
     expect(releaseWorkflow).not.toContain("setup-go");
