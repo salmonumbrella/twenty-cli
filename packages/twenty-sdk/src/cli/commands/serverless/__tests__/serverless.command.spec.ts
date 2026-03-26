@@ -101,6 +101,27 @@ describe("serverless command", () => {
       expect(help).toContain("logs");
     });
 
+    it("registers the available-packages alias", async () => {
+      mockPost.mockResolvedValue({
+        data: { data: { getAvailablePackages: { zod: "^3.25.0" } } },
+      });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "available-packages",
+        "fn-1",
+        "-o",
+        "json",
+      ]);
+
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("getAvailablePackages(input: $input)"),
+        variables: { input: { id: "fn-1" } },
+      });
+    });
+
     it("has --data option", () => {
       const serverlessCmd = program.commands.find((cmd) => cmd.name() === "serverless");
       const createCmd = serverlessCmd?.commands.find((cmd) => cmd.name() === "create");
@@ -266,6 +287,26 @@ describe("serverless command", () => {
       const output = consoleSpy.mock.calls[0][0] as string;
       expect(JSON.parse(output)).toEqual(functions);
     });
+
+    it("does not fall back to legacy queries for non-schema graphql errors", async () => {
+      mockPost.mockResolvedValue({
+        data: {
+          errors: [{ message: "Workspace auth failed." }],
+        },
+      });
+
+      await expect(
+        program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]),
+      ).rejects.toMatchObject({
+        message: "Workspace auth failed.",
+        code: "API_ERROR",
+      });
+
+      expect(mockPost).toHaveBeenCalledTimes(1);
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("findManyServerlessFunctions"),
+      });
+    });
   });
 
   describe("get operation", () => {
@@ -384,6 +425,45 @@ describe("serverless command", () => {
       });
     });
 
+    it("prefers explicit handler-path values when shaping create payloads", async () => {
+      mockPost.mockResolvedValue({
+        data: { data: { createOneServerlessFunction: { id: "fn-new", name: "JsonFunction" } } },
+      });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "create",
+        "-d",
+        JSON.stringify({
+          name: "JsonFunction",
+          handlerPath: "src/explicit.ts",
+          source: {
+            sourceHandlerPath: "src/legacy.ts",
+            sourceHandlerCode: "export const handler = async () => null;",
+            handlerName: "handler",
+          },
+        }),
+        "-o",
+        "json",
+      ]);
+
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("createOneServerlessFunction"),
+        variables: {
+          input: {
+            name: "JsonFunction",
+            code: {
+              "src/explicit.ts": "export const handler = async () => null;",
+            },
+            handlerName: "handler",
+            handlerPath: "src/explicit.ts",
+          },
+        },
+      });
+    });
+
     it("throws error when --name is missing", async () => {
       await expect(program.parseAsync(["node", "test", "serverless", "create"])).rejects.toThrow(
         CliError,
@@ -442,6 +522,50 @@ describe("serverless command", () => {
           input: {
             id: "fn-1",
             update: { description: "Desc", timeoutSeconds: 90 },
+          },
+        },
+      });
+    });
+
+    it("normalizes legacy source payloads when updating current serverless functions", async () => {
+      mockPost.mockResolvedValue({ data: { data: { updateOneServerlessFunction: true } } });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "update",
+        "fn-1",
+        "-d",
+        JSON.stringify({
+          sourceHandlerPath: "src/legacy.ts",
+          source: {
+            sourceHandlerCode: "export const renamed = async () => null;",
+            handlerName: "renamed",
+            toolInputSchema: {
+              type: "object",
+            },
+          },
+        }),
+        "-o",
+        "json",
+      ]);
+
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
+        query: expect.stringContaining("updateOneServerlessFunction(input: $input)"),
+        variables: {
+          input: {
+            id: "fn-1",
+            update: {
+              code: {
+                "src/legacy.ts": "export const renamed = async () => null;",
+              },
+              handlerName: "renamed",
+              handlerPath: "src/legacy.ts",
+              toolInputSchema: {
+                type: "object",
+              },
+            },
           },
         },
       });
@@ -640,6 +764,49 @@ describe("serverless command", () => {
   });
 
   describe("logs operation", () => {
+    it("requires bounded collection for json log output", async () => {
+      await expect(
+        program.parseAsync(["node", "test", "serverless", "logs", "fn-1", "-o", "json"]),
+      ).rejects.toMatchObject({
+        message:
+          "Streaming JSON output requires --max-events or --wait-seconds so the command can terminate with a complete array.",
+        code: "INVALID_ARGUMENTS",
+      });
+    });
+
+    it("collects bounded log events for json output", async () => {
+      mockSubscribe.mockReturnValue(
+        (async function* () {
+          yield {
+            logicFunctionLogs: {
+              logs: "first",
+            },
+          };
+          yield {
+            logicFunctionLogs: {
+              logs: "second",
+            },
+          };
+        })(),
+      );
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "logs",
+        "fn-1",
+        "--max-events",
+        "1",
+        "-o",
+        "json",
+      ]);
+
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+      const output = consoleSpy.mock.calls[0][0] as string;
+      expect(JSON.parse(output)).toEqual([{ logs: "first" }]);
+    });
+
     it("streams logic function logs with a metadata subscription", async () => {
       mockSubscribe.mockReturnValue(
         (async function* () {
