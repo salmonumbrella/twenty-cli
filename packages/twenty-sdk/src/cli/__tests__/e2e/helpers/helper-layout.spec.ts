@@ -12,6 +12,7 @@ describe("helper layout", () => {
       "cli-runner.ts",
       "live-config.ts",
       "mock-server.ts",
+      "process-runner.ts",
       "temp-home.ts",
     ]);
   });

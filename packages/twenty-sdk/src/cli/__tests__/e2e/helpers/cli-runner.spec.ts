@@ -1,22 +1,21 @@
-import { EventEmitter } from "node:events";
 import path from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
-const spawnSyncMock = vi.fn();
-const spawnMock = vi.fn();
+const runNodeScriptMock = vi.fn();
+const runNodeScriptAsyncMock = vi.fn();
 
-vi.mock("node:child_process", () => ({
-  spawnSync: spawnSyncMock,
-  spawn: spawnMock,
+vi.mock("./process-runner", () => ({
+  runNodeScript: runNodeScriptMock,
+  runNodeScriptAsync: runNodeScriptAsyncMock,
 }));
 
 describe("cli runner", () => {
   beforeEach(() => {
-    spawnSyncMock.mockReset();
-    spawnMock.mockReset();
+    runNodeScriptMock.mockReset();
+    runNodeScriptAsyncMock.mockReset();
     delete process.env.TWENTY_TOKEN;
     delete process.env.TWENTY_BASE_URL;
+    delete process.env.UNRELATED_ENV;
   });
 
   it("resolves the built CLI artifact path", async () => {
@@ -27,9 +26,9 @@ describe("cli runner", () => {
     );
   });
 
-  it("runs the built CLI synchronously and returns a shared result shape", async () => {
-    spawnSyncMock.mockReturnValue({
-      status: 0,
+  it("runs the built CLI synchronously through the process helper", async () => {
+    runNodeScriptMock.mockReturnValue({
+      exitCode: 0,
       stdout: '{"ok":true}',
       stderr: "",
     });
@@ -47,13 +46,11 @@ describe("cli runner", () => {
       stdout: '{"ok":true}',
       stderr: "",
     });
-    expect(spawnSyncMock).toHaveBeenCalledWith(
-      process.execPath,
-      expect.arrayContaining(["api", "list", "people", "--output", "json"]),
+    expect(runNodeScriptMock).toHaveBeenCalledWith(
+      path.resolve(__dirname, "../../../../../dist/cli/cli.js"),
+      ["api", "list", "people", "--output", "json"],
       expect.objectContaining({
         cwd: "/tmp/twenty-cli",
-        encoding: "utf-8",
-        maxBuffer: 20 * 1024 * 1024,
         env: expect.objectContaining({
           CUSTOM_ENV: "present",
         }),
@@ -61,115 +58,38 @@ describe("cli runner", () => {
     );
   });
 
-  it("throws sync failures with exit status and output context", async () => {
-    spawnSyncMock.mockReturnValue({
-      status: 3,
-      stdout: "partial output",
-      stderr: "Missing API token.",
-    });
-
-    const { runBuiltCli } = await import("./cli-runner");
-
-    expect(() => runBuiltCli(["openapi", "core"], { throwOnNonZeroExit: true })).toThrowError(
-      /Built CLI exited with code 3[\s\S]*stderr:\nMissing API token\.[\s\S]*stdout:\npartial output/,
-    );
-  });
-
-  it("runs the built CLI asynchronously and returns the same result shape", async () => {
-    const child = createMockChildProcess();
-    spawnMock.mockReturnValue(child);
-
-    const { runBuiltCliAsync } = await import("./cli-runner");
-    const pendingResult = runBuiltCliAsync(["auth", "discover", "https://acme.twenty.com"], {
-      timeoutMs: 250,
-    });
-
-    child.stdout.emit("data", Buffer.from("hello "));
-    child.stderr.emit("data", Buffer.from("warn"));
-    child.stdout.emit("data", Buffer.from("world"));
-    child.emit("exit", 0);
-    child.emit("close", 0);
-
-    await expect(pendingResult).resolves.toEqual({
+  it("runs the built CLI asynchronously through the process helper", async () => {
+    runNodeScriptAsyncMock.mockResolvedValue({
       exitCode: 0,
       stdout: "hello world",
       stderr: "warn",
     });
-  });
-
-  it("waits for close so output emitted after exit is retained", async () => {
-    const child = createMockChildProcess();
-    spawnMock.mockReturnValue(child);
 
     const { runBuiltCliAsync } = await import("./cli-runner");
-    const pendingResult = runBuiltCliAsync(["auth", "discover", "https://acme.twenty.com"], {
+    const result = await runBuiltCliAsync(["auth", "discover", "https://acme.twenty.com"], {
       timeoutMs: 250,
     });
 
-    child.stdout.emit("data", Buffer.from("before-exit "));
-    child.emit("exit", 0);
-    child.stdout.emit("data", Buffer.from("after-exit"));
-    child.stderr.emit("data", Buffer.from("late-stderr"));
-    child.emit("close", 0);
-
-    await expect(pendingResult).resolves.toEqual({
+    expect(result).toEqual({
       exitCode: 0,
-      stdout: "before-exit after-exit",
-      stderr: "late-stderr",
+      stdout: "hello world",
+      stderr: "warn",
     });
-  });
-
-  it("throws async failures with exit status and output context", async () => {
-    const child = createMockChildProcess();
-    spawnMock.mockReturnValue(child);
-
-    const { runBuiltCliAsync } = await import("./cli-runner");
-    const pendingResult = runBuiltCliAsync(["openapi", "core"], {
-      timeoutMs: 250,
-      throwOnNonZeroExit: true,
-    });
-
-    child.stderr.emit("data", Buffer.from("Missing API token."));
-    child.stdout.emit("data", Buffer.from("partial output"));
-    child.emit("close", 3);
-
-    await expect(pendingResult).rejects.toThrowError(
-      /Built CLI exited with code 3[\s\S]*stderr:\nMissing API token\.[\s\S]*stdout:\npartial output/,
+    expect(runNodeScriptAsyncMock).toHaveBeenCalledWith(
+      path.resolve(__dirname, "../../../../../dist/cli/cli.js"),
+      ["auth", "discover", "https://acme.twenty.com"],
+      expect.objectContaining({
+        timeoutMs: 250,
+      }),
     );
-  });
-
-  it("rejects timed out checked runs after close and retains output context", async () => {
-    vi.useFakeTimers();
-    const child = createMockChildProcess();
-    spawnMock.mockReturnValue(child);
-
-    const { runBuiltCliAsync } = await import("./cli-runner");
-    const pendingResult = runBuiltCliAsync(["auth", "discover", "https://acme.twenty.com"], {
-      timeoutMs: 250,
-      throwOnNonZeroExit: true,
-    });
-
-    child.stdout.emit("data", Buffer.from("before-timeout "));
-    await vi.advanceTimersByTimeAsync(250);
-    expect(child.kill).toHaveBeenCalledWith("SIGKILL");
-
-    child.stderr.emit("data", Buffer.from("timed out"));
-    child.stdout.emit("data", Buffer.from("after-kill"));
-    child.emit("close", null);
-
-    await expect(pendingResult).rejects.toThrowError(
-      /Built CLI exited with code null[\s\S]*stderr:\ntimed out[\s\S]*stdout:\nbefore-timeout after-kill/,
-    );
-
-    vi.useRealTimers();
   });
 
   it("filters inherited TWENTY_* env vars unless explicitly retained", async () => {
     process.env.UNRELATED_ENV = "keep-me";
     process.env.TWENTY_TOKEN = "drop-me";
     process.env.TWENTY_BASE_URL = "https://drop.example.com";
-    spawnSyncMock.mockReturnValue({
-      status: 0,
+    runNodeScriptMock.mockReturnValue({
+      exitCode: 0,
       stdout: "",
       stderr: "",
     });
@@ -182,7 +102,7 @@ describe("cli runner", () => {
       },
     });
 
-    expect(spawnSyncMock.mock.calls[0]?.[2]).toEqual(
+    expect(runNodeScriptMock.mock.calls[0]?.[2]).toEqual(
       expect.objectContaining({
         env: expect.objectContaining({
           UNRELATED_ENV: "keep-me",
@@ -190,14 +110,14 @@ describe("cli runner", () => {
         }),
       }),
     );
-    expect(spawnSyncMock.mock.calls[0]?.[2]?.env).not.toHaveProperty("TWENTY_TOKEN");
-    expect(spawnSyncMock.mock.calls[0]?.[2]?.env).not.toHaveProperty("TWENTY_BASE_URL");
+    expect(runNodeScriptMock.mock.calls[0]?.[2]?.env).not.toHaveProperty("TWENTY_TOKEN");
+    expect(runNodeScriptMock.mock.calls[0]?.[2]?.env).not.toHaveProperty("TWENTY_BASE_URL");
 
     runBuiltCli(["auth", "status"], {
       retainInheritedTwentyEnv: true,
     });
 
-    expect(spawnSyncMock.mock.calls[1]?.[2]).toEqual(
+    expect(runNodeScriptMock.mock.calls[1]?.[2]).toEqual(
       expect.objectContaining({
         env: expect.objectContaining({
           TWENTY_TOKEN: "drop-me",
@@ -208,12 +128,3 @@ describe("cli runner", () => {
     );
   });
 });
-
-function createMockChildProcess(): ChildProcessWithoutNullStreams {
-  const child = new EventEmitter() as ChildProcessWithoutNullStreams;
-  child.stdout = new EventEmitter() as ChildProcessWithoutNullStreams["stdout"];
-  child.stderr = new EventEmitter() as ChildProcessWithoutNullStreams["stderr"];
-  child.kill = vi.fn(() => true);
-
-  return child;
-}
