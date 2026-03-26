@@ -1,7 +1,13 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Command } from "commander";
 import { parseBody, parseArrayPayload } from "../body";
-import { applyGlobalOptions, resolveGlobalOptions, GlobalOptions } from "../global-options";
+import {
+  applyGlobalOptions,
+  resolveGlobalOptions,
+  GlobalOptions,
+  GLOBAL_OPTION_NAMES,
+  GLOBAL_OPTION_VALUE_TOKENS,
+} from "../global-options";
 import { readJsonInput, safeJsonParse, readFileOrStdin } from "../io";
 import { createServices } from "../services";
 import { createCommandContext, createOutputContext } from "../context";
@@ -219,6 +225,20 @@ describe("body utilities", () => {
 });
 
 describe("global-options utilities", () => {
+  describe("shared metadata", () => {
+    it("exports the canonical global option names", () => {
+      expect(GLOBAL_OPTION_NAMES).toEqual(
+        new Set(["output", "query", "workspace", "env-file", "debug", "no-retry"]),
+      );
+    });
+
+    it("exports the global flags that consume values", () => {
+      expect(GLOBAL_OPTION_VALUE_TOKENS).toEqual(
+        new Set(["-o", "--output", "--query", "--workspace", "--env-file"]),
+      );
+    });
+  });
+
   describe("applyGlobalOptions", () => {
     it("adds output flag to command", () => {
       const command = new Command("test");

@@ -86,15 +86,6 @@ export const OUTPUT_CONTRACT: HelpOutputContract = {
   ],
 };
 
-export const GLOBAL_OPTION_NAMES = new Set([
-  "output",
-  "query",
-  "workspace",
-  "env-file",
-  "debug",
-  "no-retry",
-]);
-
 export const METADATA: Record<string, HelpMetadata> = {
   twenty: {
     examples: [

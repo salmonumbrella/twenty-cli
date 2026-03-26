@@ -497,6 +497,7 @@ describe("CLI help contracts", () => {
     for (const args of [
       ["--env-file", ".env.test", "--help"],
       ["-o", "json", "--help"],
+      ["--output=json", "--help"],
       ["--query", "items[0]", "--help"],
     ]) {
       const program = buildProgram();

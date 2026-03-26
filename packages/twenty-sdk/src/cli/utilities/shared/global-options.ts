@@ -16,16 +16,83 @@ export interface GlobalOptionSettings {
   includeQuery?: boolean;
 }
 
+interface GlobalOptionDefinition {
+  name: string;
+  flags: string;
+  description: string;
+  takesValue: boolean;
+}
+
+const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
+  {
+    name: "output",
+    flags: "-o, --output <format>",
+    description: "Output format: text, json, jsonl, agent, csv",
+    takesValue: true,
+  },
+  {
+    name: "query",
+    flags: "--query <expression>",
+    description: "JMESPath query filter",
+    takesValue: true,
+  },
+  {
+    name: "workspace",
+    flags: "--workspace <name>",
+    description: "Workspace profile to use",
+    takesValue: true,
+  },
+  {
+    name: "env-file",
+    flags: "--env-file <path>",
+    description: "Load environment variables from file",
+    takesValue: true,
+  },
+  {
+    name: "debug",
+    flags: "--debug",
+    description: "Show request/response details",
+    takesValue: false,
+  },
+  {
+    name: "no-retry",
+    flags: "--no-retry",
+    description: "Disable automatic retry",
+    takesValue: false,
+  },
+];
+
+export const GLOBAL_OPTION_NAMES = new Set(
+  GLOBAL_OPTION_DEFINITIONS.map((definition) => definition.name),
+);
+
+export const GLOBAL_OPTION_VALUE_TOKENS = new Set(
+  GLOBAL_OPTION_DEFINITIONS.flatMap((definition) => {
+    if (!definition.takesValue) {
+      return [];
+    }
+
+    return definition.flags
+      .split(",")
+      .map((flag) => flag.trim().split(" ")[0]!)
+      .filter(Boolean);
+  }),
+);
+
+export function isGlobalOptionValueToken(token: string): boolean {
+  return [...GLOBAL_OPTION_VALUE_TOKENS].some(
+    (option) => token === option || token.startsWith(`${option}=`),
+  );
+}
+
 export function applyGlobalOptions(command: Command, settings: GlobalOptionSettings = {}): void {
-  const includeQuery = settings.includeQuery !== false;
-  command.option("-o, --output <format>", "Output format: text, json, jsonl, agent, csv");
-  if (includeQuery) {
-    command.option("--query <expression>", "JMESPath query filter");
+  for (const definition of GLOBAL_OPTION_DEFINITIONS) {
+    if (definition.name === "query" && settings.includeQuery === false) {
+      continue;
+    }
+
+    command.option(definition.flags, definition.description);
   }
-  command.option("--workspace <name>", "Workspace profile to use");
-  command.option("--env-file <path>", "Load environment variables from file");
-  command.option("--debug", "Show request/response details");
-  command.option("--no-retry", "Disable automatic retry");
 }
 
 export function resolveGlobalOptions(

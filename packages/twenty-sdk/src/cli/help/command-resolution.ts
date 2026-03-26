@@ -1,8 +1,7 @@
 import { Command, Option } from "commander";
+import { isGlobalOptionValueToken } from "../utilities/shared/global-options";
 import { HELP_JSON_FLAG_ALIASES } from "./constants";
 import { HelpSubcommand } from "./types";
-
-const ROOT_HELP_VALUE_OPTIONS = ["-o", "--output", "--query", "--workspace", "--env-file"];
 
 export function resolveTargetCommand(
   program: Command,
@@ -111,7 +110,7 @@ export function shouldRenderRootHelp(args: string[]): boolean {
       continue;
     }
 
-    if (isRootHelpValueOption(token)) {
+    if (isGlobalOptionValueToken(token)) {
       if (!token.includes("=")) {
         index += 1;
       }
@@ -124,10 +123,5 @@ export function shouldRenderRootHelp(args: string[]): boolean {
 
     return false;
   }
-
   return true;
-}
-
-function isRootHelpValueOption(token: string): boolean {
-  return ROOT_HELP_VALUE_OPTIONS.some((option) => token === option || token.startsWith(`${option}=`));
 }

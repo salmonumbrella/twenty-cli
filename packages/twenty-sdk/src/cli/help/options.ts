@@ -1,5 +1,5 @@
 import { Command, Option } from "commander";
-import { GLOBAL_OPTION_NAMES } from "./constants";
+import { GLOBAL_OPTION_NAMES } from "../utilities/shared/global-options";
 import { HelpArgument, HelpOption } from "./types";
 
 export function getHelpArguments(command: Command): HelpArgument[] {
