@@ -61,7 +61,9 @@ export function runNodeScript(
     throw result.error;
   }
 
-  return options.throwOnNonZeroExit ? assertSuccessfulBuiltCliRun(args, scriptResult) : scriptResult;
+  return options.throwOnNonZeroExit
+    ? assertSuccessfulBuiltCliRun(args, scriptResult)
+    : scriptResult;
 }
 
 export async function runNodeScriptAsync(

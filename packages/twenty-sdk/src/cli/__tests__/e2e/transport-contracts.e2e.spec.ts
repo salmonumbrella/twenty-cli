@@ -3,7 +3,11 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { resolveBuiltCliPath } from "./helpers/cli-runner";
-import { createLocalRequestEnv, startBinaryMockServer, startGraphqlMockServer } from "./helpers/mock-server";
+import {
+  createLocalRequestEnv,
+  startBinaryMockServer,
+  startGraphqlMockServer,
+} from "./helpers/mock-server";
 import { runBuiltCliWithTempHomeAsync } from "./helpers/temp-home";
 
 const cliPath = resolveBuiltCliPath();

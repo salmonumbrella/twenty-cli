@@ -185,7 +185,12 @@ export function registerApiCommand(program: Command): void {
     applyApiOptions(command);
     applyGlobalOptions(command);
     command.action(
-      async (object: string, filePath: string | undefined, _options: unknown, actionCommand: Command) => {
+      async (
+        object: string,
+        filePath: string | undefined,
+        _options: unknown,
+        actionCommand: Command,
+      ) => {
         await runImportOperation(createApiOperationContext(actionCommand, object, filePath));
       },
     );

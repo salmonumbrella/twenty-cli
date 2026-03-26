@@ -52,7 +52,9 @@ export async function startGraphqlMockServer(
   return createMockServerHandle(createLoopbackBaseUrl(port), requests, server);
 }
 
-export async function startBinaryMockServer(body: Buffer): Promise<MockServerHandle<MockBinaryRequest>> {
+export async function startBinaryMockServer(
+  body: Buffer,
+): Promise<MockServerHandle<MockBinaryRequest>> {
   const requests: MockBinaryRequest[] = [];
   const server = http.createServer((req, res) => {
     requests.push({

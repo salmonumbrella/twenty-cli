@@ -1,8 +1,5 @@
 import { Command } from "commander";
-import {
-  createServerlessOperationContext,
-  streamLogicFunctionLogs,
-} from "../serverless.shared";
+import { createServerlessOperationContext, streamLogicFunctionLogs } from "../serverless.shared";
 
 export async function runServerlessLogsOperation(
   id: string | undefined,

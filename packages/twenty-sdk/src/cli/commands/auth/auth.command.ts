@@ -193,18 +193,17 @@ export function registerAuthCommand(program: Command): void {
     async (origin: string, _options: Record<string, unknown>, command: Command) => {
       const globalOptions = resolveGlobalOptions(command);
       const services = createServices(globalOptions);
-      const response = await requestPublic<GraphQLResponse<{ getPublicWorkspaceDataByDomain: unknown }>>(
-        services,
-        {
-          authMode: "none",
-          method: "post",
-          path: "/metadata",
-          data: {
-            query: PUBLIC_WORKSPACE_QUERY,
-            variables: { origin },
-          },
+      const response = await requestPublic<
+        GraphQLResponse<{ getPublicWorkspaceDataByDomain: unknown }>
+      >(services, {
+        authMode: "none",
+        method: "post",
+        path: "/metadata",
+        data: {
+          query: PUBLIC_WORKSPACE_QUERY,
+          variables: { origin },
         },
-      );
+      });
 
       await services.output.render(response.data?.data?.getPublicWorkspaceDataByDomain, {
         format: globalOptions.output,

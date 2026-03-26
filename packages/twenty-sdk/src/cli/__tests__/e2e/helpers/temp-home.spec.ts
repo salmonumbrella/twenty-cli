@@ -109,14 +109,16 @@ describe("temp home helper", () => {
   it("removes the temp home when the async runner rejects", async () => {
     const expectedError = new Error("runner failed");
     let homeDir: string | undefined;
-    runBuiltCliAsyncMock.mockImplementation(async (_args: string[], options: BuiltCliRunOptions = {}) => {
-      homeDir = options.cwd;
+    runBuiltCliAsyncMock.mockImplementation(
+      async (_args: string[], options: BuiltCliRunOptions = {}) => {
+        homeDir = options.cwd;
 
-      expect(homeDir).toBeDefined();
-      expect(fs.existsSync(homeDir as string)).toBe(true);
+        expect(homeDir).toBeDefined();
+        expect(fs.existsSync(homeDir as string)).toBe(true);
 
-      throw expectedError;
-    });
+        throw expectedError;
+      },
+    );
 
     const { runBuiltCliWithTempHomeAsync } = await import("./temp-home");
 

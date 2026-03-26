@@ -54,7 +54,10 @@ export function registerMcpCommand(program: Command): void {
   registerCommand(cmd, "call", "Call an official MCP tool by name", (command) => {
     command.argument("<tool>", "Official MCP tool name");
     command.option("--data <json>", "Tool arguments as inline JSON");
-    command.option("--file <path>", "Path to a JSON file containing tool arguments (use - for stdin)");
+    command.option(
+      "--file <path>",
+      "Path to a JSON file containing tool arguments (use - for stdin)",
+    );
     applyGlobalOptions(command);
     command.action(async (tool: string, options: CallOptions, actionCommand: Command) => {
       const globalOptions = resolveGlobalOptions(actionCommand);

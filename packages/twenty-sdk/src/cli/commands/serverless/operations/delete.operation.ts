@@ -1,10 +1,7 @@
 import { Command } from "commander";
 import { CliError } from "../../../utilities/errors/cli-error";
 import { requireYes } from "../../../utilities/shared/confirmation";
-import {
-  createServerlessOperationContext,
-  executeCompatibleOperation,
-} from "../serverless.shared";
+import { createServerlessOperationContext, executeCompatibleOperation } from "../serverless.shared";
 
 export async function runServerlessDeleteOperation(
   id: string | undefined,

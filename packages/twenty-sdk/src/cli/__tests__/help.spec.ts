@@ -522,7 +522,9 @@ describe("CLI help contracts", () => {
 
       expect(handled).toBe(true);
       expect(write).toHaveBeenCalledTimes(1);
-      expect(write.mock.calls[0][0]).toContain("Command names are canonical; only --help-json also has the short --hj alias.");
+      expect(write.mock.calls[0][0]).toContain(
+        "Command names are canonical; only --help-json also has the short --hj alias.",
+      );
       expect(write.mock.calls[0][0]).toContain(
         "Stable JSON fields: path, args, options, operations, capabilities, exit_codes, output_contract.",
       );
@@ -608,10 +610,10 @@ describe("CLI help contracts", () => {
   it("infers operations from the command argument description", () => {
     const program = new Command();
     program.name("twenty");
-    program.command("widgets").description("Inspect widgets").argument(
-      "<operation>",
-      "list, get, or archive",
-    );
+    program
+      .command("widgets")
+      .description("Inspect widgets")
+      .argument("<operation>", "list, get, or archive");
 
     const help = buildHelpJson(program, ["widgets", "--help-json"]);
 

@@ -21,9 +21,7 @@ describe("cli runner", () => {
   it("resolves the built CLI artifact path", async () => {
     const { resolveBuiltCliPath } = await import("./cli-runner");
 
-    expect(resolveBuiltCliPath()).toBe(
-      path.resolve(__dirname, "../../../../../dist/cli/cli.js"),
-    );
+    expect(resolveBuiltCliPath()).toBe(path.resolve(__dirname, "../../../../../dist/cli/cli.js"));
   });
 
   it("runs the built CLI synchronously through the process helper", async () => {

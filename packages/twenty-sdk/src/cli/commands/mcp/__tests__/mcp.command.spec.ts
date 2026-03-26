@@ -49,14 +49,7 @@ describe("mcp command", () => {
     const subcommands = command?.commands.map((candidate) => candidate.name()) ?? [];
 
     expect(subcommands).toEqual(
-      expect.arrayContaining([
-        "status",
-        "catalog",
-        "learn",
-        "call",
-        "load-skills",
-        "help-center",
-      ]),
+      expect.arrayContaining(["status", "catalog", "learn", "call", "load-skills", "help-center"]),
     );
   });
 

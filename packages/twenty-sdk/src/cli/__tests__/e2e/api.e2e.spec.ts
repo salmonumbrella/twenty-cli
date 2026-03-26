@@ -164,7 +164,9 @@ describe("api mutation cleanup helper", () => {
           throw new Error("later failure");
         },
       }),
-    ).toThrow(/later failure[\s\S]*cleanup also failed[\s\S]*person-123[\s\S]*Built CLI exited with code 1/);
+    ).toThrow(
+      /later failure[\s\S]*cleanup also failed[\s\S]*person-123[\s\S]*Built CLI exited with code 1/,
+    );
   });
 });
 

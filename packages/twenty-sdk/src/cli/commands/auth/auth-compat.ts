@@ -67,7 +67,10 @@ export async function resolveAuthRequestSurface(
   };
 }
 
-export function buildRenewTokenRequestData(appToken: string, hosted: boolean): {
+export function buildRenewTokenRequestData(
+  appToken: string,
+  hosted: boolean,
+): {
   query: string;
   variables: { appToken: string };
 } {

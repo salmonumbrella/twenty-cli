@@ -48,10 +48,7 @@ function createTempHomeDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "twenty-cli-home-"));
 }
 
-function createTempHomeEnv(
-  homeDir: string,
-  options: TempHomeCliRunOptions,
-): NodeJS.ProcessEnv {
+function createTempHomeEnv(homeDir: string, options: TempHomeCliRunOptions): NodeJS.ProcessEnv {
   return {
     ...options.env,
     HOME: homeDir,

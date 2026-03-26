@@ -1,10 +1,7 @@
 import http from "node:http";
 import { once } from "node:events";
 import { describe, expect, it } from "vitest";
-import {
-  startBinaryMockServer,
-  startGraphqlMockServer,
-} from "./mock-server";
+import { startBinaryMockServer, startGraphqlMockServer } from "./mock-server";
 
 async function postJson(url: string, body: unknown): Promise<void> {
   const response = await fetch(url, {

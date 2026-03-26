@@ -1,13 +1,13 @@
 import fs from "fs-extra";
 import path from "path";
 import { Command } from "commander";
+import { EXIT_CODES, METADATA, OUTPUT_CONTRACT, ROOT_HELP_FALLBACK } from "./constants";
 import {
-  EXIT_CODES,
-  METADATA,
-  OUTPUT_CONTRACT,
-  ROOT_HELP_FALLBACK,
-} from "./constants";
-import { resolveTargetCommand, hasHelpJsonFlag, shouldRenderRootHelp, getVisibleSubcommands } from "./command-resolution";
+  resolveTargetCommand,
+  hasHelpJsonFlag,
+  shouldRenderRootHelp,
+  getVisibleSubcommands,
+} from "./command-resolution";
 import { getHelpArguments, getHelpOptions } from "./options";
 import { getHelpOperations } from "./operations";
 import { HelpDocument, HelpWriter } from "./types";

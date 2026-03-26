@@ -170,15 +170,7 @@ describe("API Operations", () => {
     it("routes delete through the registered command", async () => {
       mockDelete.mockResolvedValue(undefined);
 
-      await program.parseAsync([
-        "node",
-        "test",
-        "api",
-        "delete",
-        "people",
-        "record-123",
-        "--yes",
-      ]);
+      await program.parseAsync(["node", "test", "api", "delete", "people", "record-123", "--yes"]);
 
       expect(mockDelete).toHaveBeenCalledWith("people", "record-123");
       expect(mockOutputRender).not.toHaveBeenCalled();

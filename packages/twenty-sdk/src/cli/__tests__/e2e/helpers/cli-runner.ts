@@ -1,9 +1,5 @@
 import path from "node:path";
-import {
-  runNodeScript,
-  runNodeScriptAsync,
-  type ProcessRunOptions,
-} from "./process-runner";
+import { runNodeScript, runNodeScriptAsync, type ProcessRunOptions } from "./process-runner";
 
 export interface BuiltCliRunOptions extends ProcessRunOptions {
   cwd?: string;
@@ -21,10 +17,7 @@ export function resolveBuiltCliPath(): string {
   return path.resolve(__dirname, "../../../../../dist/cli/cli.js");
 }
 
-export function runBuiltCli(
-  args: string[],
-  options: BuiltCliRunOptions = {},
-) {
+export function runBuiltCli(args: string[], options: BuiltCliRunOptions = {}) {
   return runNodeScript(resolveBuiltCliPath(), args, {
     cwd: options.cwd,
     env: composeCliEnv(options),
@@ -33,10 +26,7 @@ export function runBuiltCli(
   });
 }
 
-export async function runBuiltCliAsync(
-  args: string[],
-  options: BuiltCliRunOptions = {},
-) {
+export async function runBuiltCliAsync(args: string[], options: BuiltCliRunOptions = {}) {
   return await runNodeScriptAsync(resolveBuiltCliPath(), args, {
     cwd: options.cwd,
     env: composeCliEnv(options),

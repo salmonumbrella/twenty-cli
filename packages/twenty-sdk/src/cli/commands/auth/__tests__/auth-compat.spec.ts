@@ -20,9 +20,7 @@ describe("auth compatibility helpers", () => {
       workspace: "production",
     });
 
-    await expect(
-      resolveAuthRequestSurface({ resolveApiConfig }, "production"),
-    ).resolves.toEqual({
+    await expect(resolveAuthRequestSurface({ resolveApiConfig }, "production")).resolves.toEqual({
       hosted: true,
       path: "/metadata",
     });
