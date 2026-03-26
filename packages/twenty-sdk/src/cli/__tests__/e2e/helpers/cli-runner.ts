@@ -78,14 +78,11 @@ export async function runBuiltCliAsync(
 
   return await new Promise<BuiltCliRunResult>((resolve, reject) => {
     let exitCode: number | null = null;
+    let timedOut = false;
 
     const timeout = setTimeout(() => {
+      timedOut = true;
       child.kill("SIGKILL");
-      resolve({
-        exitCode: null,
-        stdout,
-        stderr,
-      });
     }, options.timeoutMs ?? DEFAULT_TIMEOUT_MS);
     timeout.unref();
 
@@ -101,7 +98,7 @@ export async function runBuiltCliAsync(
     child.once("close", (closeCode) => {
       clearTimeout(timeout);
       const cliResult = {
-        exitCode: closeCode ?? exitCode,
+        exitCode: closeCode ?? (timedOut ? null : exitCode),
         stdout,
         stderr,
       };

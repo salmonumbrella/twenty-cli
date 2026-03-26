@@ -138,6 +138,32 @@ describe("cli runner", () => {
     );
   });
 
+  it("rejects timed out checked runs after close and retains output context", async () => {
+    vi.useFakeTimers();
+    const child = createMockChildProcess();
+    spawnMock.mockReturnValue(child);
+
+    const { runBuiltCliAsync } = await import("./cli-runner");
+    const pendingResult = runBuiltCliAsync(["auth", "discover", "https://acme.twenty.com"], {
+      timeoutMs: 250,
+      throwOnNonZeroExit: true,
+    });
+
+    child.stdout.emit("data", Buffer.from("before-timeout "));
+    await vi.advanceTimersByTimeAsync(250);
+    expect(child.kill).toHaveBeenCalledWith("SIGKILL");
+
+    child.stderr.emit("data", Buffer.from("timed out"));
+    child.stdout.emit("data", Buffer.from("after-kill"));
+    child.emit("close", null);
+
+    await expect(pendingResult).rejects.toThrowError(
+      /Built CLI exited with code null[\s\S]*stderr:\ntimed out[\s\S]*stdout:\nbefore-timeout after-kill/,
+    );
+
+    vi.useRealTimers();
+  });
+
   it("filters inherited TWENTY_* env vars unless explicitly retained", async () => {
     process.env.UNRELATED_ENV = "keep-me";
     process.env.TWENTY_TOKEN = "drop-me";

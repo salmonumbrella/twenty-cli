@@ -137,6 +137,35 @@ describe("api mutation cleanup helper", () => {
       }),
     ).toThrow(/Failed to clean up created person person-123[\s\S]*Built CLI exited with code 1/);
   });
+
+  it("preserves the main failure while attaching cleanup failure context", () => {
+    const runCommand = vi
+      .fn()
+      .mockReturnValueOnce({
+        exitCode: 0,
+        stdout: JSON.stringify({ id: "person-123" }),
+        stderr: "",
+      })
+      .mockReturnValueOnce({
+        exitCode: 1,
+        stdout: "",
+        stderr: "delete failed",
+      });
+
+    expect(() =>
+      runCreateAndDeletePerson({
+        config: {
+          token: "env-token",
+          baseUrl: "https://api.example.com",
+          profile: "smoke",
+        },
+        runCommand,
+        afterCreate: () => {
+          throw new Error("later failure");
+        },
+      }),
+    ).toThrow(/later failure[\s\S]*cleanup also failed[\s\S]*person-123[\s\S]*Built CLI exited with code 1/);
+  });
 });
 
 interface RunCreateAndDeletePersonOptions {
@@ -158,6 +187,8 @@ function runCreateAndDeletePerson({
 
   const createPayload = JSON.stringify({ name: { firstName: "E2E", lastName: "Test" } });
   let createdId: string | undefined;
+  let primaryError: unknown;
+  let cleanupError: Error | undefined;
 
   try {
     const createArgs = ["api", "create", "people", "--data", createPayload, "--output", "json"];
@@ -171,6 +202,8 @@ function runCreateAndDeletePerson({
     createdId = created.id;
     expect(created.id).toBeTruthy();
     afterCreate?.();
+  } catch (error) {
+    primaryError = error;
   } finally {
     if (createdId) {
       const deleteArgs = ["api", "delete", "people", createdId, "--yes"];
@@ -183,11 +216,31 @@ function runCreateAndDeletePerson({
           }),
         );
       } catch (error) {
-        throw new Error(`Failed to clean up created person ${createdId}: ${getErrorMessage(error)}`, {
-          cause: error,
-        });
+        cleanupError = new Error(
+          `Failed to clean up created person ${createdId}: ${getErrorMessage(error)}`,
+          {
+            cause: error,
+          },
+        );
       }
     }
+  }
+
+  if (primaryError) {
+    if (cleanupError) {
+      throw new Error(
+        `${getErrorMessage(primaryError)}\ncleanup also failed: ${cleanupError.message}`,
+        {
+          cause: primaryError,
+        },
+      );
+    }
+
+    throw primaryError;
+  }
+
+  if (cleanupError) {
+    throw cleanupError;
   }
 }
 
