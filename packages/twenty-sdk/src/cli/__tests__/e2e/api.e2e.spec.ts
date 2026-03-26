@@ -1,6 +1,7 @@
 import { describe, it, expect, vi } from "vitest";
 import fs from "node:fs";
 import {
+  assertSuccessfulBuiltCliRun,
   resolveBuiltCliPath,
   runBuiltCli,
   type BuiltCliRunOptions,
@@ -24,6 +25,7 @@ describeIf("twenty api e2e", () => {
 
     const output = runBuiltCli(["api", "list", "people", "--limit", "1", "--output", "json"], {
       env,
+      throwOnNonZeroExit: true,
     }).stdout;
 
     const parsed = JSON.parse(output);
@@ -88,6 +90,53 @@ describe("api mutation cleanup helper", () => {
       }),
     );
   });
+
+  it("fails fast with CLI diagnostics when create exits nonzero", () => {
+    const runCommand = vi.fn(() => ({
+      exitCode: 3,
+      stdout: "partial output",
+      stderr: "Missing API token.",
+    }));
+
+    expect(() =>
+      runCreateAndDeletePerson({
+        config: {
+          token: "env-token",
+          baseUrl: "https://api.example.com",
+          profile: "smoke",
+        },
+        runCommand,
+      }),
+    ).toThrow(/Built CLI exited with code 3[\s\S]*Missing API token\.[\s\S]*partial output/);
+
+    expect(runCommand).toHaveBeenCalledTimes(1);
+  });
+
+  it("surfaces delete cleanup failures with the created record id", () => {
+    const runCommand = vi
+      .fn()
+      .mockReturnValueOnce({
+        exitCode: 0,
+        stdout: JSON.stringify({ id: "person-123" }),
+        stderr: "",
+      })
+      .mockReturnValueOnce({
+        exitCode: 1,
+        stdout: "",
+        stderr: "delete failed",
+      });
+
+    expect(() =>
+      runCreateAndDeletePerson({
+        config: {
+          token: "env-token",
+          baseUrl: "https://api.example.com",
+          profile: "smoke",
+        },
+        runCommand,
+      }),
+    ).toThrow(/Failed to clean up created person person-123[\s\S]*Built CLI exited with code 1/);
+  });
 });
 
 interface RunCreateAndDeletePersonOptions {
@@ -111,11 +160,12 @@ function runCreateAndDeletePerson({
   let createdId: string | undefined;
 
   try {
-    const createdRaw = runCommand(
-      ["api", "create", "people", "--data", createPayload, "--output", "json"],
-      {
+    const createArgs = ["api", "create", "people", "--data", createPayload, "--output", "json"];
+    const createdRaw = assertSuccessfulBuiltCliRun(
+      createArgs,
+      runCommand(createArgs, {
         env,
-      },
+      }),
     ).stdout;
     const created = JSON.parse(createdRaw);
     createdId = created.id;
@@ -123,9 +173,24 @@ function runCreateAndDeletePerson({
     afterCreate?.();
   } finally {
     if (createdId) {
-      runCommand(["api", "delete", "people", createdId, "--yes"], {
-        env,
-      });
+      const deleteArgs = ["api", "delete", "people", createdId, "--yes"];
+
+      try {
+        assertSuccessfulBuiltCliRun(
+          deleteArgs,
+          runCommand(deleteArgs, {
+            env,
+          }),
+        );
+      } catch (error) {
+        throw new Error(`Failed to clean up created person ${createdId}: ${getErrorMessage(error)}`, {
+          cause: error,
+        });
+      }
     }
   }
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }

@@ -9,12 +9,23 @@ export interface BuiltCliRunOptions {
   env?: NodeJS.ProcessEnv;
   retainInheritedTwentyEnv?: boolean;
   timeoutMs?: number;
+  throwOnNonZeroExit?: boolean;
 }
 
 export interface BuiltCliRunResult {
   exitCode: number | null;
   stdout: string;
   stderr: string;
+}
+
+export class BuiltCliRunError extends Error {
+  constructor(
+    readonly args: string[],
+    readonly result: BuiltCliRunResult,
+  ) {
+    super(formatRunFailure(args, result));
+    this.name = "BuiltCliRunError";
+  }
 }
 
 export function resolveBuiltCliPath(): string {
@@ -36,11 +47,13 @@ export function runBuiltCli(
     throw result.error;
   }
 
-  return {
+  const cliResult = {
     exitCode: result.status,
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
   };
+
+  return options.throwOnNonZeroExit ? assertSuccessfulBuiltCliRun(args, cliResult) : cliResult;
 }
 
 export async function runBuiltCliAsync(
@@ -64,6 +77,8 @@ export async function runBuiltCliAsync(
   });
 
   return await new Promise<BuiltCliRunResult>((resolve, reject) => {
+    let exitCode: number | null = null;
+
     const timeout = setTimeout(() => {
       child.kill("SIGKILL");
       resolve({
@@ -79,15 +94,41 @@ export async function runBuiltCliAsync(
       reject(error);
     });
 
-    child.once("exit", (exitCode) => {
+    child.once("exit", (code) => {
+      exitCode = code;
+    });
+
+    child.once("close", (closeCode) => {
       clearTimeout(timeout);
-      resolve({
-        exitCode,
+      const cliResult = {
+        exitCode: closeCode ?? exitCode,
         stdout,
         stderr,
-      });
+      };
+
+      if (options.throwOnNonZeroExit) {
+        try {
+          resolve(assertSuccessfulBuiltCliRun(args, cliResult));
+        } catch (error) {
+          reject(error);
+        }
+        return;
+      }
+
+      resolve(cliResult);
     });
   });
+}
+
+export function assertSuccessfulBuiltCliRun(
+  args: string[],
+  result: BuiltCliRunResult,
+): BuiltCliRunResult {
+  if (result.exitCode === 0) {
+    return result;
+  }
+
+  throw new BuiltCliRunError(args, result);
 }
 
 function composeCliEnv(options: BuiltCliRunOptions): NodeJS.ProcessEnv {
@@ -101,4 +142,13 @@ function composeCliEnv(options: BuiltCliRunOptions): NodeJS.ProcessEnv {
     ...inheritedEnv,
     ...options.env,
   };
+}
+
+function formatRunFailure(args: string[], result: BuiltCliRunResult): string {
+  return [
+    `Built CLI exited with code ${result.exitCode ?? "null"}`,
+    `args: ${args.join(" ")}`,
+    `stderr:\n${result.stderr || "(empty)"}`,
+    `stdout:\n${result.stdout || "(empty)"}`,
+  ].join("\n");
 }

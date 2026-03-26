@@ -61,6 +61,20 @@ describe("cli runner", () => {
     );
   });
 
+  it("throws sync failures with exit status and output context", async () => {
+    spawnSyncMock.mockReturnValue({
+      status: 3,
+      stdout: "partial output",
+      stderr: "Missing API token.",
+    });
+
+    const { runBuiltCli } = await import("./cli-runner");
+
+    expect(() => runBuiltCli(["openapi", "core"], { throwOnNonZeroExit: true })).toThrowError(
+      /Built CLI exited with code 3[\s\S]*stderr:\nMissing API token\.[\s\S]*stdout:\npartial output/,
+    );
+  });
+
   it("runs the built CLI asynchronously and returns the same result shape", async () => {
     const child = createMockChildProcess();
     spawnMock.mockReturnValue(child);
@@ -74,12 +88,54 @@ describe("cli runner", () => {
     child.stderr.emit("data", Buffer.from("warn"));
     child.stdout.emit("data", Buffer.from("world"));
     child.emit("exit", 0);
+    child.emit("close", 0);
 
     await expect(pendingResult).resolves.toEqual({
       exitCode: 0,
       stdout: "hello world",
       stderr: "warn",
     });
+  });
+
+  it("waits for close so output emitted after exit is retained", async () => {
+    const child = createMockChildProcess();
+    spawnMock.mockReturnValue(child);
+
+    const { runBuiltCliAsync } = await import("./cli-runner");
+    const pendingResult = runBuiltCliAsync(["auth", "discover", "https://acme.twenty.com"], {
+      timeoutMs: 250,
+    });
+
+    child.stdout.emit("data", Buffer.from("before-exit "));
+    child.emit("exit", 0);
+    child.stdout.emit("data", Buffer.from("after-exit"));
+    child.stderr.emit("data", Buffer.from("late-stderr"));
+    child.emit("close", 0);
+
+    await expect(pendingResult).resolves.toEqual({
+      exitCode: 0,
+      stdout: "before-exit after-exit",
+      stderr: "late-stderr",
+    });
+  });
+
+  it("throws async failures with exit status and output context", async () => {
+    const child = createMockChildProcess();
+    spawnMock.mockReturnValue(child);
+
+    const { runBuiltCliAsync } = await import("./cli-runner");
+    const pendingResult = runBuiltCliAsync(["openapi", "core"], {
+      timeoutMs: 250,
+      throwOnNonZeroExit: true,
+    });
+
+    child.stderr.emit("data", Buffer.from("Missing API token."));
+    child.stdout.emit("data", Buffer.from("partial output"));
+    child.emit("close", 3);
+
+    await expect(pendingResult).rejects.toThrowError(
+      /Built CLI exited with code 3[\s\S]*stderr:\nMissing API token\.[\s\S]*stdout:\npartial output/,
+    );
   });
 
   it("filters inherited TWENTY_* env vars unless explicitly retained", async () => {

@@ -18,6 +18,7 @@ function buildEnv(config: LiveSmokeConfig): NodeJS.ProcessEnv {
 function runJson(args: string[], config: LiveSmokeConfig): unknown {
   const output = runBuiltCli(args, {
     env: buildEnv(config),
+    throwOnNonZeroExit: true,
   }).stdout;
 
   return JSON.parse(output);
