@@ -8,10 +8,14 @@ function resolveCliPath(): string {
 }
 
 const cliPath = resolveCliPath();
-const canRun = fs.existsSync(cliPath);
-const describeIf = canRun ? describe : describe.skip;
 
-describeIf("twenty clean-home transport contracts", () => {
+if (!fs.existsSync(cliPath)) {
+  throw new Error(
+    `Missing built CLI artifact at ${cliPath}. Run "pnpm --filter twenty-sdk build" first.`,
+  );
+}
+
+describe("twenty clean-home transport contracts", () => {
   it("openapi core still requires auth in the clean-home red state", () => {
     const result = runCliWithTempHome(["openapi", "core"]);
 

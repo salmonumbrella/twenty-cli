@@ -7,6 +7,7 @@ const CLI_PATH = path.resolve(__dirname, "../../../../../dist/cli/cli.js");
 
 export interface TempHomeCliRunOptions {
   env?: NodeJS.ProcessEnv;
+  retainInheritedTwentyEnv?: boolean;
 }
 
 export interface TempHomeCliRunResult {
@@ -22,14 +23,16 @@ export function runCliWithTempHome(
   const homeDir = fs.mkdtempSync(path.join(os.tmpdir(), "twenty-cli-home-"));
 
   try {
-    const cleanEnv = Object.fromEntries(
-      Object.entries(process.env).filter(([key]) => !key.startsWith("TWENTY_")),
+    const inheritedEnv = Object.fromEntries(
+      Object.entries(process.env).filter(
+        ([key]) => options.retainInheritedTwentyEnv || !key.startsWith("TWENTY_"),
+      ),
     );
 
     const result = spawnSync(process.execPath, [CLI_PATH, ...args], {
       cwd: homeDir,
       env: {
-        ...cleanEnv,
+        ...inheritedEnv,
         HOME: homeDir,
         USERPROFILE: homeDir,
         ...options.env,
