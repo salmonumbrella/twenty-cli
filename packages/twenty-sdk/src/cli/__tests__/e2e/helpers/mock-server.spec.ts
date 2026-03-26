@@ -32,6 +32,20 @@ async function expectPending(promise: Promise<unknown>, timeoutMs = 50): Promise
   expect(outcome).toBe("pending");
 }
 
+async function expectSettlesWithin(promise: Promise<unknown>, timeoutMs = 150): Promise<void> {
+  const outcome = await Promise.race([
+    promise.then(
+      () => "resolved",
+      () => "rejected",
+    ),
+    new Promise<"timeout">((resolve) => {
+      setTimeout(() => resolve("timeout"), timeoutMs);
+    }),
+  ]);
+
+  expect(outcome).toBe("resolved");
+}
+
 describe("mock server resources", () => {
   it("close waits for the server to actually shut down", async () => {
     const server = await startGraphqlMockServer(() => ({
@@ -54,11 +68,52 @@ describe("mock server resources", () => {
     request.write('{"query":"');
 
     const closePromise = server.close();
-    await expectPending(closePromise);
+    setTimeout(() => {
+      request.end('ping"}');
+    }, 20);
 
-    request.end('ping"}');
+    await expectPending(closePromise, 10);
     await once(request, "response");
     await closePromise;
+  });
+
+  it("close resolves when a client stalls a request", async () => {
+    const server = await startGraphqlMockServer(() => ({
+      data: {
+        ping: "pong",
+      },
+    }));
+
+    const request = http.request(`${server.baseUrl}/graphql`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+      },
+    });
+
+    request.on("error", () => {});
+
+    const socket = await once(request, "socket");
+    await once(socket[0], "connect");
+
+    request.flushHeaders();
+    request.write('{"query":"');
+
+    await expectSettlesWithin(server.close(), 250);
+  });
+
+  it("close is idempotent", async () => {
+    const server = await startGraphqlMockServer(() => ({
+      data: {
+        ping: "pong",
+      },
+    }));
+
+    const firstClose = server.close();
+    const secondClose = server.close();
+
+    await expect(firstClose).resolves.toBeUndefined();
+    await expect(secondClose).resolves.toBeUndefined();
   });
 
   it("getOnlyRequest throws when there are no requests", async () => {

@@ -19,6 +19,8 @@ export interface MockServerHandle<TRequest> {
   close(): Promise<void>;
 }
 
+const CLOSE_TIMEOUT_MS = 100;
+
 export async function startGraphqlMockServer(
   respond: (body: string) => Record<string, unknown>,
 ): Promise<MockServerHandle<MockGraphqlRequest>> {
@@ -90,12 +92,35 @@ function createMockServerHandle<TRequest>(
   requests: TRequest[],
   server: http.Server,
 ): MockServerHandle<TRequest> {
+  const sockets = new Set<import("node:net").Socket>();
+  let closePromise: Promise<void> | undefined;
+  let closed = false;
+
+  server.on("connection", (socket) => {
+    sockets.add(socket);
+    socket.on("close", () => {
+      sockets.delete(socket);
+    });
+  });
+
   return {
     baseUrl,
     requests,
     getOnlyRequest: () => getOnlyRequest(requests),
     expectRequestCount: (count: number) => expectRequestCount(requests, count),
-    close: () => closeServer(server),
+    close: () => {
+      if (closed) {
+        return Promise.resolve();
+      }
+
+      if (!closePromise) {
+        closePromise = closeServer(server, sockets).then(() => {
+          closed = true;
+        });
+      }
+
+      return closePromise;
+    },
   };
 }
 
@@ -142,9 +167,24 @@ function getBoundPort(server: http.Server, name: string): AddressInfo {
   return address as AddressInfo;
 }
 
-function closeServer(server: http.Server): Promise<void> {
+function closeServer(server: http.Server, sockets: Set<import("node:net").Socket>): Promise<void> {
   return new Promise<void>((resolve, reject) => {
+    let settled = false;
+    const forceCloseTimer = setTimeout(() => {
+      for (const socket of sockets) {
+        socket.destroy();
+      }
+    }, CLOSE_TIMEOUT_MS);
+    forceCloseTimer.unref();
+
     server.close((error) => {
+      if (settled) {
+        return;
+      }
+
+      settled = true;
+      clearTimeout(forceCloseTimer);
+
       if (error) {
         reject(error);
         return;
