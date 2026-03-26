@@ -87,7 +87,7 @@ describe("cli runner", () => {
   it("filters inherited TWENTY_* env vars unless explicitly retained", async () => {
     process.env.UNRELATED_ENV = "keep-me";
     process.env.TWENTY_TOKEN = "drop-me";
-    process.env.TWENTY_BASE_URL = "https://drop.example.com";
+    process.env.TWENTY_BASE_URL = "https://example.com/drop";
     runNodeScriptMock.mockReturnValue({
       exitCode: 0,
       stdout: "",
@@ -121,7 +121,7 @@ describe("cli runner", () => {
       expect.objectContaining({
         env: expect.objectContaining({
           TWENTY_TOKEN: "drop-me",
-          TWENTY_BASE_URL: "https://drop.example.com",
+          TWENTY_BASE_URL: "https://example.com/drop",
           UNRELATED_ENV: "keep-me",
         }),
       }),

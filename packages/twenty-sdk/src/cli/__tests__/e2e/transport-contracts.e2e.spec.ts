@@ -34,7 +34,7 @@ describe("twenty clean-home transport contracts", () => {
   it("auth discover loads public workspace data without requiring auth", async () => {
     const workspaceData = {
       id: "ws-123",
-      logo: "https://cdn.example.com/logo.svg",
+      logo: "https://example.com/logo.svg",
       displayName: "Acme Workspace",
       workspaceUrls: {
         subdomainUrl: "https://acme.twenty.com",

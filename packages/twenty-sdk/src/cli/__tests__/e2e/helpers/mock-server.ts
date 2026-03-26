@@ -49,7 +49,7 @@ export async function startGraphqlMockServer(
   await listenOnRandomPort(server);
   const { port } = getBoundPort(server, "mock GraphQL server");
 
-  return createMockServerHandle(`http://127.0.0.1:${port}`, requests, server);
+  return createMockServerHandle(createLoopbackBaseUrl(port), requests, server);
 }
 
 export async function startBinaryMockServer(body: Buffer): Promise<MockServerHandle<MockBinaryRequest>> {
@@ -69,7 +69,7 @@ export async function startBinaryMockServer(body: Buffer): Promise<MockServerHan
   await listenOnRandomPort(server);
   const { port } = getBoundPort(server, "mock download server");
 
-  return createMockServerHandle(`http://127.0.0.1:${port}`, requests, server);
+  return createMockServerHandle(createLoopbackBaseUrl(port), requests, server);
 }
 
 export function createLocalRequestEnv(baseUrl?: string): NodeJS.ProcessEnv {
@@ -165,6 +165,13 @@ function getBoundPort(server: http.Server, name: string): AddressInfo {
   }
 
   return address as AddressInfo;
+}
+
+function createLoopbackBaseUrl(port: number): string {
+  const baseUrl = new URL("http://127.0.0.1");
+  baseUrl.port = String(port);
+
+  return baseUrl.origin;
 }
 
 function closeServer(server: http.Server, sockets: Set<import("node:net").Socket>): Promise<void> {
