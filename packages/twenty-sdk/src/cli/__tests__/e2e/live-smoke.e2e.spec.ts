@@ -1,20 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { execFileSync } from "node:child_process";
 import fs from "node:fs";
-import path from "node:path";
 import {
   isLiveSmokeEnabled,
   resolveLiveSmokeConfig,
   type LiveSmokeConfig,
 } from "./helpers/live-config";
-
-function resolveCliPath(): string {
-  return path.resolve(__dirname, "../../../../dist/cli/cli.js");
-}
+import { resolveBuiltCliPath, runBuiltCli } from "./helpers/cli-runner";
 
 function buildEnv(config: LiveSmokeConfig): NodeJS.ProcessEnv {
   return {
-    ...process.env,
     TWENTY_TOKEN: config.token,
     TWENTY_BASE_URL: config.baseUrl,
     ...(config.profile ? { TWENTY_PROFILE: config.profile } : {}),
@@ -22,17 +16,15 @@ function buildEnv(config: LiveSmokeConfig): NodeJS.ProcessEnv {
 }
 
 function runJson(args: string[], config: LiveSmokeConfig): unknown {
-  const output = execFileSync("node", [resolveCliPath(), ...args], {
+  const output = runBuiltCli(args, {
     env: buildEnv(config),
-    encoding: "utf-8",
-    maxBuffer: 20 * 1024 * 1024,
-  });
+  }).stdout;
 
   return JSON.parse(output);
 }
 
 const config = resolveLiveSmokeConfig({ required: false });
-const cliPath = resolveCliPath();
+const cliPath = resolveBuiltCliPath();
 const canRun = isLiveSmokeEnabled() && !!config && fs.existsSync(cliPath);
 const liveConfig = config as LiveSmokeConfig;
 const describeIf = canRun ? describe : describe.skip;
