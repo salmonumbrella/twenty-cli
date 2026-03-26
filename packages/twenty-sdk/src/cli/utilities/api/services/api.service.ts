@@ -24,9 +24,7 @@ export interface RequestResolution {
   apiKey?: string;
 }
 
-type RequestConfigResolver = (
-  config: InternalAxiosRequestConfig,
-) => Promise<RequestResolution>;
+type RequestConfigResolver = (config: InternalAxiosRequestConfig) => Promise<RequestResolution>;
 
 export function createHttpClient(
   resolveRequestConfig: RequestConfigResolver,

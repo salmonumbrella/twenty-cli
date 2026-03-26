@@ -63,7 +63,16 @@ describe("mcp command", () => {
   it("runs mcp catalog via get_tool_catalog", async () => {
     mockServices.mcp.callTool.mockResolvedValue({ categories: [] });
 
-    await program.parseAsync(["node", "test", "mcp", "catalog", "-o", "json", "--query", "categories"]);
+    await program.parseAsync([
+      "node",
+      "test",
+      "mcp",
+      "catalog",
+      "-o",
+      "json",
+      "--query",
+      "categories",
+    ]);
 
     expect(mockServices.mcp.callTool).toHaveBeenCalledWith("get_tool_catalog", {});
     expect(mockServices.output.render).toHaveBeenCalledWith(

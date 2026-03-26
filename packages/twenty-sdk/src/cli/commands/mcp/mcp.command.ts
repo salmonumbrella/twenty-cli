@@ -5,9 +5,7 @@ import { readFileOrStdin, safeJsonParse } from "../../utilities/shared/io";
 import { createServices } from "../../utilities/shared/services";
 
 export function registerMcpCommand(program: Command): void {
-  const cmd = program
-    .command("mcp")
-    .description("Interact with the official Twenty MCP server");
+  const cmd = program.command("mcp").description("Interact with the official Twenty MCP server");
 
   const statusCmd = cmd
     .command("status")
@@ -24,9 +22,7 @@ export function registerMcpCommand(program: Command): void {
     });
   });
 
-  const catalogCmd = cmd
-    .command("catalog")
-    .description("Show the official MCP tool catalog");
+  const catalogCmd = cmd.command("catalog").description("Show the official MCP tool catalog");
   applyGlobalOptions(catalogCmd);
   catalogCmd.action(async (_options, command: Command) => {
     const globalOptions = resolveGlobalOptions(command);
@@ -88,7 +84,9 @@ export function registerMcpCommand(program: Command): void {
     });
   });
 
-  const helpCenterCmd = cmd.command("help-center").description("Search the official MCP help center");
+  const helpCenterCmd = cmd
+    .command("help-center")
+    .description("Search the official MCP help center");
   helpCenterCmd.argument("<query>", "Help center query");
   applyGlobalOptions(helpCenterCmd);
   helpCenterCmd.action(async (query: string, _options, command: Command) => {

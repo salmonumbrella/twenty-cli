@@ -63,10 +63,7 @@ export function registerMarketplaceAppsCommand(program: Command): void {
     >(endpoint, {
       query: LIST_MARKETPLACE_APPS_QUERY,
     });
-    const data = assertGraphqlSuccess(
-      response.data ?? {},
-      "Failed to list marketplace apps.",
-    );
+    const data = assertGraphqlSuccess(response.data ?? {}, "Failed to list marketplace apps.");
     await services.output.render(data.findManyMarketplaceApps ?? [], {
       format: globalOptions.output,
       query: globalOptions.query,
@@ -81,12 +78,13 @@ export function registerMarketplaceAppsCommand(program: Command): void {
   getCmd.action(async (target: string | undefined, _options: unknown, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);
     const universalIdentifier = requireTarget(target, "marketplace app universal identifier");
-    const response = await services.api.post<
-      GraphQLResponse<{ findOneMarketplaceApp: unknown }>
-    >(endpoint, {
-      query: GET_MARKETPLACE_APP_QUERY,
-      variables: { universalIdentifier },
-    });
+    const response = await services.api.post<GraphQLResponse<{ findOneMarketplaceApp: unknown }>>(
+      endpoint,
+      {
+        query: GET_MARKETPLACE_APP_QUERY,
+        variables: { universalIdentifier },
+      },
+    );
     const data = assertGraphqlSuccess(
       response.data ?? {},
       `Failed to fetch marketplace app ${universalIdentifier}.`,
@@ -103,32 +101,35 @@ export function registerMarketplaceAppsCommand(program: Command): void {
     .argument("[target]", "Marketplace app universal identifier")
     .option("--version <version>", "Marketplace app version to install");
   applyGlobalOptions(installCmd);
-  installCmd.action(async (target: string | undefined, options: MarketplaceAppsOptions, command: Command) => {
-    const { globalOptions, services } = createCommandContext(command);
-    const universalIdentifier = requireTarget(target, "marketplace app universal identifier");
-    const response = await services.api.post<
-      GraphQLResponse<{ installMarketplaceApp: boolean }>
-    >(endpoint, {
-      query: INSTALL_MARKETPLACE_APP_MUTATION,
-      variables: {
-        universalIdentifier,
-        version: options.version,
-      },
-    });
-    const data = assertGraphqlSuccess(
-      response.data ?? {},
-      `Failed to install marketplace app ${universalIdentifier}.`,
-    );
-    await services.output.render(
-      {
-        success: data.installMarketplaceApp ?? false,
-        universalIdentifier,
-        version: options.version,
-      },
-      {
-        format: globalOptions.output,
-        query: globalOptions.query,
-      },
-    );
-  });
+  installCmd.action(
+    async (target: string | undefined, options: MarketplaceAppsOptions, command: Command) => {
+      const { globalOptions, services } = createCommandContext(command);
+      const universalIdentifier = requireTarget(target, "marketplace app universal identifier");
+      const response = await services.api.post<GraphQLResponse<{ installMarketplaceApp: boolean }>>(
+        endpoint,
+        {
+          query: INSTALL_MARKETPLACE_APP_MUTATION,
+          variables: {
+            universalIdentifier,
+            version: options.version,
+          },
+        },
+      );
+      const data = assertGraphqlSuccess(
+        response.data ?? {},
+        `Failed to install marketplace app ${universalIdentifier}.`,
+      );
+      await services.output.render(
+        {
+          success: data.installMarketplaceApp ?? false,
+          universalIdentifier,
+          version: options.version,
+        },
+        {
+          format: globalOptions.output,
+          query: globalOptions.query,
+        },
+      );
+    },
+  );
 }

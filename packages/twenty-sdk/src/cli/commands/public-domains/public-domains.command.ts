@@ -60,12 +60,11 @@ export function registerPublicDomainsCommand(program: Command): void {
   applyGlobalOptions(listCmd);
   listCmd.action(async (_options: unknown, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);
-    const response = await services.api.post<GraphQLResponse<{ findManyPublicDomains?: unknown[] }>>(
-      endpoint,
-      {
-        query: LIST_PUBLIC_DOMAINS_QUERY,
-      },
-    );
+    const response = await services.api.post<
+      GraphQLResponse<{ findManyPublicDomains?: unknown[] }>
+    >(endpoint, {
+      query: LIST_PUBLIC_DOMAINS_QUERY,
+    });
 
     await services.output.render(response.data?.data?.findManyPublicDomains ?? [], {
       format: globalOptions.output,
@@ -94,7 +93,9 @@ export function registerPublicDomainsCommand(program: Command): void {
   });
 
   const deleteCmd = cmd.command("delete").description("Delete a public domain");
-  deleteCmd.option("--domain <domain>", "Public domain name").option("--yes", "Confirm destructive operations");
+  deleteCmd
+    .option("--domain <domain>", "Public domain name")
+    .option("--yes", "Confirm destructive operations");
   applyGlobalOptions(deleteCmd);
   deleteCmd.action(async (options: PublicDomainsOptions, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);

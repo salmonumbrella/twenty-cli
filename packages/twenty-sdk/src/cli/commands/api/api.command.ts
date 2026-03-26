@@ -70,7 +70,10 @@ export function registerApiCommand(program: Command): void {
   const api = program.command("api").description("Record operations");
   applyGlobalOptions(api);
 
-  const listCmd = api.command("list").description("List records").argument("<object>", "Object name (plural)");
+  const listCmd = api
+    .command("list")
+    .description("List records")
+    .argument("<object>", "Object name (plural)");
   applyApiOptions(listCmd);
   applyGlobalOptions(listCmd);
   listCmd.action(async (object: string, _options: unknown, command: Command) => {
@@ -84,11 +87,16 @@ export function registerApiCommand(program: Command): void {
     .argument("[id]", "Record ID");
   applyApiOptions(getCmd);
   applyGlobalOptions(getCmd);
-  getCmd.action(async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-    await runGetOperation(createApiOperationContext(command, object, id));
-  });
+  getCmd.action(
+    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
+      await runGetOperation(createApiOperationContext(command, object, id));
+    },
+  );
 
-  const createCmd = api.command("create").description("Create a record").argument("<object>", "Object name (plural)");
+  const createCmd = api
+    .command("create")
+    .description("Create a record")
+    .argument("<object>", "Object name (plural)");
   applyApiOptions(createCmd);
   applyGlobalOptions(createCmd);
   createCmd.action(async (object: string, _options: unknown, command: Command) => {
@@ -102,9 +110,11 @@ export function registerApiCommand(program: Command): void {
     .argument("[id]", "Record ID");
   applyApiOptions(updateCmd);
   applyGlobalOptions(updateCmd);
-  updateCmd.action(async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-    await runUpdateOperation(createApiOperationContext(command, object, id));
-  });
+  updateCmd.action(
+    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
+      await runUpdateOperation(createApiOperationContext(command, object, id));
+    },
+  );
 
   const deleteCmd = api
     .command("delete")
@@ -114,9 +124,11 @@ export function registerApiCommand(program: Command): void {
   applyApiOptions(deleteCmd);
   applyApiDestructiveOptions(deleteCmd);
   applyGlobalOptions(deleteCmd);
-  deleteCmd.action(async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-    await runDeleteOperation(createApiOperationContext(command, object, id));
-  });
+  deleteCmd.action(
+    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
+      await runDeleteOperation(createApiOperationContext(command, object, id));
+    },
+  );
 
   const destroyCmd = api
     .command("destroy")
@@ -126,9 +138,11 @@ export function registerApiCommand(program: Command): void {
   applyApiOptions(destroyCmd);
   applyApiDestructiveOptions(destroyCmd);
   applyGlobalOptions(destroyCmd);
-  destroyCmd.action(async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-    await runDestroyOperation(createApiOperationContext(command, object, id));
-  });
+  destroyCmd.action(
+    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
+      await runDestroyOperation(createApiOperationContext(command, object, id));
+    },
+  );
 
   const restoreCmd = api
     .command("restore")
@@ -137,9 +151,11 @@ export function registerApiCommand(program: Command): void {
     .argument("[id]", "Record ID");
   applyApiOptions(restoreCmd);
   applyGlobalOptions(restoreCmd);
-  restoreCmd.action(async (object: string, id: string | undefined, _options: unknown, command: Command) => {
-    await runRestoreOperation(createApiOperationContext(command, object, id));
-  });
+  restoreCmd.action(
+    async (object: string, id: string | undefined, _options: unknown, command: Command) => {
+      await runRestoreOperation(createApiOperationContext(command, object, id));
+    },
+  );
 
   const batchCreateCmd = api
     .command("batch-create")
@@ -179,11 +195,16 @@ export function registerApiCommand(program: Command): void {
     .argument("[filePath]", "Import file path");
   applyApiOptions(importCmd);
   applyGlobalOptions(importCmd);
-  importCmd.action(async (object: string, filePath: string | undefined, _options: unknown, command: Command) => {
-    await runImportOperation(createApiOperationContext(command, object, filePath));
-  });
+  importCmd.action(
+    async (object: string, filePath: string | undefined, _options: unknown, command: Command) => {
+      await runImportOperation(createApiOperationContext(command, object, filePath));
+    },
+  );
 
-  const exportCmd = api.command("export").description("Export records").argument("<object>", "Object name (plural)");
+  const exportCmd = api
+    .command("export")
+    .description("Export records")
+    .argument("<object>", "Object name (plural)");
   applyApiOptions(exportCmd);
   applyGlobalOptions(exportCmd);
   exportCmd.action(async (object: string, _options: unknown, command: Command) => {
@@ -210,7 +231,10 @@ export function registerApiCommand(program: Command): void {
     await runGroupByOperation(createApiOperationContext(command, object));
   });
 
-  const mergeCmd = api.command("merge").description("Merge records").argument("<object>", "Object name (plural)");
+  const mergeCmd = api
+    .command("merge")
+    .description("Merge records")
+    .argument("<object>", "Object name (plural)");
   applyApiOptions(mergeCmd);
   applyGlobalOptions(mergeCmd);
   mergeCmd.action(async (object: string, _options: unknown, command: Command) => {

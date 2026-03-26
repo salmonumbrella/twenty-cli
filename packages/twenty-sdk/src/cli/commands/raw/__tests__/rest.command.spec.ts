@@ -228,9 +228,9 @@ describe("rest command", () => {
     it("propagates API errors", async () => {
       mockServices.api.request.mockRejectedValue(new Error("API request failed"));
 
-      await expect(program.parseAsync(["node", "test", "raw", "rest", "GET", "/people"])).rejects.toThrow(
-        "API request failed",
-      );
+      await expect(
+        program.parseAsync(["node", "test", "raw", "rest", "GET", "/people"]),
+      ).rejects.toThrow("API request failed");
     });
 
     it("handles invalid JSON data gracefully", async () => {

@@ -62,7 +62,11 @@ describe("postgres-proxy command", () => {
     expect(help).toContain("enable");
     expect(help).toContain("disable");
     expect(command?.options.find((option) => option.long === "--show-password")).toBeUndefined();
-    expect(command?.commands.find((candidate) => candidate.name() === "get")?.options.find((option) => option.long === "--show-password")).toBeDefined();
+    expect(
+      command?.commands
+        .find((candidate) => candidate.name() === "get")
+        ?.options.find((option) => option.long === "--show-password"),
+    ).toBeDefined();
   });
 
   it("gets Postgres credentials and masks the password by default", async () => {

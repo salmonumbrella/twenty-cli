@@ -105,7 +105,9 @@ describe("files command", () => {
       expect(publicAssetOpts.find((o) => o.long === "--workspace-id")).toBeDefined();
       expect(publicAssetOpts.find((o) => o.long === "--application-id")).toBeDefined();
       expect(uploadOpts.find((o) => o.long === "--field-metadata-id")).toBeDefined();
-      expect(uploadOpts.find((o) => o.long === "--field-metadata-universal-identifier")).toBeDefined();
+      expect(
+        uploadOpts.find((o) => o.long === "--field-metadata-universal-identifier"),
+      ).toBeDefined();
     });
 
     it("has global options applied", () => {

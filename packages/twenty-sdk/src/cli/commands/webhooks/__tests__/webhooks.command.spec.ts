@@ -61,7 +61,9 @@ describe("webhooks command", () => {
       const subcommands = webhooksCmd?.commands.map((cmd) => cmd.name()) ?? [];
       const help = webhooksCmd?.helpInformation() ?? "";
 
-      expect(subcommands).toEqual(expect.arrayContaining(["list", "get", "create", "update", "delete"]));
+      expect(subcommands).toEqual(
+        expect.arrayContaining(["list", "get", "create", "update", "delete"]),
+      );
       expect(help).toContain("Commands:");
       expect(help).toContain("list");
       expect(help).toContain("get");

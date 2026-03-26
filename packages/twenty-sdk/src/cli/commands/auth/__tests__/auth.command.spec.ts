@@ -84,14 +84,7 @@ describe("auth commands", () => {
     it("loads env handling once through shared output context", async () => {
       vi.mocked(ConfigService.prototype.listWorkspaces).mockResolvedValue([]);
 
-      await program.parseAsync([
-        "node",
-        "test",
-        "auth",
-        "list",
-        "--env-file",
-        ".env.test",
-      ]);
+      await program.parseAsync(["node", "test", "auth", "list", "--env-file", ".env.test"]);
 
       expect(loadCliEnvironment).toHaveBeenCalledTimes(1);
       expect(loadCliEnvironment).toHaveBeenCalledWith({

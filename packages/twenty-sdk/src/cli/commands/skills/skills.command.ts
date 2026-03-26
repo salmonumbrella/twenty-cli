@@ -136,7 +136,10 @@ export function registerSkillsCommand(program: Command): void {
     });
   });
 
-  const updateCmd = cmd.command("update").description("Update a skill").argument("[id]", "Skill ID");
+  const updateCmd = cmd
+    .command("update")
+    .description("Update a skill")
+    .argument("[id]", "Skill ID");
   updateCmd
     .option("-d, --data <json>", "JSON payload")
     .option("-f, --file <path>", "JSON file")
@@ -162,7 +165,10 @@ export function registerSkillsCommand(program: Command): void {
     });
   });
 
-  const deleteCmd = cmd.command("delete").description("Delete a skill").argument("[id]", "Skill ID");
+  const deleteCmd = cmd
+    .command("delete")
+    .description("Delete a skill")
+    .argument("[id]", "Skill ID");
   applyGlobalOptions(deleteCmd);
   deleteCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);

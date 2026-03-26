@@ -5,12 +5,11 @@ on:
     tags:
       - "v*"
 
-permissions:
-  contents: write
-
 jobs:
   verify:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -38,18 +37,34 @@ jobs:
       - name: Lint, format, and typecheck
         run: pnpm exec prek run --all-files
 
-  build-release:
+  live-smoke:
     needs: verify
+    uses: ./.github/workflows/live-smoke.yml
+    with:
+      base_url: ${{ vars.TWENTY_LIVE_BASE_URL }}
+      workspace: ${{ vars.TWENTY_LIVE_WORKSPACE }}
+    secrets: inherit
+    permissions:
+      contents: read
+
+  build-release:
+    needs: [verify, live-smoke]
     strategy:
       matrix:
         include:
           - runner: ubuntu-latest
+            platform: linux
+            arch: x64
             targets: linux-x64,linux-arm64
             artifact_name: release-linux
           - runner: macos-14
+            platform: darwin
+            arch: arm64
             targets: macos-arm64,macos-x64
             artifact_name: release-macos
     runs-on: ${{ matrix.runner }}
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
@@ -74,6 +89,9 @@ jobs:
       - name: Build release archives
         run: pnpm release:build -- --version "${GITHUB_REF_NAME#v}" --targets "${{ matrix.targets }}"
 
+      - name: Smoke native release archive
+        run: node scripts/smoke-release-artifact.mjs --release-dir dist/release --platform "${{ matrix.platform }}" --arch "${{ matrix.arch }}"
+
       - name: Upload release archives
         uses: actions/upload-artifact@v7
         with:
@@ -83,6 +101,8 @@ jobs:
   release:
     needs: build-release
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 

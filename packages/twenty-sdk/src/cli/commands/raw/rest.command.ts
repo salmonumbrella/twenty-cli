@@ -55,9 +55,7 @@ function collect(value: string, previous: string[] = []): string[] {
   return previous.concat([value]);
 }
 
-function normalizeQueryParams(
-  params: Record<string, string[]>,
-): Record<string, string | string[]> {
+function normalizeQueryParams(params: Record<string, string[]>): Record<string, string | string[]> {
   const normalized: Record<string, string | string[]> = {};
 
   for (const [key, values] of Object.entries(params)) {

@@ -24,12 +24,9 @@ export function registerWebhooksCommand(program: Command): void {
   applyGlobalOptions(listCmd);
   listCmd.action(async (_options: unknown, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);
-    const response = await services.api.post<GraphQLResponse<{ webhooks: unknown[] }>>(
-      endpoint,
-      {
-        query: `query { webhooks { id targetUrl operations description createdAt } }`,
-      },
-    );
+    const response = await services.api.post<GraphQLResponse<{ webhooks: unknown[] }>>(endpoint, {
+      query: `query { webhooks { id targetUrl operations description createdAt } }`,
+    });
     await services.output.render(response.data?.data?.webhooks ?? [], {
       format: globalOptions.output,
       query: globalOptions.query,
@@ -73,7 +70,10 @@ export function registerWebhooksCommand(program: Command): void {
     });
   });
 
-  const updateCmd = cmd.command("update").description("Update a webhook").argument("[id]", "Webhook ID");
+  const updateCmd = cmd
+    .command("update")
+    .description("Update a webhook")
+    .argument("[id]", "Webhook ID");
   updateCmd
     .option("-d, --data <json>", "JSON payload")
     .option("-f, --file <path>", "JSON file")
@@ -101,7 +101,10 @@ export function registerWebhooksCommand(program: Command): void {
     });
   });
 
-  const deleteCmd = cmd.command("delete").description("Delete a webhook").argument("[id]", "Webhook ID");
+  const deleteCmd = cmd
+    .command("delete")
+    .description("Delete a webhook")
+    .argument("[id]", "Webhook ID");
   applyGlobalOptions(deleteCmd);
   deleteCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
     const { services } = createCommandContext(command);

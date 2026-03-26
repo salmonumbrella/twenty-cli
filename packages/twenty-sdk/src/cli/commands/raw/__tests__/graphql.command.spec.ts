@@ -452,15 +452,7 @@ describe("graphql command", () => {
 
     it("rejects whitespace-only document input", async () => {
       await expect(
-        program.parseAsync([
-          "node",
-          "test",
-          "raw",
-          "graphql",
-          "query",
-          "--document",
-          "   \n\t  ",
-        ]),
+        program.parseAsync(["node", "test", "raw", "graphql", "query", "--document", "   \n\t  "]),
       ).rejects.toThrow(CliError);
     });
 

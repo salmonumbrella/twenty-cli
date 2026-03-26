@@ -49,17 +49,15 @@ export function registerPostgresProxyCommand(program: Command): void {
   applyGlobalOptions(getCmd);
   getCmd.action(async (options: PostgresProxyOptions, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);
-    const response = await services.api.post<
-      GraphQLResponse<{ getPostgresCredentials?: unknown }>
-    >(endpoint, {
-      query: GET_POSTGRES_CREDENTIALS_QUERY,
-    });
+    const response = await services.api.post<GraphQLResponse<{ getPostgresCredentials?: unknown }>>(
+      endpoint,
+      {
+        query: GET_POSTGRES_CREDENTIALS_QUERY,
+      },
+    );
 
     await services.output.render(
-      sanitizeCredentials(
-        resolvePostgresResult(response.data, "getPostgresCredentials"),
-        options,
-      ),
+      sanitizeCredentials(resolvePostgresResult(response.data, "getPostgresCredentials"), options),
       {
         format: globalOptions.output,
         query: globalOptions.query,
@@ -71,11 +69,12 @@ export function registerPostgresProxyCommand(program: Command): void {
   applyGlobalOptions(enableCmd);
   enableCmd.action(async (_options: unknown, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);
-    const response = await services.api.post<
-      GraphQLResponse<{ enablePostgresProxy?: unknown }>
-    >(endpoint, {
-      query: ENABLE_POSTGRES_PROXY_MUTATION,
-    });
+    const response = await services.api.post<GraphQLResponse<{ enablePostgresProxy?: unknown }>>(
+      endpoint,
+      {
+        query: ENABLE_POSTGRES_PROXY_MUTATION,
+      },
+    );
 
     await services.output.render(
       sanitizeCredentials(resolvePostgresResult(response.data, "enablePostgresProxy"), {}),
@@ -90,11 +89,12 @@ export function registerPostgresProxyCommand(program: Command): void {
   applyGlobalOptions(disableCmd);
   disableCmd.action(async (_options: unknown, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);
-    const response = await services.api.post<
-      GraphQLResponse<{ disablePostgresProxy?: unknown }>
-    >(endpoint, {
-      query: DISABLE_POSTGRES_PROXY_MUTATION,
-    });
+    const response = await services.api.post<GraphQLResponse<{ disablePostgresProxy?: unknown }>>(
+      endpoint,
+      {
+        query: DISABLE_POSTGRES_PROXY_MUTATION,
+      },
+    );
 
     await services.output.render(
       sanitizeCredentials(resolvePostgresResult(response.data, "disablePostgresProxy"), {}),

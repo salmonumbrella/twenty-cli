@@ -61,7 +61,9 @@ describe("route-triggers command", () => {
       const subcommands = cmd?.commands.map((candidate) => candidate.name()) ?? [];
       const help = cmd?.helpInformation() ?? "";
 
-      expect(subcommands).toEqual(expect.arrayContaining(["list", "get", "create", "update", "delete"]));
+      expect(subcommands).toEqual(
+        expect.arrayContaining(["list", "get", "create", "update", "delete"]),
+      );
       expect(help).toContain("Commands:");
       expect(help).toContain("list");
       expect(help).toContain("get");

@@ -50,9 +50,7 @@ export class PublicHttpService {
     }, options);
   }
 
-  async request<T = unknown>(
-    options: PublicHttpRequestOptions,
-  ): Promise<AxiosResponse<T>> {
+  async request<T = unknown>(options: PublicHttpRequestOptions): Promise<AxiosResponse<T>> {
     return this.client.request<T>({
       method: options.method,
       url: options.path,

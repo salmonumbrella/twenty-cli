@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "pnpm --filter twenty-sdk build",
+    "check:repo-hygiene": "node scripts/check-repo-hygiene.mjs",
     "check:upstream-drift": "node scripts/check-upstream-drift.mjs",
     "readme:generate": "node scripts/render-readme-snippets.mjs",
     "release:build": "node scripts/build-release.mjs",
@@ -11,6 +12,8 @@
     "typecheck": "pnpm --filter twenty-sdk typecheck",
     "test": "pnpm --filter twenty-sdk test",
     "test:e2e": "pnpm --filter twenty-sdk test:e2e",
+    "test:smoke:live": "pnpm --filter twenty-sdk test:e2e:live",
+    "verify:ci": "pnpm build && pnpm test && pnpm test:e2e && pnpm check:repo-hygiene && pnpm exec prek run --all-files",
     "lint": "pnpm exec oxlint -c ./oxlint.config.json .",
     "lint:fix": "pnpm exec oxlint -c ./oxlint.config.json --fix .",
     "format": "pnpm exec oxfmt --write .",

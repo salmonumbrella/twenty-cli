@@ -759,11 +759,11 @@ describe("serverless command", () => {
     });
 
     it("throws error for unknown operation", async () => {
-      await expect(program.parseAsync(["node", "test", "serverless", "unknown"])).rejects.toMatchObject(
-        {
-          code: "commander.unknownCommand",
-        },
-      );
+      await expect(
+        program.parseAsync(["node", "test", "serverless", "unknown"]),
+      ).rejects.toMatchObject({
+        code: "commander.unknownCommand",
+      });
     });
 
     it("publishes a function when the current schema supports it", async () => {

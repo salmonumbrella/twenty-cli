@@ -62,7 +62,11 @@ describe("marketplace-apps command", () => {
     expect(help).toContain("list");
     expect(help).toContain("get");
     expect(help).toContain("install");
-    expect(cmd?.commands.find((candidate) => candidate.name() === "install")?.options.find((option) => option.long === "--version")).toBeDefined();
+    expect(
+      cmd?.commands
+        .find((candidate) => candidate.name() === "install")
+        ?.options.find((option) => option.long === "--version"),
+    ).toBeDefined();
   });
 
   it("lists marketplace apps", async () => {

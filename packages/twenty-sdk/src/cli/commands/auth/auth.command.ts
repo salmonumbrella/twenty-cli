@@ -141,44 +141,39 @@ export function registerAuthCommand(program: Command): void {
     .description("Show current authentication status")
     .option("--show-token", "Show full API token");
   applyGlobalOptions(statusCmd);
-  statusCmd.action(
-    async (
-      options: { showToken?: boolean },
-      command: Command,
-    ) => {
-      const { globalOptions, services } = createCommandContext(command);
+  statusCmd.action(async (options: { showToken?: boolean }, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
 
-      try {
-        const config = await services.config.getConfig({
-          workspace: globalOptions.workspace,
-        });
+    try {
+      const config = await services.config.getConfig({
+        workspace: globalOptions.workspace,
+      });
+      const statusData = {
+        authenticated: true,
+        workspace: config.workspace,
+        apiUrl: config.apiUrl,
+        apiKey: options.showToken ? config.apiKey : maskToken(config.apiKey),
+      };
+
+      await services.output.render(statusData, {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      });
+    } catch (error) {
+      if (error instanceof CliError && error.code === "AUTH") {
         const statusData = {
-          authenticated: true,
-          workspace: config.workspace,
-          apiUrl: config.apiUrl,
-          apiKey: options.showToken ? config.apiKey : maskToken(config.apiKey),
+          authenticated: false,
+          error: error.message,
         };
-
         await services.output.render(statusData, {
           format: globalOptions.output,
           query: globalOptions.query,
         });
-      } catch (error) {
-        if (error instanceof CliError && error.code === "AUTH") {
-          const statusData = {
-            authenticated: false,
-            error: error.message,
-          };
-          await services.output.render(statusData, {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
-        } else {
-          throw error;
-        }
+      } else {
+        throw error;
       }
-    },
-  );
+    }
+  });
 
   const workspaceCmd = authCmd
     .command("workspace")
@@ -313,38 +308,43 @@ export function registerAuthCommand(program: Command): void {
     .option("--workspace <name>", "Workspace name to remove")
     .option("--all", "Remove all workspaces")
     .option("--env-file <path>", "Load environment variables from file")
-    .action(async (options: { workspace?: string; all?: boolean; envFile?: string }, command: Command) => {
-      const { services } = createCommandContext(command);
+    .action(
+      async (
+        options: { workspace?: string; all?: boolean; envFile?: string },
+        command: Command,
+      ) => {
+        const { services } = createCommandContext(command);
 
-      if (options.all) {
-        const workspaces = await services.config.listWorkspaces();
-        for (const ws of workspaces) {
-          await services.config.removeWorkspace(ws.name);
+        if (options.all) {
+          const workspaces = await services.config.listWorkspaces();
+          for (const ws of workspaces) {
+            await services.config.removeWorkspace(ws.name);
+          }
+          // eslint-disable-next-line no-console
+          console.log("All workspaces removed.");
+          return;
         }
+
+        let workspaceToRemove: string;
+        if (options.workspace) {
+          workspaceToRemove = options.workspace;
+        } else {
+          // Get current default workspace
+          try {
+            const config = await services.config.getConfig();
+            workspaceToRemove = config.workspace ?? "default";
+          } catch {
+            throw new CliError(
+              "No workspace specified and no default workspace configured.",
+              "INVALID_ARGUMENTS",
+              "Use --workspace <name> or --all to specify what to remove.",
+            );
+          }
+        }
+
+        await services.config.removeWorkspace(workspaceToRemove);
         // eslint-disable-next-line no-console
-        console.log("All workspaces removed.");
-        return;
-      }
-
-      let workspaceToRemove: string;
-      if (options.workspace) {
-        workspaceToRemove = options.workspace;
-      } else {
-        // Get current default workspace
-        try {
-          const config = await services.config.getConfig();
-          workspaceToRemove = config.workspace ?? "default";
-        } catch {
-          throw new CliError(
-            "No workspace specified and no default workspace configured.",
-            "INVALID_ARGUMENTS",
-            "Use --workspace <name> or --all to specify what to remove.",
-          );
-        }
-      }
-
-      await services.config.removeWorkspace(workspaceToRemove);
-      // eslint-disable-next-line no-console
-      console.log(`Workspace "${workspaceToRemove}" removed.`);
-    });
+        console.log(`Workspace "${workspaceToRemove}" removed.`);
+      },
+    );
 }

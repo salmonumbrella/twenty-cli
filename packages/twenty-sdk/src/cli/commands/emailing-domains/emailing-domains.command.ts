@@ -125,31 +125,34 @@ export function registerEmailingDomainsCommand(program: Command): void {
     .argument("[id]", "Emailing domain ID")
     .option("--yes", "Confirm destructive operations");
   applyGlobalOptions(deleteCmd);
-  deleteCmd.action(async (id: string | undefined, options: EmailingDomainsOptions, command: Command) => {
-    const { globalOptions, services } = createCommandContext(command);
-    if (!id) {
-      throw new CliError("Missing emailing domain ID.", "INVALID_ARGUMENTS");
-    }
-    requireYes(options, "Delete");
+  deleteCmd.action(
+    async (id: string | undefined, options: EmailingDomainsOptions, command: Command) => {
+      const { globalOptions, services } = createCommandContext(command);
+      if (!id) {
+        throw new CliError("Missing emailing domain ID.", "INVALID_ARGUMENTS");
+      }
+      requireYes(options, "Delete");
 
-    const response = await services.api.post<
-      GraphQLResponse<{ deleteEmailingDomain?: boolean }>
-    >(endpoint, {
-      query: DELETE_EMAILING_DOMAIN_MUTATION,
-      variables: { id },
-    });
+      const response = await services.api.post<GraphQLResponse<{ deleteEmailingDomain?: boolean }>>(
+        endpoint,
+        {
+          query: DELETE_EMAILING_DOMAIN_MUTATION,
+          variables: { id },
+        },
+      );
 
-    await services.output.render(
-      {
-        success: response.data?.data?.deleteEmailingDomain ?? false,
-        id,
-      },
-      {
-        format: globalOptions.output,
-        query: globalOptions.query,
-      },
-    );
-  });
+      await services.output.render(
+        {
+          success: response.data?.data?.deleteEmailingDomain ?? false,
+          id,
+        },
+        {
+          format: globalOptions.output,
+          query: globalOptions.query,
+        },
+      );
+    },
+  );
 }
 
 function requireDomain(domain: string | undefined): string {

@@ -652,10 +652,7 @@ async function runServerlessPackagesCommand(
   await renderServerlessFunction(result ?? {}, services, globalOptions);
 }
 
-async function runServerlessDeleteCommand(
-  id: string | undefined,
-  command: Command,
-): Promise<void> {
+async function runServerlessDeleteCommand(id: string | undefined, command: Command): Promise<void> {
   const { services } = createCommandContext(command);
 
   if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
@@ -706,10 +703,7 @@ async function runServerlessExecuteCommand(
   await renderServerlessFunction(result, services, globalOptions);
 }
 
-async function runServerlessSourceCommand(
-  id: string | undefined,
-  command: Command,
-): Promise<void> {
+async function runServerlessSourceCommand(id: string | undefined, command: Command): Promise<void> {
   const { globalOptions, services } = createCommandContext(command);
 
   if (!id) throw new CliError("Missing function ID.", "INVALID_ARGUMENTS");
@@ -737,10 +731,7 @@ async function runServerlessSourceCommand(
   console.log(sourceCode ?? "");
 }
 
-async function runServerlessLogsCommand(
-  id: string | undefined,
-  command: Command,
-): Promise<void> {
+async function runServerlessLogsCommand(id: string | undefined, command: Command): Promise<void> {
   const { globalOptions, services } = createCommandContext(command);
 
   await streamLogicFunctionLogs(id, getServerlessOptions(command), globalOptions, services);

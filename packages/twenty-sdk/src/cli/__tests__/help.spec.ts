@@ -281,23 +281,26 @@ describe("CLI help contracts", () => {
       subcommands: ["get", "enable", "disable"],
       options: ["output", "query", "workspace"],
     },
-  ])("builds parent help JSON for $path[1] explicit subcommands", ({ args, path, subcommands, options }) => {
-    const help = buildHelpJson(buildProgram(), args);
+  ])(
+    "builds parent help JSON for $path[1] explicit subcommands",
+    ({ args, path, subcommands, options }) => {
+      const help = buildHelpJson(buildProgram(), args);
 
-    expect(help.kind).toBe("command");
-    expect(help.path).toEqual(path);
-    expect(help.subcommands.map((command) => command.name)).toEqual(
-      expect.arrayContaining(subcommands),
-    );
-    expect(help.operations.map((operation) => operation.name)).toEqual(
-      expect.arrayContaining(subcommands),
-    );
-    expect(help.options.map((option) => option.name)).toEqual(expect.arrayContaining(options));
-    expect(help.capabilities.supports_output).toBe(true);
-    expect(help.capabilities.supports_query).toBe(true);
-    expect(help.capabilities.supports_workspace).toBe(true);
-    expect(help.capabilities.mutates).toBe(true);
-  });
+      expect(help.kind).toBe("command");
+      expect(help.path).toEqual(path);
+      expect(help.subcommands.map((command) => command.name)).toEqual(
+        expect.arrayContaining(subcommands),
+      );
+      expect(help.operations.map((operation) => operation.name)).toEqual(
+        expect.arrayContaining(subcommands),
+      );
+      expect(help.options.map((option) => option.name)).toEqual(expect.arrayContaining(options));
+      expect(help.capabilities.supports_output).toBe(true);
+      expect(help.capabilities.supports_query).toBe(true);
+      expect(help.capabilities.supports_workspace).toBe(true);
+      expect(help.capabilities.mutates).toBe(true);
+    },
+  );
 
   it("builds command help JSON for event log commands", () => {
     const program = buildProgram();

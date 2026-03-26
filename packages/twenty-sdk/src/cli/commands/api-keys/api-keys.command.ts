@@ -53,8 +53,7 @@ export function registerApiKeysCommand(program: Command): void {
   createCmd.action(async (options: ApiKeyOptions, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);
     if (!options.name) throw new CliError("Missing --name option.", "INVALID_ARGUMENTS");
-    if (!options.expiresAt)
-      throw new CliError("Missing --expires-at option.", "INVALID_ARGUMENTS");
+    if (!options.expiresAt) throw new CliError("Missing --expires-at option.", "INVALID_ARGUMENTS");
     if (!options.roleId) throw new CliError("Missing --role-id option.", "INVALID_ARGUMENTS");
     const response = await services.api.post<
       GraphQLResponse<{ createApiKey: { id: string; name: string; expiresAt?: string } }>
@@ -86,7 +85,10 @@ export function registerApiKeysCommand(program: Command): void {
     });
   });
 
-  const updateCmd = cmd.command("update").description("Update an API key").argument("[id]", "API key ID");
+  const updateCmd = cmd
+    .command("update")
+    .description("Update an API key")
+    .argument("[id]", "API key ID");
   updateCmd
     .option("--name <name>", "API key name")
     .option("--expires-at <date>", "Expiration date (ISO format)")
@@ -102,27 +104,27 @@ export function registerApiKeysCommand(program: Command): void {
       );
     }
 
-    const response = await services.api.post<GraphQLResponse<{ updateApiKey: unknown }>>(
-      endpoint,
-      {
-        query: `mutation($input: UpdateApiKeyInput!) { updateApiKey(input: $input) { id name expiresAt revokedAt role { id name } } }`,
-        variables: {
-          input: {
-            id,
-            name: options.name,
-            expiresAt: options.expiresAt,
-            revokedAt: options.revokedAt,
-          },
+    const response = await services.api.post<GraphQLResponse<{ updateApiKey: unknown }>>(endpoint, {
+      query: `mutation($input: UpdateApiKeyInput!) { updateApiKey(input: $input) { id name expiresAt revokedAt role { id name } } }`,
+      variables: {
+        input: {
+          id,
+          name: options.name,
+          expiresAt: options.expiresAt,
+          revokedAt: options.revokedAt,
         },
       },
-    );
+    });
     await services.output.render(response.data?.data?.updateApiKey, {
       format: globalOptions.output,
       query: globalOptions.query,
     });
   });
 
-  const revokeCmd = cmd.command("revoke").description("Revoke an API key").argument("[id]", "API key ID");
+  const revokeCmd = cmd
+    .command("revoke")
+    .description("Revoke an API key")
+    .argument("[id]", "API key ID");
   applyGlobalOptions(revokeCmd);
   revokeCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
     const { services } = createCommandContext(command);
@@ -146,12 +148,13 @@ export function registerApiKeysCommand(program: Command): void {
     if (!id) throw new CliError("Missing API key ID.", "INVALID_ARGUMENTS");
     if (!options.roleId) throw new CliError("Missing --role-id option.", "INVALID_ARGUMENTS");
 
-    const response = await services.api.post<
-      GraphQLResponse<{ assignRoleToApiKey: boolean }>
-    >(endpoint, {
-      query: `mutation($id: UUID!, $roleId: UUID!) { assignRoleToApiKey(apiKeyId: $id, roleId: $roleId) }`,
-      variables: { id, roleId: options.roleId },
-    });
+    const response = await services.api.post<GraphQLResponse<{ assignRoleToApiKey: boolean }>>(
+      endpoint,
+      {
+        query: `mutation($id: UUID!, $roleId: UUID!) { assignRoleToApiKey(apiKeyId: $id, roleId: $roleId) }`,
+        variables: { id, roleId: options.roleId },
+      },
+    );
 
     await services.output.render(
       {

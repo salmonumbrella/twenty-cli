@@ -34,7 +34,9 @@ const VALIDATE_APPROVED_ACCESS_DOMAIN_MUTATION = `mutation ValidateApprovedAcces
 
 export function registerApprovedAccessDomainsCommand(program: Command): void {
   const endpoint = "/graphql";
-  const cmd = program.command("approved-access-domains").description("Manage approved access domains");
+  const cmd = program
+    .command("approved-access-domains")
+    .description("Manage approved access domains");
   applyGlobalOptions(cmd);
 
   const listCmd = cmd.command("list").description("List approved access domains");
@@ -59,34 +61,35 @@ export function registerApprovedAccessDomainsCommand(program: Command): void {
     .argument("[id]", "Approved access domain ID")
     .option("--yes", "Confirm destructive operations");
   applyGlobalOptions(deleteCmd);
-  deleteCmd.action(async (id: string | undefined, options: ApprovedAccessDomainsOptions, command: Command) => {
-    const { globalOptions, services } = createCommandContext(command);
-    if (!id) {
-      throw new CliError("Missing approved access domain ID.", "INVALID_ARGUMENTS");
-    }
-    requireYes(options, "Delete");
+  deleteCmd.action(
+    async (id: string | undefined, options: ApprovedAccessDomainsOptions, command: Command) => {
+      const { globalOptions, services } = createCommandContext(command);
+      if (!id) {
+        throw new CliError("Missing approved access domain ID.", "INVALID_ARGUMENTS");
+      }
+      requireYes(options, "Delete");
 
-    const response = await services.api.post<GraphQLResponse<{ deleteApprovedAccessDomain?: boolean }>>(
-      endpoint,
-      {
+      const response = await services.api.post<
+        GraphQLResponse<{ deleteApprovedAccessDomain?: boolean }>
+      >(endpoint, {
         query: DELETE_APPROVED_ACCESS_DOMAIN_MUTATION,
         variables: {
           input: { id },
         },
-      },
-    );
+      });
 
-    await services.output.render(
-      {
-        success: response.data?.data?.deleteApprovedAccessDomain ?? false,
-        id,
-      },
-      {
-        format: globalOptions.output,
-        query: globalOptions.query,
-      },
-    );
-  });
+      await services.output.render(
+        {
+          success: response.data?.data?.deleteApprovedAccessDomain ?? false,
+          id,
+        },
+        {
+          format: globalOptions.output,
+          query: globalOptions.query,
+        },
+      );
+    },
+  );
 
   const validateCmd = cmd
     .command("validate")

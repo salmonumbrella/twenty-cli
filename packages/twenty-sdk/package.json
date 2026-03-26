@@ -17,7 +17,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run -c vitest.config.ts",
     "test:watch": "vitest -c vitest.config.ts",
-    "test:e2e": "pnpm run build && vitest run -c vitest.e2e.config.ts"
+    "test:e2e": "pnpm run build && vitest run -c vitest.e2e.config.ts",
+    "test:e2e:live": "pnpm run build && TWENTY_LIVE_SMOKE=true vitest run -c vitest.e2e.config.ts src/cli/__tests__/e2e/helpers/live-config.spec.ts src/cli/__tests__/e2e/live-smoke.e2e.spec.ts"
   },
   "dependencies": {
     "axios": "^1.13.5",
@@ -39,7 +40,8 @@
   },
   "pkg": {
     "scripts": [
-      "dist/**/*.js"
+      "dist/**/*.js",
+      "node_modules/axios/dist/node/axios.cjs"
     ],
     "assets": [
       "dist/cli/help.txt"

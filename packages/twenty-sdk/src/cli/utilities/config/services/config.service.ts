@@ -62,8 +62,7 @@ export class ConfigService {
     const resolved = await this.resolveApiConfig({
       ...overrides,
       requireAuth: true,
-      missingAuthSuggestion:
-        "Set TWENTY_TOKEN or configure ~/.twenty/config.json with an apiKey.",
+      missingAuthSuggestion: "Set TWENTY_TOKEN or configure ~/.twenty/config.json with an apiKey.",
     });
 
     return {
