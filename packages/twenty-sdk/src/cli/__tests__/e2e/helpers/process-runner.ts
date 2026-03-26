@@ -36,17 +36,30 @@ export function runNodeScript(
     env: options.env,
     encoding: "utf-8",
     maxBuffer: MAX_BUFFER,
+    killSignal: "SIGKILL",
+    timeout: options.timeoutMs,
   });
-
-  if (result.error) {
-    throw result.error;
-  }
 
   const scriptResult = {
     exitCode: result.status,
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
   };
+
+  if (isSyncTimeoutError(result.error)) {
+    const timedOutResult = {
+      ...scriptResult,
+      exitCode: null,
+    };
+
+    return options.throwOnNonZeroExit
+      ? assertSuccessfulBuiltCliRun(args, timedOutResult)
+      : timedOutResult;
+  }
+
+  if (result.error) {
+    throw result.error;
+  }
 
   return options.throwOnNonZeroExit ? assertSuccessfulBuiltCliRun(args, scriptResult) : scriptResult;
 }
@@ -131,4 +144,8 @@ function formatRunFailure(args: string[], result: BuiltCliRunResult): string {
     `stderr:\n${result.stderr || "(empty)"}`,
     `stdout:\n${result.stdout || "(empty)"}`,
   ].join("\n");
+}
+
+function isSyncTimeoutError(error: unknown): error is NodeJS.ErrnoException {
+  return (error as NodeJS.ErrnoException | undefined)?.code === "ETIMEDOUT";
 }
