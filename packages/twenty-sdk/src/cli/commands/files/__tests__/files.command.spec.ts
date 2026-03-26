@@ -4,10 +4,12 @@ import fs from "fs-extra";
 import FormData from "form-data";
 import { registerFilesCommand } from "../files.command";
 import { ApiService } from "../../../utilities/api/services/api.service";
+import { PublicHttpService } from "../../../utilities/api/services/public-http.service";
 import { CliError } from "../../../utilities/errors/cli-error";
 import { mockConstructor } from "../../../test-utils/mock-constructor";
 
 vi.mock("../../../utilities/api/services/api.service");
+vi.mock("../../../utilities/api/services/public-http.service");
 vi.mock("../../../utilities/config/services/config.service", () => ({
   ConfigService: vi.fn(function MockConfigService() {
     return {
@@ -27,6 +29,7 @@ describe("files command", () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let mockPost: ReturnType<typeof vi.fn>;
   let mockGet: ReturnType<typeof vi.fn>;
+  let mockPublicRequest: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     program = new Command();
@@ -35,6 +38,7 @@ describe("files command", () => {
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mockPost = vi.fn();
     mockGet = vi.fn();
+    mockPublicRequest = vi.fn();
     vi.mocked(ApiService).mockImplementation(
       mockConstructor(
         () =>
@@ -46,6 +50,17 @@ describe("files command", () => {
             delete: vi.fn(),
             request: vi.fn(),
           }) as unknown as ApiService,
+      ),
+    );
+    vi.mocked(PublicHttpService).mockImplementation(
+      mockConstructor(
+        () =>
+          ({
+            request: mockPublicRequest,
+            client: {
+              request: mockPublicRequest,
+            },
+          }) as unknown as PublicHttpService,
       ),
     );
   });
@@ -378,6 +393,7 @@ describe("files command", () => {
   describe("download operation", () => {
     it("downloads a file from a signed URL", async () => {
       const fileContent = Buffer.from("file content");
+      mockPublicRequest.mockResolvedValue({ data: fileContent });
       mockGet.mockResolvedValue({ data: fileContent });
       vi.mocked(fs.writeFile).mockResolvedValue(undefined as never);
 
@@ -389,16 +405,20 @@ describe("files command", () => {
         "https://api.twenty.com/file/files-field/file-123?token=signed-token",
       ]);
 
-      expect(mockGet).toHaveBeenCalledWith(
-        "https://api.twenty.com/file/files-field/file-123?token=signed-token",
-        { responseType: "arraybuffer" },
-      );
+      expect(mockPublicRequest).toHaveBeenCalledWith({
+        authMode: "none",
+        method: "get",
+        path: "https://api.twenty.com/file/files-field/file-123?token=signed-token",
+        responseType: "arraybuffer",
+      });
+      expect(mockGet).not.toHaveBeenCalled();
       expect(fs.writeFile).toHaveBeenCalledWith("file-123", fileContent);
       expect(consoleSpy).toHaveBeenCalledWith("Downloaded to file-123");
     });
 
     it("downloads a file by id, folder, and token", async () => {
       const fileContent = Buffer.from("file content");
+      mockPublicRequest.mockResolvedValue({ data: fileContent });
       mockGet.mockResolvedValue({ data: fileContent });
       vi.mocked(fs.writeFile).mockResolvedValue(undefined as never);
 
@@ -416,9 +436,13 @@ describe("files command", () => {
         "/downloads/report.pdf",
       ]);
 
-      expect(mockGet).toHaveBeenCalledWith("/file/files-field/file-123?token=signed-token", {
+      expect(mockPublicRequest).toHaveBeenCalledWith({
+        authMode: "none",
+        method: "get",
+        path: "/file/files-field/file-123?token=signed-token",
         responseType: "arraybuffer",
       });
+      expect(mockGet).not.toHaveBeenCalled();
       expect(fs.writeFile).toHaveBeenCalledWith("/downloads/report.pdf", fileContent);
       expect(consoleSpy).toHaveBeenCalledWith("Downloaded to /downloads/report.pdf");
     });
@@ -433,6 +457,7 @@ describe("files command", () => {
   describe("public asset operation", () => {
     it("downloads a public asset", async () => {
       const fileContent = Buffer.from("asset content");
+      mockPublicRequest.mockResolvedValue({ data: fileContent });
       mockGet.mockResolvedValue({ data: fileContent });
       vi.mocked(fs.writeFile).mockResolvedValue(undefined as never);
 
@@ -448,9 +473,13 @@ describe("files command", () => {
         "app-123",
       ]);
 
-      expect(mockGet).toHaveBeenCalledWith("/public-assets/ws-123/app-123/images/logo.svg", {
+      expect(mockPublicRequest).toHaveBeenCalledWith({
+        authMode: "none",
+        method: "get",
+        path: "/public-assets/ws-123/app-123/images/logo.svg",
         responseType: "arraybuffer",
       });
+      expect(mockGet).not.toHaveBeenCalled();
       expect(fs.writeFile).toHaveBeenCalledWith("logo.svg", fileContent);
       expect(consoleSpy).toHaveBeenCalledWith("Downloaded to logo.svg");
     });

@@ -4,6 +4,7 @@ import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
 import { createServices } from "../../utilities/shared/services";
 import { createCommandContext } from "../../utilities/shared/context";
+import { requestPublic } from "../../utilities/shared/request-transport";
 
 const CURRENT_WORKSPACE_QUERY = `query CurrentWorkspace {
   currentWorkspace {
@@ -204,12 +205,18 @@ export function registerAuthCommand(program: Command): void {
     async (origin: string, _options: Record<string, unknown>, command: Command) => {
       const globalOptions = resolveGlobalOptions(command);
       const services = createServices(globalOptions);
-      const response = await services.api.post<
-        GraphQLResponse<{ getPublicWorkspaceDataByDomain: unknown }>
-      >("/metadata", {
-        query: PUBLIC_WORKSPACE_QUERY,
-        variables: { origin },
-      });
+      const response = await requestPublic<GraphQLResponse<{ getPublicWorkspaceDataByDomain: unknown }>>(
+        services,
+        {
+          authMode: "none",
+          method: "post",
+          path: "/metadata",
+          data: {
+            query: PUBLIC_WORKSPACE_QUERY,
+            variables: { origin },
+          },
+        },
+      );
 
       await services.output.render(response.data?.data?.getPublicWorkspaceDataByDomain, {
         format: globalOptions.output,
@@ -226,10 +233,15 @@ export function registerAuthCommand(program: Command): void {
   renewTokenCmd.action(async (options: { appToken: string }, commandOptions: Command) => {
     const globalOptions = resolveGlobalOptions(commandOptions);
     const services = createServices(globalOptions);
-    const response = await services.api.post<GraphQLResponse<{ renewToken: unknown }>>("/graphql", {
-      query: RENEW_TOKEN_MUTATION,
-      variables: {
-        appToken: options.appToken,
+    const response = await requestPublic<GraphQLResponse<{ renewToken: unknown }>>(services, {
+      authMode: "none",
+      method: "post",
+      path: "/graphql",
+      data: {
+        query: RENEW_TOKEN_MUTATION,
+        variables: {
+          appToken: options.appToken,
+        },
       },
     });
 
@@ -253,19 +265,25 @@ export function registerAuthCommand(program: Command): void {
     ) => {
       const globalOptions = resolveGlobalOptions(commandOptions);
       const services = createServices(globalOptions);
-      const response = await services.api.post<
-        GraphQLResponse<{ getAuthorizationUrlForSSO: unknown }>
-      >("/graphql", {
-        query: SSO_URL_MUTATION,
-        variables: {
-          input: {
-            identityProviderId,
-            ...(options.workspaceInviteHash
-              ? { workspaceInviteHash: options.workspaceInviteHash }
-              : {}),
+      const response = await requestPublic<GraphQLResponse<{ getAuthorizationUrlForSSO: unknown }>>(
+        services,
+        {
+          authMode: "none",
+          method: "post",
+          path: "/graphql",
+          data: {
+            query: SSO_URL_MUTATION,
+            variables: {
+              input: {
+                identityProviderId,
+                ...(options.workspaceInviteHash
+                  ? { workspaceInviteHash: options.workspaceInviteHash }
+                  : {}),
+              },
+            },
           },
         },
-      });
+      );
 
       await services.output.render(response.data?.data?.getAuthorizationUrlForSSO, {
         format: globalOptions.output,

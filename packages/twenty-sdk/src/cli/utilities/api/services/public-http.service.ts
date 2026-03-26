@@ -13,6 +13,7 @@ export interface PublicHttpRequestOptions {
   params?: AxiosRequestConfig["params"];
   data?: unknown;
   headers?: AxiosRequestConfig["headers"];
+  responseType?: AxiosRequestConfig["responseType"];
 }
 
 interface PublicHttpAxiosRequestConfig extends AxiosRequestConfig {
@@ -57,6 +58,7 @@ export class PublicHttpService {
       params: options.params,
       data: options.data,
       headers: options.headers,
+      responseType: options.responseType,
       twentyAuthMode: options.authMode,
       twentyWorkspace: options.workspace,
     } as PublicHttpAxiosRequestConfig);

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { Command } from "commander";
 import { registerAuthCommand } from "../auth.command";
 import { ApiService } from "../../../utilities/api/services/api.service";
+import { PublicHttpService } from "../../../utilities/api/services/public-http.service";
 import {
   ConfigService,
   WorkspaceInfo,
@@ -13,6 +14,7 @@ import { loadCliEnvironment } from "../../../utilities/config/services/environme
 
 vi.mock("../../../utilities/config/services/config.service");
 vi.mock("../../../utilities/api/services/api.service");
+vi.mock("../../../utilities/api/services/public-http.service");
 vi.mock("../../../utilities/config/services/environment.service", () => ({
   loadCliEnvironment: vi.fn(),
   resolveEnvFileFromArgv: vi.fn(),
@@ -22,6 +24,7 @@ describe("auth commands", () => {
   let program: Command;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let mockPost: ReturnType<typeof vi.fn>;
+  let mockPublicRequest: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     program = new Command();
@@ -29,6 +32,7 @@ describe("auth commands", () => {
     registerAuthCommand(program);
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mockPost = vi.fn();
+    mockPublicRequest = vi.fn();
     vi.mocked(loadCliEnvironment).mockReset();
     vi.mocked(ApiService).mockImplementation(
       mockConstructor(
@@ -41,6 +45,14 @@ describe("auth commands", () => {
             delete: vi.fn(),
             request: vi.fn(),
           }) as unknown as ApiService,
+      ),
+    );
+    vi.mocked(PublicHttpService).mockImplementation(
+      mockConstructor(
+        () =>
+          ({
+            request: mockPublicRequest,
+          }) as unknown as PublicHttpService,
       ),
     );
   });
@@ -359,7 +371,7 @@ describe("auth commands", () => {
 
   describe("auth discover", () => {
     it("loads public workspace auth settings for an origin", async () => {
-      mockPost.mockResolvedValue({
+      const response = {
         data: {
           data: {
             getPublicWorkspaceDataByDomain: {
@@ -384,7 +396,9 @@ describe("auth commands", () => {
             },
           },
         },
-      });
+      };
+      mockPost.mockResolvedValue(response);
+      mockPublicRequest.mockResolvedValue(response);
 
       await program.parseAsync([
         "node",
@@ -396,10 +410,16 @@ describe("auth commands", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/metadata", {
-        query: expect.stringContaining("getPublicWorkspaceDataByDomain"),
-        variables: { origin: "https://acme.twenty.com" },
+      expect(mockPublicRequest).toHaveBeenCalledWith({
+        authMode: "none",
+        method: "post",
+        path: "/metadata",
+        data: {
+          query: expect.stringContaining("getPublicWorkspaceDataByDomain"),
+          variables: { origin: "https://acme.twenty.com" },
+        },
       });
+      expect(mockPost).not.toHaveBeenCalled();
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
@@ -411,7 +431,7 @@ describe("auth commands", () => {
 
   describe("auth renew-token", () => {
     it("renews an app token through the core auth GraphQL mutation", async () => {
-      mockPost.mockResolvedValue({
+      const response = {
         data: {
           data: {
             renewToken: {
@@ -422,7 +442,9 @@ describe("auth commands", () => {
             },
           },
         },
-      });
+      };
+      mockPost.mockResolvedValue(response);
+      mockPublicRequest.mockResolvedValue(response);
 
       await program.parseAsync([
         "node",
@@ -435,10 +457,16 @@ describe("auth commands", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
-        query: expect.stringContaining("renewToken"),
-        variables: { appToken: "refresh-token" },
+      expect(mockPublicRequest).toHaveBeenCalledWith({
+        authMode: "none",
+        method: "post",
+        path: "/graphql",
+        data: {
+          query: expect.stringContaining("renewToken"),
+          variables: { appToken: "refresh-token" },
+        },
       });
+      expect(mockPost).not.toHaveBeenCalled();
 
       const output = consoleSpy.mock.calls[0][0] as string;
       expect(JSON.parse(output)).toEqual({
@@ -452,7 +480,7 @@ describe("auth commands", () => {
 
   describe("auth sso-url", () => {
     it("gets an SSO authorization URL for an identity provider", async () => {
-      mockPost.mockResolvedValue({
+      const response = {
         data: {
           data: {
             getAuthorizationUrlForSSO: {
@@ -462,7 +490,9 @@ describe("auth commands", () => {
             },
           },
         },
-      });
+      };
+      mockPost.mockResolvedValue(response);
+      mockPublicRequest.mockResolvedValue(response);
 
       await program.parseAsync([
         "node",
@@ -476,15 +506,21 @@ describe("auth commands", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
-        query: expect.stringContaining("getAuthorizationUrlForSSO"),
-        variables: {
-          input: {
-            identityProviderId: "idp-1",
-            workspaceInviteHash: "invite-123",
+      expect(mockPublicRequest).toHaveBeenCalledWith({
+        authMode: "none",
+        method: "post",
+        path: "/graphql",
+        data: {
+          query: expect.stringContaining("getAuthorizationUrlForSSO"),
+          variables: {
+            input: {
+              identityProviderId: "idp-1",
+              workspaceInviteHash: "invite-123",
+            },
           },
         },
       });
+      expect(mockPost).not.toHaveBeenCalled();
 
       const output = consoleSpy.mock.calls[0][0] as string;
       expect(JSON.parse(output)).toEqual({
@@ -495,7 +531,7 @@ describe("auth commands", () => {
     });
 
     it("omits invite hash when not provided", async () => {
-      mockPost.mockResolvedValue({
+      const response = {
         data: {
           data: {
             getAuthorizationUrlForSSO: {
@@ -505,18 +541,26 @@ describe("auth commands", () => {
             },
           },
         },
-      });
+      };
+      mockPost.mockResolvedValue(response);
+      mockPublicRequest.mockResolvedValue(response);
 
       await program.parseAsync(["node", "test", "auth", "sso-url", "idp-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
-        query: expect.stringContaining("getAuthorizationUrlForSSO"),
-        variables: {
-          input: {
-            identityProviderId: "idp-1",
+      expect(mockPublicRequest).toHaveBeenCalledWith({
+        authMode: "none",
+        method: "post",
+        path: "/graphql",
+        data: {
+          query: expect.stringContaining("getAuthorizationUrlForSSO"),
+          variables: {
+            input: {
+              identityProviderId: "idp-1",
+            },
           },
         },
       });
+      expect(mockPost).not.toHaveBeenCalled();
     });
   });
 });

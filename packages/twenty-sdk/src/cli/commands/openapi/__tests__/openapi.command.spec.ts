@@ -18,7 +18,13 @@ import { createServices } from "../../../utilities/shared/services";
 function createMockServices() {
   return {
     api: {
+      request: vi.fn().mockResolvedValue({
+        data: { openapi: "3.1.0", info: { title: "Twenty" } },
+      }),
       get: vi.fn().mockResolvedValue({ data: { openapi: "3.1.0", info: { title: "Twenty" } } }),
+    },
+    publicHttp: {
+      request: vi.fn(),
     },
     output: {
       render: vi.fn(),
@@ -56,7 +62,12 @@ describe("openapi command", () => {
   it("fetches the core schema by default", async () => {
     await program.parseAsync(["node", "test", "openapi", "core"]);
 
-    expect(mockServices.api.get).toHaveBeenCalledWith("/rest/open-api/core");
+    expect(mockServices.api.request).toHaveBeenCalledWith({
+      method: "get",
+      url: "/rest/open-api/core",
+    });
+    expect(mockServices.api.get).not.toHaveBeenCalled();
+    expect(mockServices.publicHttp.request).not.toHaveBeenCalled();
     expect(mockServices.output.render).toHaveBeenCalledWith(
       { openapi: "3.1.0", info: { title: "Twenty" } },
       expect.any(Object),
@@ -66,7 +77,12 @@ describe("openapi command", () => {
   it("fetches the metadata schema", async () => {
     await program.parseAsync(["node", "test", "openapi", "metadata"]);
 
-    expect(mockServices.api.get).toHaveBeenCalledWith("/rest/open-api/metadata");
+    expect(mockServices.api.request).toHaveBeenCalledWith({
+      method: "get",
+      url: "/rest/open-api/metadata",
+    });
+    expect(mockServices.api.get).not.toHaveBeenCalled();
+    expect(mockServices.publicHttp.request).not.toHaveBeenCalled();
   });
 
   it("writes the schema to a file when requested", async () => {

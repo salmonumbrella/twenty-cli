@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
 import { createServices } from "../../utilities/shared/services";
+import { requestPrivate } from "../../utilities/shared/request-transport";
 
 interface OpenApiOptions {
   outputFile?: string;
@@ -24,7 +25,10 @@ export function registerOpenApiCommand(program: Command): void {
     const services = createServices(globalOptions);
     const path = normalizeOpenApiTarget(target);
 
-    const response = await services.api.get(path);
+    const response = await requestPrivate(services, {
+      method: "get",
+      url: path,
+    });
 
     if (rawOptions.outputFile) {
       await fs.writeFile(rawOptions.outputFile, JSON.stringify(response.data, null, 2));

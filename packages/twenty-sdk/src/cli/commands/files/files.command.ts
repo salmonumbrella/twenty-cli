@@ -6,6 +6,7 @@ import { type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { createCommandContext } from "../../utilities/shared/context";
+import { requestPublic } from "../../utilities/shared/request-transport";
 
 interface FilesOptions {
   outputFile?: string;
@@ -152,6 +153,18 @@ function inferOutputPath(reference: string): string {
   const fileName = path.basename(cleanPath);
 
   return fileName || "download";
+}
+
+function toOutputBuffer(data: string | ArrayBuffer | Buffer): Buffer {
+  if (Buffer.isBuffer(data)) {
+    return data;
+  }
+
+  if (typeof data === "string") {
+    return Buffer.from(data);
+  }
+
+  return Buffer.from(new Uint8Array(data));
 }
 
 function buildDownloadUrl(pathOrId: string, options: FilesOptions): string {
@@ -353,11 +366,14 @@ async function runDownloadCommand(pathOrId: string | undefined, command: Command
 
   const downloadUrl = buildDownloadUrl(pathOrId, options);
   const outputPath = options.outputFile || inferOutputPath(downloadUrl);
-  const response = await services.api.get<ArrayBuffer>(downloadUrl, {
+  const response = await requestPublic<ArrayBuffer | Buffer | string>(services, {
+    authMode: "none",
+    method: "get",
+    path: downloadUrl,
     responseType: "arraybuffer",
   });
 
-  await fs.writeFile(outputPath, Buffer.from(response.data));
+  await fs.writeFile(outputPath, toOutputBuffer(response.data));
   // eslint-disable-next-line no-console
   console.log(`Downloaded to ${outputPath}`);
 }
@@ -375,11 +391,14 @@ async function runPublicAssetCommand(
 
   const assetUrl = buildPublicAssetUrl(assetPath, options);
   const outputPath = options.outputFile || inferOutputPath(assetPath);
-  const response = await services.api.get<ArrayBuffer>(assetUrl, {
+  const response = await requestPublic<ArrayBuffer | Buffer | string>(services, {
+    authMode: "none",
+    method: "get",
+    path: assetUrl,
     responseType: "arraybuffer",
   });
 
-  await fs.writeFile(outputPath, Buffer.from(response.data));
+  await fs.writeFile(outputPath, toOutputBuffer(response.data));
   // eslint-disable-next-line no-console
   console.log(`Downloaded to ${outputPath}`);
 }
