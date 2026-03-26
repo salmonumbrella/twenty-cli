@@ -44,20 +44,6 @@ export async function runBuiltCliWithTempHomeAsync(
   }
 }
 
-export function runCliWithTempHome(
-  args: string[],
-  options: TempHomeCliRunOptions = {},
-): BuiltCliRunResult {
-  return runBuiltCliWithTempHome(args, options);
-}
-
-export async function runCliWithTempHomeAsync(
-  args: string[],
-  options: TempHomeCliRunOptions = {},
-): Promise<BuiltCliRunResult> {
-  return await runBuiltCliWithTempHomeAsync(args, options);
-}
-
 function createTempHomeDir(): string {
   return fs.mkdtempSync(path.join(os.tmpdir(), "twenty-cli-home-"));
 }
