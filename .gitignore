@@ -11,6 +11,7 @@ CLAUDE.md
 # Agent artifacts
 .dm/
 .private-journal/
+.worktrees/
 
 # Documentation (plans/drafts)
 docs/
