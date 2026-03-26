@@ -2,6 +2,8 @@ import { Command, Option } from "commander";
 import { HELP_JSON_FLAG_ALIASES } from "./constants";
 import { HelpSubcommand } from "./types";
 
+const ROOT_HELP_VALUE_OPTIONS = ["-o", "--output", "--query", "--workspace", "--env-file"];
+
 export function resolveTargetCommand(
   program: Command,
   args: string[],
@@ -98,6 +100,34 @@ export function shouldRenderRootHelp(args: string[]): boolean {
     return false;
   }
 
-  const firstCommandToken = args.find((token) => !token.startsWith("-"));
-  return firstCommandToken === undefined;
+  for (let index = 0; index < args.length; index += 1) {
+    const token = args[index];
+
+    if (token === "--") {
+      break;
+    }
+
+    if (token === "--help" || token === "-h") {
+      continue;
+    }
+
+    if (isRootHelpValueOption(token)) {
+      if (!token.includes("=")) {
+        index += 1;
+      }
+      continue;
+    }
+
+    if (token.startsWith("-")) {
+      continue;
+    }
+
+    return false;
+  }
+
+  return true;
+}
+
+function isRootHelpValueOption(token: string): boolean {
+  return ROOT_HELP_VALUE_OPTIONS.some((option) => token === option || token.startsWith(`${option}=`));
 }

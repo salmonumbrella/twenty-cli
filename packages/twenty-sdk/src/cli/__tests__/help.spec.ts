@@ -493,6 +493,24 @@ describe("CLI help contracts", () => {
     );
   });
 
+  it("renders root help text when global option values precede --help", async () => {
+    for (const args of [
+      ["--env-file", ".env.test", "--help"],
+      ["-o", "json", "--help"],
+      ["--query", "items[0]", "--help"],
+    ]) {
+      const program = buildProgram();
+      const write = vi.fn();
+
+      const handled = await maybeHandleInlineHelp(program, args, write);
+
+      expect(handled).toBe(true);
+      expect(write).toHaveBeenCalledTimes(1);
+      expect(write.mock.calls[0][0]).toContain("twenty - CLI for Twenty");
+      expect(write.mock.calls[0][0]).toContain("Environment:");
+    }
+  });
+
   it("falls back to bundled root help text when help.txt is unavailable", async () => {
     const program = buildProgram();
     const write = vi.fn();
