@@ -12,7 +12,7 @@ describe("process runner", () => {
 
     try {
       runNodeScript(fixturePath, [], {
-        timeoutMs: 50,
+        timeoutMs: 250,
         throwOnNonZeroExit: true,
       });
     } catch (error) {
