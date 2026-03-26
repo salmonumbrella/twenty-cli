@@ -182,20 +182,23 @@ export class McpService {
   }
 
   private toCliErrorFromMcpResponse(error: McpResponseError, operation: string): CliError {
-    const code = error.envelope.error.code;
-
-    if (code === 429) {
-      return errorWithCause(`MCP ${operation} rate limited.`, "RATE_LIMIT", undefined, error);
-    }
-
-    if (code === 401 || code === 403) {
-      return errorWithCause(`MCP ${operation} requires authorization.`, "AUTH", undefined, error);
+    const mapped = this.toCliErrorFromEnvelope(error.envelope, operation, error);
+    if (mapped) {
+      return mapped;
     }
 
     return errorWithCause(`Unexpected MCP ${operation} failure.`, "NETWORK", undefined, error);
   }
 
   private toCliErrorFromTransport(error: unknown, operation: string): CliError {
+    const envelope = this.extractMcpFailureEnvelope(error);
+    if (envelope) {
+      const mapped = this.toCliErrorFromEnvelope(envelope, operation, error);
+      if (mapped) {
+        return mapped;
+      }
+    }
+
     const status = this.getHttpStatus(error);
 
     if (status === 429) {
@@ -221,6 +224,37 @@ export class McpService {
       undefined,
       error,
     );
+  }
+
+  private toCliErrorFromEnvelope(
+    envelope: JsonRpcFailure,
+    operation: string,
+    cause: unknown,
+  ): CliError | null {
+    const code = envelope.error.code;
+
+    if (code === 429) {
+      return errorWithCause(`MCP ${operation} rate limited.`, "RATE_LIMIT", undefined, cause);
+    }
+
+    if (this.isFeatureDisabled(envelope)) {
+      return errorWithCause(
+        `MCP ${operation} is unavailable because ${envelope.error.message}.`,
+        "AUTH",
+        undefined,
+        cause,
+      );
+    }
+
+    if (code === 401 || this.isUnauthorizedMessage(envelope.error.message)) {
+      return errorWithCause(`MCP ${operation} requires authorization.`, "AUTH", undefined, cause);
+    }
+
+    if (code === 403 || this.isForbiddenMessage(envelope.error.message)) {
+      return errorWithCause(`MCP ${operation} requires authorization.`, "AUTH", undefined, cause);
+    }
+
+    return null;
   }
 
   private toStatusResult(error: unknown, endpoint: string): McpStatusResult | null {
@@ -276,6 +310,18 @@ export class McpService {
   private extractMcpFailureEnvelope(error: unknown): JsonRpcFailure | null {
     if (error instanceof McpResponseError) {
       return error.envelope;
+    }
+
+    if (typeof error === "object" && error !== null) {
+      const response = (error as { response?: { data?: unknown } }).response;
+      if (this.isJsonRpcFailure(response?.data)) {
+        return response.data;
+      }
+
+      const data = (error as { data?: unknown }).data;
+      if (this.isJsonRpcFailure(data)) {
+        return data;
+      }
     }
 
     const cause = error instanceof CliError ? (error as { cause?: unknown }).cause : undefined;

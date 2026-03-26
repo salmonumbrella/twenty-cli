@@ -246,6 +246,52 @@ describe("McpService", () => {
     });
   });
 
+  it("preserves ai_feature_disabled diagnostics for non-status JSON-RPC failures", async () => {
+    api.post.mockResolvedValue({
+      data: {
+        jsonrpc: "2.0",
+        id: "1",
+        error: {
+          code: 403,
+          message: "AI feature is not enabled for this workspace",
+        },
+      },
+    });
+
+    const service = new McpService(api as any, configService as any);
+
+    await expect(service.callTool("get_tool_catalog", {})).rejects.toMatchObject({
+      code: "AUTH",
+      message:
+        "MCP initialize is unavailable because AI feature is not enabled for this workspace.",
+    });
+  });
+
+  it("preserves ai_feature_disabled diagnostics for non-status HTTP 403 failures with JSON-RPC bodies", async () => {
+    api.post.mockRejectedValue({
+      response: {
+        status: 403,
+        data: {
+          jsonrpc: "2.0",
+          id: "1",
+          error: {
+            code: 403,
+            message: "AI feature is not enabled for this workspace",
+          },
+        },
+      },
+      message: "Request failed with status code 403",
+    });
+
+    const service = new McpService(api as any, configService as any);
+
+    await expect(service.callTool("get_tool_catalog", {})).rejects.toMatchObject({
+      code: "AUTH",
+      message:
+        "MCP initialize is unavailable because AI feature is not enabled for this workspace.",
+    });
+  });
+
   it("maps network failures to CliError(code === 'NETWORK')", async () => {
     api.post.mockRejectedValue({
       message: "Network Error",
