@@ -5,6 +5,11 @@ import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared
 import { createServices } from "../../utilities/shared/services";
 import { createCommandContext } from "../../utilities/shared/context";
 import { requestPublic } from "../../utilities/shared/request-transport";
+import {
+  buildRenewTokenRequestData,
+  buildSsoUrlRequestData,
+  resolveAuthRequestSurface,
+} from "./auth-compat";
 
 const CURRENT_WORKSPACE_QUERY = `query CurrentWorkspace {
   currentWorkspace {
@@ -65,40 +70,6 @@ const PUBLIC_WORKSPACE_QUERY = `query GetPublicWorkspaceDataByDomain($origin: St
   }
 }`;
 
-const RENEW_TOKEN_MUTATION = `mutation RenewToken($appToken: String!) {
-  renewToken(appToken: $appToken) {
-    tokens {
-      accessToken
-      refreshToken
-    }
-  }
-}`;
-
-const HOSTED_RENEW_TOKEN_MUTATION = `mutation RenewToken($appToken: String!) {
-  renewToken(appToken: $appToken) {
-    tokens {
-      accessOrWorkspaceAgnosticToken {
-        token
-        expiresAt
-      }
-      refreshToken {
-        token
-        expiresAt
-      }
-    }
-  }
-}`;
-
-const SSO_URL_MUTATION = `mutation GetAuthorizationUrlForSSO($input: GetAuthorizationUrlForSSOInput!) {
-  getAuthorizationUrlForSSO(input: $input) {
-    authorizationURL
-    type
-    id
-  }
-}`;
-
-const HOSTED_API_HOSTNAME = "api.twenty.com";
-
 function maskToken(token: string): string {
   if (token.length <= 8) return "****";
   return token.slice(0, 4) + "****" + token.slice(-4);
@@ -106,24 +77,6 @@ function maskToken(token: string): string {
 
 function applyEnvFileOption(command: Command): Command {
   return command.option("--env-file <path>", "Load environment variables from file");
-}
-
-async function resolveAuthMutationPath(
-  services: Pick<ReturnType<typeof createServices>, "config">,
-  workspace: string | undefined,
-  fallbackPath: string,
-): Promise<string> {
-  const resolved = await services.config.resolveApiConfig({
-    workspace,
-    requireAuth: false,
-  });
-
-  try {
-    const hostname = new URL(resolved.apiUrl).hostname;
-    return hostname === HOSTED_API_HOSTNAME ? "/metadata" : fallbackPath;
-  } catch {
-    return fallbackPath;
-  }
 }
 
 export function registerAuthCommand(program: Command): void {
@@ -268,17 +221,15 @@ export function registerAuthCommand(program: Command): void {
   renewTokenCmd.action(async (options: { appToken: string }, commandOptions: Command) => {
     const globalOptions = resolveGlobalOptions(commandOptions);
     const services = createServices(globalOptions);
-    const path = await resolveAuthMutationPath(services, globalOptions.workspace, "/graphql");
-    const query = path === "/metadata" ? HOSTED_RENEW_TOKEN_MUTATION : RENEW_TOKEN_MUTATION;
+    const surface = await resolveAuthRequestSurface(services.config, globalOptions.workspace);
+    const payload = buildRenewTokenRequestData(options.appToken, surface.hosted);
     const response = await requestPublic<GraphQLResponse<{ renewToken: unknown }>>(services, {
       authMode: "none",
       method: "post",
-      path,
+      path: surface.path,
       data: {
-        query,
-        variables: {
-          appToken: options.appToken,
-        },
+        query: payload.query,
+        variables: payload.variables,
       },
     });
 
@@ -302,23 +253,17 @@ export function registerAuthCommand(program: Command): void {
     ) => {
       const globalOptions = resolveGlobalOptions(commandOptions);
       const services = createServices(globalOptions);
-      const path = await resolveAuthMutationPath(services, globalOptions.workspace, "/graphql");
+      const surface = await resolveAuthRequestSurface(services.config, globalOptions.workspace);
+      const payload = buildSsoUrlRequestData(identityProviderId, options.workspaceInviteHash);
       const response = await requestPublic<GraphQLResponse<{ getAuthorizationUrlForSSO: unknown }>>(
         services,
         {
           authMode: "none",
           method: "post",
-          path,
+          path: surface.path,
           data: {
-            query: SSO_URL_MUTATION,
-            variables: {
-              input: {
-                identityProviderId,
-                ...(options.workspaceInviteHash
-                  ? { workspaceInviteHash: options.workspaceInviteHash }
-                  : {}),
-              },
-            },
+            query: payload.query,
+            variables: payload.variables,
           },
         },
       );
