@@ -1,12 +1,7 @@
 import { ApiService } from "../../api/services/api.service";
 import { ConfigService } from "../../config/services/config.service";
 import { CliError, errorWithCause } from "../../errors/cli-error";
-import {
-  JsonRpcFailure,
-  JsonRpcRequest,
-  JsonRpcSuccess,
-  McpStatusResult,
-} from "../types";
+import { JsonRpcFailure, JsonRpcRequest, JsonRpcSuccess, McpStatusResult } from "../types";
 
 interface McpServiceOptions {
   workspace?: string;
@@ -212,10 +207,20 @@ export class McpService {
     }
 
     if (!status) {
-      return errorWithCause(`Network error while calling MCP ${operation}.`, "NETWORK", undefined, error);
+      return errorWithCause(
+        `Network error while calling MCP ${operation}.`,
+        "NETWORK",
+        undefined,
+        error,
+      );
     }
 
-    return errorWithCause(`MCP ${operation} failed with status ${status}.`, "NETWORK", undefined, error);
+    return errorWithCause(
+      `MCP ${operation} failed with status ${status}.`,
+      "NETWORK",
+      undefined,
+      error,
+    );
   }
 
   private toStatusResult(error: unknown, endpoint: string): McpStatusResult | null {

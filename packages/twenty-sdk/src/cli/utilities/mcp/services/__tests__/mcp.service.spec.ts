@@ -279,7 +279,7 @@ describe("McpService", () => {
         jsonrpc: "2.0",
         id: "1",
         result: {
-          content: [{ type: "text", text: "{\"items\":[1,2]}" }],
+          content: [{ type: "text", text: '{"items":[1,2]}' }],
         },
       },
     });
@@ -371,7 +371,8 @@ describe("McpService", () => {
         .find((message) => message.includes('"method":"tools/call"')),
     ).toBeDefined();
     expect(requestLog?.slice("MCP request envelope: ".length).length).toBeLessThan(
-      JSON.stringify(api.post.mock.calls.find(([, body]) => body.method === "tools/call")?.[1]).length,
+      JSON.stringify(api.post.mock.calls.find(([, body]) => body.method === "tools/call")?.[1])
+        .length,
     );
     expect(responseLog?.slice("MCP response envelope: ".length).length).toBeLessThan(
       JSON.stringify(responseEnvelope).length,
