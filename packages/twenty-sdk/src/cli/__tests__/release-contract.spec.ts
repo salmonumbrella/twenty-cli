@@ -11,6 +11,7 @@ function readRepoFile(...segments: string[]) {
 describe("repo release consistency", () => {
   it("keeps package metadata, workflows, and install docs aligned", () => {
     const readme = readRepoFile("README.md");
+    const upstreamDriftScript = readRepoFile("scripts", "check-upstream-drift.mjs");
     const rootPackage = JSON.parse(readRepoFile("package.json")) as {
       packageManager?: string;
       scripts?: Record<string, string>;
@@ -84,6 +85,11 @@ describe("repo release consistency", () => {
     expect(releaseWorkflow).toContain("if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}");
 
     expect(driftWorkflow).toContain("pnpm check:upstream-drift");
+    expect(upstreamDriftScript).toContain('const AUDIT_SHA = "');
+    expect(upstreamDriftScript).not.toContain('"plans"');
+    expect(upstreamDriftScript).not.toContain(".md");
+    expect(upstreamDriftScript).not.toContain(".sha");
+    expect(upstreamDriftScript).not.toContain("path.join(ROOT");
 
     expect(readme).toContain("<!-- GENERATED:INSTALL_AND_AGENT_CONTRACT:START -->");
     expect(readme).toContain("<!-- GENERATED:INSTALL_AND_AGENT_CONTRACT:END -->");

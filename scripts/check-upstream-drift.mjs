@@ -1,13 +1,9 @@
-import { fileURLToPath } from "node:url";
-import path from "node:path";
-
 import { checkUpstreamDrift } from "./lib/upstream-drift.mjs";
 
-const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-const AUDIT_PATH = path.join(ROOT, "plans", "2026-03-21-twenty-api-coverage-audit.md");
+const AUDIT_SHA = "7f1814805deb332ff69a42370cbcba9b07812d5e";
 
 const result = await checkUpstreamDrift({
-  auditPath: AUDIT_PATH,
+  auditSha: AUDIT_SHA,
   token: process.env.GITHUB_TOKEN,
 });
 

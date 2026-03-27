@@ -1,5 +1,3 @@
-import { readFileSync } from "node:fs";
-
 const RELEVANT_CHANGE_PATTERNS = [
   /^packages\/twenty-server\/src\/engine\/api\//,
   /^packages\/twenty-server\/src\/engine\/metadata-modules\//,
@@ -11,15 +9,12 @@ const RELEVANT_CHANGE_PATTERNS = [
   /^packages\/twenty-server\/src\/database\/typeorm\/core\/migrations\/common\//,
 ];
 
-export function readAuditReference(auditPath) {
-  const contents = readFileSync(auditPath, "utf8");
-  const match = contents.match(/Upstream reference:\s+`twentyhq\/twenty`\s+`([0-9a-f]{40})`/);
-
-  if (!match) {
-    throw new Error(`Could not find upstream reference in ${auditPath}`);
+function normalizeAuditSha(auditSha) {
+  if (!/^[0-9a-f]{40}$/.test(auditSha ?? "")) {
+    throw new Error("Expected auditSha to be a 40-character lowercase hex commit SHA");
   }
 
-  return match[1];
+  return auditSha;
 }
 
 export function classifyRelevantUpstreamChanges(files) {
@@ -71,13 +66,13 @@ export async function fetchChangedFilesSinceAudit({ auditSha, latestSha, token, 
   return (body.files ?? []).map((file) => file.filename);
 }
 
-export async function checkUpstreamDrift({ auditPath, token, fetchImpl } = {}) {
-  const auditSha = readAuditReference(auditPath);
+export async function checkUpstreamDrift({ auditSha, token, fetchImpl } = {}) {
+  const normalizedAuditSha = normalizeAuditSha(auditSha);
   const latestSha = await fetchLatestSha({ token, fetchImpl });
 
-  if (latestSha === auditSha) {
+  if (latestSha === normalizedAuditSha) {
     return {
-      auditSha,
+      auditSha: normalizedAuditSha,
       latestSha,
       relevantFiles: [],
       status: "current",
@@ -85,7 +80,7 @@ export async function checkUpstreamDrift({ auditPath, token, fetchImpl } = {}) {
   }
 
   const changedFiles = await fetchChangedFilesSinceAudit({
-    auditSha,
+    auditSha: normalizedAuditSha,
     latestSha,
     token,
     fetchImpl,
@@ -94,7 +89,7 @@ export async function checkUpstreamDrift({ auditPath, token, fetchImpl } = {}) {
 
   if (relevantFiles.length > 0) {
     return {
-      auditSha,
+      auditSha: normalizedAuditSha,
       changedFiles,
       latestSha,
       relevantFiles,
@@ -103,7 +98,7 @@ export async function checkUpstreamDrift({ auditPath, token, fetchImpl } = {}) {
   }
 
   return {
-    auditSha,
+    auditSha: normalizedAuditSha,
     changedFiles,
     latestSha,
     relevantFiles: [],

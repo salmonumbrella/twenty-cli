@@ -9,6 +9,27 @@ async function loadUpstreamDriftModule() {
 }
 
 describe("upstream drift classification", () => {
+  it("supports an inline audited sha without reading an audit file", async () => {
+    const { checkUpstreamDrift } = await loadUpstreamDriftModule();
+    const auditSha = "34b81adce805a042321658783f1e349e1c471b22";
+
+    const result = await checkUpstreamDrift({
+      auditSha,
+      fetchImpl: async () =>
+        ({
+          ok: true,
+          json: async () => ({ sha: auditSha }),
+        }) as Response,
+    });
+
+    expect(result).toEqual({
+      auditSha,
+      latestSha: auditSha,
+      relevantFiles: [],
+      status: "current",
+    });
+  });
+
   it("ignores upstream churn that does not touch audited API surface", async () => {
     const { classifyRelevantUpstreamChanges } = await loadUpstreamDriftModule();
 
