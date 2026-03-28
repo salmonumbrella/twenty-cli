@@ -5,11 +5,17 @@ on:
     - cron: "0 12 * * *"
   workflow_dispatch:
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   check:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: true
 
       - uses: pnpm/action-setup@v5
         with:
@@ -24,6 +30,66 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Check upstream drift
+        id: drift
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: pnpm check:upstream-drift
+        run: |
+          result=$(pnpm --silent check:upstream-drift)
+          echo "$result" | jq .
+          echo "status=$(echo "$result" | jq -r .status)" >> "$GITHUB_OUTPUT"
+          echo "latest_sha=$(echo "$result" | jq -r .latestSha)" >> "$GITHUB_OUTPUT"
+          echo "audit_sha=$(echo "$result" | jq -r .auditSha)" >> "$GITHUB_OUTPUT"
+          echo "$result" | jq -r '.relevantFiles // [] | .[]' > /tmp/relevant-files.txt
+
+      - name: Bump audit SHA
+        if: steps.drift.outputs.status != 'current'
+        run: |
+          node scripts/bump-upstream-audit-sha.mjs "${{ steps.drift.outputs.latest_sha }}"
+
+      - name: Commit updated SHA
+        if: steps.drift.outputs.status != 'current'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add scripts/check-upstream-drift.mjs
+          git diff --cached --quiet && echo "No changes to commit" && exit 0
+          git commit -m "chore: bump upstream audit SHA to $(echo '${{ steps.drift.outputs.latest_sha }}' | head -c 12)"
+          git push
+
+      - name: Open issue for API drift
+        if: steps.drift.outputs.status == 'relevant_drift'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          audit_sha="${{ steps.drift.outputs.audit_sha }}"
+          latest_sha="${{ steps.drift.outputs.latest_sha }}"
+
+          body="Upstream [\`twentyhq/twenty\`](https://github.com/twentyhq/twenty) moved from \`${audit_sha}\` to \`${latest_sha}\`.
+
+          The following API-surface files changed and may need review:
+
+          "
+
+          # Append file list as markdown bullets
+          while IFS= read -r f; do
+            body="${body}
+          - \`${f}\`"
+          done < /tmp/relevant-files.txt
+
+          body="${body}
+
+          [Compare on GitHub](https://github.com/twentyhq/twenty/compare/${audit_sha}...${latest_sha})
+
+          The audit SHA has been auto-bumped. Close this issue once the changes have been reviewed."
+
+          # Don't open duplicate issues
+          existing=$(gh issue list --label "upstream-drift" --state open --limit 1 --json number -q '.[0].number // empty')
+          if [ -n "$existing" ]; then
+            gh issue comment "$existing" --body "$body"
+          else
+            gh label create upstream-drift --color "d93f0b" --force 2>/dev/null || true
+            gh issue create \
+              --title "Upstream API drift: review needed" \
+              --body "$body" \
+              --label "upstream-drift"
+          fi
