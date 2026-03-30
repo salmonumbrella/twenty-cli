@@ -1,6 +1,6 @@
 import { checkUpstreamDrift } from "./lib/upstream-drift.mjs";
 
-const AUDIT_SHA = "a3f468ef98a83a193ee783addc6dbbeb9bd84a94";
+const AUDIT_SHA = "b8374f5531cec0a3cd7d531e6f989b6d64937693";
 
 const result = await checkUpstreamDrift({
   auditSha: AUDIT_SHA,
