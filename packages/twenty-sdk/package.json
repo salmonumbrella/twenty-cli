@@ -21,7 +21,7 @@
     "test:e2e:live": "pnpm run build && TWENTY_LIVE_SMOKE=true vitest run -c vitest.e2e.config.ts src/cli/__tests__/e2e/helpers/live-config.spec.ts src/cli/__tests__/e2e/live-smoke.e2e.spec.ts"
   },
   "dependencies": {
-    "axios": "^1.13.5",
+    "axios": "^1.14.0",
     "axios-retry": "^4.1.0",
     "commander": "^14.0.3",
     "dotenv": "^17.3.1",
@@ -36,7 +36,7 @@
     "@types/node": "^25.3.0",
     "@types/papaparse": "^5.3.14",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.2"
   },
   "pkg": {
     "scripts": [
