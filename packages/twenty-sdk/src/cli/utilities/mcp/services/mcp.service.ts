@@ -1,6 +1,7 @@
 import { ApiService } from "../../api/services/api.service";
 import { ConfigService } from "../../config/services/config.service";
 import { CliError, errorWithCause } from "../../errors/cli-error";
+import { CLI_VERSION } from "../../../version";
 import { JsonRpcFailure, JsonRpcRequest, JsonRpcSuccess, McpStatusResult } from "../types";
 
 interface McpServiceOptions {
@@ -41,7 +42,7 @@ export class McpService {
     }>("initialize", {
       protocolVersion: "2025-03-26",
       capabilities: {},
-      clientInfo: { name: "twenty-cli", version: "0.0.0-dev" },
+      clientInfo: { name: "twenty-cli", version: CLI_VERSION },
     });
 
     this.initialized = true;

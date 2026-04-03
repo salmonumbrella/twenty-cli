@@ -40,6 +40,12 @@ describe("CLI help contracts", () => {
     expect(help.subcommands.some((command) => command.name === "mcp")).toBe(true);
   });
 
+  it("registers a root version flag", () => {
+    const program = buildProgram();
+
+    expect(program.options.some((option) => option.long === "--version")).toBe(true);
+  });
+
   it("builds raw help JSON for the escape-hatch namespace", () => {
     const help = buildHelpJson(buildProgram(), ["raw", "--help-json"]);
 

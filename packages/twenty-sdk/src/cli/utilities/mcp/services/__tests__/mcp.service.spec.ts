@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CLI_VERSION } from "../../../../version";
 import { McpService } from "../mcp.service";
 
 describe("McpService", () => {
@@ -54,7 +55,7 @@ describe("McpService", () => {
         params: {
           protocolVersion: "2025-03-26",
           capabilities: {},
-          clientInfo: { name: "twenty-cli", version: "0.0.0-dev" },
+          clientInfo: { name: "twenty-cli", version: CLI_VERSION },
         },
       }),
     );

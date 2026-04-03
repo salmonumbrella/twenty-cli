@@ -6,6 +6,7 @@ import {
   existsSync,
   mkdirSync,
   readdirSync,
+  readFileSync,
   rmSync,
   writeFileSync,
 } from "node:fs";
@@ -16,6 +17,7 @@ import { spawnSync } from "node:child_process";
 const ROOT = path.resolve(new URL("..", import.meta.url).pathname);
 const RELEASE_DIR = path.join(ROOT, "dist", "release");
 const TEMP_DIR = path.join(RELEASE_DIR, ".tmp");
+const CLI_PACKAGE_JSON_PATH = path.join(ROOT, "packages", "twenty-sdk", "package.json");
 
 const TARGETS = {
   "linux-x64": {
@@ -81,6 +83,16 @@ function normalizeVersion(input) {
   return input.replace(/^v/, "");
 }
 
+function updatePackageVersion(version) {
+  const original = readFileSync(CLI_PACKAGE_JSON_PATH, "utf8");
+  const packageJson = JSON.parse(original);
+
+  packageJson.version = version;
+  writeFileSync(CLI_PACKAGE_JSON_PATH, `${JSON.stringify(packageJson, null, 2)}\n`, "utf8");
+
+  return original;
+}
+
 async function sha256(filePath) {
   const hash = createHash("sha256");
   const stream = createReadStream(filePath);
@@ -130,42 +142,48 @@ async function main() {
   rmSync(TEMP_DIR, { force: true, recursive: true });
   mkdirSync(TEMP_DIR, { recursive: true });
 
-  if (!shouldSkipBuild) {
-    run("pnpm", ["build"]);
+  const originalPackageJson = updatePackageVersion(version);
+
+  try {
+    if (!shouldSkipBuild) {
+      run("pnpm", ["build"]);
+    }
+
+    for (const target of requestedTargets) {
+      const config = TARGETS[target];
+      const executableName = `twenty-${config.archiveSuffix}`;
+      const executablePath = path.join(TEMP_DIR, executableName);
+      const stagingDir = path.join(TEMP_DIR, `${config.archiveSuffix}-staging`);
+      const archiveName = `twenty_${version}_${config.archiveSuffix}.tar.gz`;
+      const archivePath = path.join(outputDir, archiveName);
+
+      rmSync(stagingDir, { force: true, recursive: true });
+      mkdirSync(stagingDir, { recursive: true });
+
+      run("pnpm", [
+        "exec",
+        "pkg",
+        "packages/twenty-sdk",
+        "--targets",
+        config.pkgTarget,
+        "--output",
+        executablePath,
+        "--no-bytecode",
+        "--public",
+        "--public-packages",
+        "*",
+      ]);
+
+      copyFileSync(executablePath, path.join(stagingDir, "twenty"));
+      chmodSync(path.join(stagingDir, "twenty"), 0o755);
+
+      run("tar", ["-czf", archivePath, "-C", stagingDir, "twenty"]);
+    }
+
+    await writeChecksums(outputDir);
+  } finally {
+    writeFileSync(CLI_PACKAGE_JSON_PATH, originalPackageJson, "utf8");
   }
-
-  for (const target of requestedTargets) {
-    const config = TARGETS[target];
-    const executableName = `twenty-${config.archiveSuffix}`;
-    const executablePath = path.join(TEMP_DIR, executableName);
-    const stagingDir = path.join(TEMP_DIR, `${config.archiveSuffix}-staging`);
-    const archiveName = `twenty_${version}_${config.archiveSuffix}.tar.gz`;
-    const archivePath = path.join(outputDir, archiveName);
-
-    rmSync(stagingDir, { force: true, recursive: true });
-    mkdirSync(stagingDir, { recursive: true });
-
-    run("pnpm", [
-      "exec",
-      "pkg",
-      "packages/twenty-sdk",
-      "--targets",
-      config.pkgTarget,
-      "--output",
-      executablePath,
-      "--no-bytecode",
-      "--public",
-      "--public-packages",
-      "*",
-    ]);
-
-    copyFileSync(executablePath, path.join(stagingDir, "twenty"));
-    chmodSync(path.join(stagingDir, "twenty"), 0o755);
-
-    run("tar", ["-czf", archivePath, "-C", stagingDir, "twenty"]);
-  }
-
-  await writeChecksums(outputDir);
 }
 
 await main();

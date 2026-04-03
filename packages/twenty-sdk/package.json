@@ -63,7 +63,8 @@
       "node_modules/axios/dist/node/axios.cjs"
     ],
     "assets": [
-      "dist/cli/help.txt"
+      "dist/cli/help.txt",
+      "package.json"
     ]
   }
 }

@@ -27,11 +27,13 @@ import { registerMarketplaceAppsCommand } from "./commands/marketplace-apps/mark
 import { registerMcpCommand } from "./commands/mcp/mcp.command";
 import { registerWorkflowsCommand } from "./commands/workflows/workflows.command";
 import { registerOpenApiCommand } from "./commands/openapi/openapi.command";
+import { CLI_VERSION } from "./version";
 
 export function buildProgram(): Command {
   const program = new Command();
   program.name("twenty");
   program.description("Twenty CLI (TypeScript port)");
+  program.version(CLI_VERSION);
   program.option("--env-file <path>", "Load environment variables from file");
   program.exitOverride();
 
