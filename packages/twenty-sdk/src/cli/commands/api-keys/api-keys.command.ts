@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { createCommandContext } from "../../utilities/shared/context";
@@ -20,10 +20,14 @@ export function registerApiKeysCommand(program: Command): void {
   applyGlobalOptions(listCmd);
   listCmd.action(async (_options: unknown, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);
-    const response = await services.api.post<GraphQLResponse<{ apiKeys: unknown[] }>>(endpoint, {
-      query: `query { apiKeys { id name expiresAt revokedAt createdAt role { id name } } }`,
-    });
-    await services.output.render(response.data?.data?.apiKeys ?? [], {
+    const response = await services.api.post<GraphQLResponse<{ apiKeys?: unknown[] | null }>>(
+      endpoint,
+      {
+        query: `query { apiKeys { id name expiresAt revokedAt createdAt role { id label } } }`,
+      },
+    );
+    const apiKeys = requireGraphqlField(response.data ?? {}, "apiKeys", "Failed to list API keys.");
+    await services.output.render(apiKeys ?? [], {
       format: globalOptions.output,
       query: globalOptions.query,
     });
@@ -35,13 +39,16 @@ export function registerApiKeysCommand(program: Command): void {
     const { globalOptions, services } = createCommandContext(command);
     if (!id) throw new CliError("Missing API key ID.", "INVALID_ARGUMENTS");
     const response = await services.api.post<GraphQLResponse<{ apiKey: unknown }>>(endpoint, {
-      query: `query($id: UUID!) { apiKey(input: { id: $id }) { id name expiresAt revokedAt createdAt updatedAt role { id name } } }`,
+      query: `query($id: UUID!) { apiKey(input: { id: $id }) { id name expiresAt revokedAt createdAt updatedAt role { id label } } }`,
       variables: { id },
     });
-    await services.output.render(response.data?.data?.apiKey, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "apiKey", `Failed to fetch API key ${id}.`),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const createCmd = cmd.command("create").description("Create an API key");
@@ -56,9 +63,9 @@ export function registerApiKeysCommand(program: Command): void {
     if (!options.expiresAt) throw new CliError("Missing --expires-at option.", "INVALID_ARGUMENTS");
     if (!options.roleId) throw new CliError("Missing --role-id option.", "INVALID_ARGUMENTS");
     const response = await services.api.post<
-      GraphQLResponse<{ createApiKey: { id: string; name: string; expiresAt?: string } }>
+      GraphQLResponse<{ createApiKey?: { id: string; name: string; expiresAt?: string } | null }>
     >(endpoint, {
-      query: `mutation($input: CreateApiKeyInput!) { createApiKey(input: $input) { id name expiresAt role { id name } } }`,
+      query: `mutation($input: CreateApiKeyInput!) { createApiKey(input: $input) { id name expiresAt role { id label } } }`,
       variables: {
         input: {
           name: options.name,
@@ -67,17 +74,22 @@ export function registerApiKeysCommand(program: Command): void {
         },
       },
     });
-    const result = response.data?.data?.createApiKey;
+    const result = requireGraphqlField(response.data ?? {}, "createApiKey", "Failed to create API key.");
     if (!result) throw new CliError("Failed to create API key.", "API_ERROR");
     const tokenResponse = await services.api.post<
-      GraphQLResponse<{ generateApiKeyToken: { token: string } }>
+      GraphQLResponse<{ generateApiKeyToken?: { token?: string } | null }>
     >(endpoint, {
       query: `mutation($id: UUID!, $expiresAt: String!) { generateApiKeyToken(apiKeyId: $id, expiresAt: $expiresAt) { token } }`,
       variables: { id: result.id, expiresAt: options.expiresAt },
     });
+    const tokenResult = requireGraphqlField(
+      tokenResponse.data ?? {},
+      "generateApiKeyToken",
+      `Failed to generate a token for API key ${result.id}.`,
+    );
     const output = {
       ...result,
-      token: tokenResponse.data?.data?.generateApiKeyToken?.token,
+      token: tokenResult?.token,
     };
     await services.output.render(output, {
       format: globalOptions.output,
@@ -105,7 +117,7 @@ export function registerApiKeysCommand(program: Command): void {
     }
 
     const response = await services.api.post<GraphQLResponse<{ updateApiKey: unknown }>>(endpoint, {
-      query: `mutation($input: UpdateApiKeyInput!) { updateApiKey(input: $input) { id name expiresAt revokedAt role { id name } } }`,
+      query: `mutation($input: UpdateApiKeyInput!) { updateApiKey(input: $input) { id name expiresAt revokedAt role { id label } } }`,
       variables: {
         input: {
           id,
@@ -115,10 +127,13 @@ export function registerApiKeysCommand(program: Command): void {
         },
       },
     });
-    await services.output.render(response.data?.data?.updateApiKey, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "updateApiKey", `Failed to update API key ${id}.`),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const revokeCmd = cmd
@@ -129,10 +144,19 @@ export function registerApiKeysCommand(program: Command): void {
   revokeCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
     const { services } = createCommandContext(command);
     if (!id) throw new CliError("Missing API key ID.", "INVALID_ARGUMENTS");
-    await services.api.post<GraphQLResponse<{ revokeApiKey: { id: string } }>>(endpoint, {
+    const response = await services.api.post<GraphQLResponse<{ revokeApiKey?: { id: string } | null }>>(
+      endpoint,
+      {
       query: `mutation($id: UUID!) { revokeApiKey(input: { id: $id }) { id } }`,
       variables: { id },
-    });
+      },
+    );
+    const revoked = requireGraphqlField(
+      response.data ?? {},
+      "revokeApiKey",
+      `Failed to revoke API key ${id}.`,
+    );
+    if (!revoked) throw new CliError(`Failed to revoke API key ${id}.`, "API_ERROR");
     // eslint-disable-next-line no-console
     console.log(`API key ${id} revoked.`);
   });
@@ -160,7 +184,11 @@ export function registerApiKeysCommand(program: Command): void {
       {
         apiKeyId: id,
         roleId: options.roleId,
-        assigned: response.data?.data?.assignRoleToApiKey ?? false,
+        assigned: requireGraphqlField(
+          response.data ?? {},
+          "assignRoleToApiKey",
+          `Failed to assign role ${options.roleId} to API key ${id}.`,
+        ),
       },
       { format: globalOptions.output, query: globalOptions.query },
     );

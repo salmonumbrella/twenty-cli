@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { requireYes } from "../../utilities/shared/confirmation";
@@ -52,7 +52,7 @@ const CHECK_PUBLIC_DOMAIN_RECORDS_MUTATION = `mutation CheckPublicDomainValidRec
 }`;
 
 export function registerPublicDomainsCommand(program: Command): void {
-  const endpoint = "/graphql";
+  const endpoint = "/metadata";
   const cmd = program.command("public-domains").description("Manage public domains");
   applyGlobalOptions(cmd);
 
@@ -66,10 +66,17 @@ export function registerPublicDomainsCommand(program: Command): void {
       query: LIST_PUBLIC_DOMAINS_QUERY,
     });
 
-    await services.output.render(response.data?.data?.findManyPublicDomains ?? [], {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "findManyPublicDomains",
+        "Failed to list public domains.",
+      ) ?? [],
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const createCmd = cmd.command("create").description("Create a public domain");
@@ -86,10 +93,17 @@ export function registerPublicDomainsCommand(program: Command): void {
       },
     );
 
-    await services.output.render(response.data?.data?.createPublicDomain, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "createPublicDomain",
+        `Failed to create public domain ${domain}.`,
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const deleteCmd = cmd.command("delete").description("Delete a public domain");
@@ -111,7 +125,11 @@ export function registerPublicDomainsCommand(program: Command): void {
 
     await services.output.render(
       {
-        success: response.data?.data?.deletePublicDomain ?? false,
+        success: requireGraphqlField(
+          response.data ?? {},
+          "deletePublicDomain",
+          `Failed to delete public domain ${domain}.`,
+        ),
         domain,
       },
       {
@@ -136,10 +154,17 @@ export function registerPublicDomainsCommand(program: Command): void {
       variables: { domain },
     });
 
-    await services.output.render(response.data?.data?.checkPublicDomainValidRecords, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "checkPublicDomainValidRecords",
+        `Failed to check DNS records for public domain ${domain}.`,
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 }
 

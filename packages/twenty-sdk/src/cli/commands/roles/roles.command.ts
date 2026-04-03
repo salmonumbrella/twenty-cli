@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { parseBody } from "../../utilities/shared/body";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
@@ -173,6 +173,7 @@ function findRoleById(roles: unknown[], id: string): unknown {
 }
 
 export function registerRolesCommand(program: Command): void {
+  const endpoint = "/metadata";
   const cmd = program
     .command("roles")
     .description("Manage workspace roles")
@@ -205,13 +206,14 @@ export function registerRolesCommand(program: Command): void {
       switch (op) {
         case "list": {
           const response = await services.api.post<GraphQLResponse<{ getRoles?: unknown[] }>>(
-            "/graphql",
+            endpoint,
             {
               query: buildGetRolesQuery(options),
             },
           );
 
-          await services.output.render(response.data?.data?.getRoles ?? [], {
+          const roles = requireGraphqlField(response.data ?? {}, "getRoles", "Failed to list roles.");
+          await services.output.render(roles ?? [], {
             format: globalOptions.output,
             query: globalOptions.query,
           });
@@ -223,13 +225,14 @@ export function registerRolesCommand(program: Command): void {
           }
 
           const response = await services.api.post<GraphQLResponse<{ getRoles?: unknown[] }>>(
-            "/graphql",
+            endpoint,
             {
               query: buildGetRolesQuery(options),
             },
           );
 
-          const role = findRoleById(response.data?.data?.getRoles ?? [], id);
+          const roles = requireGraphqlField(response.data ?? {}, "getRoles", "Failed to list roles.");
+          const role = findRoleById(roles ?? [], id);
 
           if (!role) {
             throw new CliError(`Role ${id} not found.`, "NOT_FOUND");
@@ -244,7 +247,7 @@ export function registerRolesCommand(program: Command): void {
         case "create": {
           const payload = await parseBody(options.data, options.file, options.set);
           const response = await services.api.post<GraphQLResponse<{ createOneRole?: unknown }>>(
-            "/graphql",
+            endpoint,
             {
               query: CREATE_ROLE_MUTATION,
               variables: {
@@ -253,10 +256,13 @@ export function registerRolesCommand(program: Command): void {
             },
           );
 
-          await services.output.render(response.data?.data?.createOneRole, {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
+          await services.output.render(
+            requireGraphqlField(response.data ?? {}, "createOneRole", "Failed to create role."),
+            {
+              format: globalOptions.output,
+              query: globalOptions.query,
+            },
+          );
           break;
         }
         case "update": {
@@ -266,7 +272,7 @@ export function registerRolesCommand(program: Command): void {
 
           const payload = await parseBody(options.data, options.file, options.set);
           const response = await services.api.post<GraphQLResponse<{ updateOneRole?: unknown }>>(
-            "/graphql",
+            endpoint,
             {
               query: UPDATE_ROLE_MUTATION,
               variables: {
@@ -278,10 +284,13 @@ export function registerRolesCommand(program: Command): void {
             },
           );
 
-          await services.output.render(response.data?.data?.updateOneRole, {
-            format: globalOptions.output,
-            query: globalOptions.query,
-          });
+          await services.output.render(
+            requireGraphqlField(response.data ?? {}, "updateOneRole", `Failed to update role ${id}.`),
+            {
+              format: globalOptions.output,
+              query: globalOptions.query,
+            },
+          );
           break;
         }
         case "delete": {
@@ -290,7 +299,7 @@ export function registerRolesCommand(program: Command): void {
           }
 
           const response = await services.api.post<GraphQLResponse<{ deleteOneRole?: string }>>(
-            "/graphql",
+            endpoint,
             {
               query: DELETE_ROLE_MUTATION,
               variables: {
@@ -301,7 +310,12 @@ export function registerRolesCommand(program: Command): void {
 
           await services.output.render(
             {
-              id: response.data?.data?.deleteOneRole ?? id,
+              id:
+                requireGraphqlField(
+                  response.data ?? {},
+                  "deleteOneRole",
+                  `Failed to delete role ${id}.`,
+                ) ?? id,
             },
             {
               format: globalOptions.output,
@@ -314,14 +328,19 @@ export function registerRolesCommand(program: Command): void {
           const payload = await parseBody(options.data, options.file, options.set);
           const response = await services.api.post<
             GraphQLResponse<{ upsertPermissionFlags?: unknown[] }>
-          >("/graphql", {
+          >(endpoint, {
             query: UPSERT_PERMISSION_FLAGS_MUTATION,
             variables: {
               upsertPermissionFlagsInput: payload,
             },
           });
 
-          await services.output.render(response.data?.data?.upsertPermissionFlags ?? [], {
+          const flags = requireGraphqlField(
+            response.data ?? {},
+            "upsertPermissionFlags",
+            "Failed to upsert permission flags.",
+          );
+          await services.output.render(flags ?? [], {
             format: globalOptions.output,
             query: globalOptions.query,
           });
@@ -331,14 +350,19 @@ export function registerRolesCommand(program: Command): void {
           const payload = await parseBody(options.data, options.file, options.set);
           const response = await services.api.post<
             GraphQLResponse<{ upsertObjectPermissions?: unknown[] }>
-          >("/graphql", {
+          >(endpoint, {
             query: UPSERT_OBJECT_PERMISSIONS_MUTATION,
             variables: {
               upsertObjectPermissionsInput: payload,
             },
           });
 
-          await services.output.render(response.data?.data?.upsertObjectPermissions ?? [], {
+          const objectPermissions = requireGraphqlField(
+            response.data ?? {},
+            "upsertObjectPermissions",
+            "Failed to upsert object permissions.",
+          );
+          await services.output.render(objectPermissions ?? [], {
             format: globalOptions.output,
             query: globalOptions.query,
           });
@@ -348,14 +372,19 @@ export function registerRolesCommand(program: Command): void {
           const payload = await parseBody(options.data, options.file, options.set);
           const response = await services.api.post<
             GraphQLResponse<{ upsertFieldPermissions?: unknown[] }>
-          >("/graphql", {
+          >(endpoint, {
             query: UPSERT_FIELD_PERMISSIONS_MUTATION,
             variables: {
               upsertFieldPermissionsInput: payload,
             },
           });
 
-          await services.output.render(response.data?.data?.upsertFieldPermissions ?? [], {
+          const fieldPermissions = requireGraphqlField(
+            response.data ?? {},
+            "upsertFieldPermissions",
+            "Failed to upsert field permissions.",
+          );
+          await services.output.render(fieldPermissions ?? [], {
             format: globalOptions.output,
             query: globalOptions.query,
           });
@@ -371,7 +400,7 @@ export function registerRolesCommand(program: Command): void {
 
           const response = await services.api.post<
             GraphQLResponse<{ assignRoleToAgent?: boolean }>
-          >("/graphql", {
+          >(endpoint, {
             query: ASSIGN_ROLE_TO_AGENT_MUTATION,
             variables: {
               agentId: id,
@@ -383,7 +412,11 @@ export function registerRolesCommand(program: Command): void {
             {
               agentId: id,
               roleId: options.roleId,
-              assigned: response.data?.data?.assignRoleToAgent ?? false,
+              assigned: requireGraphqlField(
+                response.data ?? {},
+                "assignRoleToAgent",
+                `Failed to assign role ${options.roleId} to agent ${id}.`,
+              ),
             },
             {
               format: globalOptions.output,
@@ -399,7 +432,7 @@ export function registerRolesCommand(program: Command): void {
 
           const response = await services.api.post<
             GraphQLResponse<{ removeRoleFromAgent?: boolean }>
-          >("/graphql", {
+          >(endpoint, {
             query: REMOVE_ROLE_FROM_AGENT_MUTATION,
             variables: {
               agentId: id,
@@ -409,7 +442,11 @@ export function registerRolesCommand(program: Command): void {
           await services.output.render(
             {
               agentId: id,
-              removed: response.data?.data?.removeRoleFromAgent ?? false,
+              removed: requireGraphqlField(
+                response.data ?? {},
+                "removeRoleFromAgent",
+                `Failed to remove a role from agent ${id}.`,
+              ),
             },
             {
               format: globalOptions.output,

@@ -52,6 +52,21 @@ export function getGraphqlField<T>(
   return response.data?.[key];
 }
 
+export function requireGraphqlField<T>(
+  response: GraphQLResponse<Record<string, T>>,
+  key: string,
+  fallbackMessage: string,
+  code = "API_ERROR",
+): T {
+  const data = assertGraphqlSuccess(response, fallbackMessage, code);
+
+  if (!hasOwnKey(data, key)) {
+    throw new CliError(fallbackMessage, code);
+  }
+
+  return data[key] as T;
+}
+
 export function hasSchemaErrorSymbol(
   response: GraphQLResponse<unknown>,
   symbols: string[],

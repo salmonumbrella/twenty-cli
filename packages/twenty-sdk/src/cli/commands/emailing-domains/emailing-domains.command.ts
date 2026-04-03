@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { requireYes } from "../../utilities/shared/confirmation";
@@ -50,7 +50,7 @@ const DELETE_EMAILING_DOMAIN_MUTATION = `mutation DeleteEmailingDomain($id: Stri
 }`;
 
 export function registerEmailingDomainsCommand(program: Command): void {
-  const endpoint = "/graphql";
+  const endpoint = "/metadata";
   const cmd = program.command("emailing-domains").description("Manage emailing domains");
   applyGlobalOptions(cmd);
 
@@ -65,10 +65,17 @@ export function registerEmailingDomainsCommand(program: Command): void {
       },
     );
 
-    await services.output.render(response.data?.data?.getEmailingDomains ?? [], {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "getEmailingDomains",
+        "Failed to list emailing domains.",
+      ) ?? [],
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const createCmd = cmd.command("create").description("Create an emailing domain");
@@ -88,10 +95,17 @@ export function registerEmailingDomainsCommand(program: Command): void {
       },
     );
 
-    await services.output.render(response.data?.data?.createEmailingDomain, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "createEmailingDomain",
+        `Failed to create emailing domain ${domain}.`,
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const verifyCmd = cmd
@@ -113,10 +127,17 @@ export function registerEmailingDomainsCommand(program: Command): void {
       },
     );
 
-    await services.output.render(response.data?.data?.verifyEmailingDomain, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "verifyEmailingDomain",
+        `Failed to verify emailing domain ${id}.`,
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const deleteCmd = cmd
@@ -143,7 +164,11 @@ export function registerEmailingDomainsCommand(program: Command): void {
 
       await services.output.render(
         {
-          success: response.data?.data?.deleteEmailingDomain ?? false,
+          success: requireGraphqlField(
+            response.data ?? {},
+            "deleteEmailingDomain",
+            `Failed to delete emailing domain ${id}.`,
+          ),
           id,
         },
         {

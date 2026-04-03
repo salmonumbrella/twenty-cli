@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { createCommandContext } from "../../utilities/shared/context";
 import { parseBody } from "../../utilities/shared/body";
@@ -122,7 +122,7 @@ export function registerConnectedAccountsCommand(program: Command): void {
         case "sync": {
           if (!id) throw new CliError("Missing connected account ID.", "INVALID_ARGUMENTS");
           const response = await services.api.post<
-            GraphQLResponse<{ startChannelSync?: { success?: boolean } }>
+            GraphQLResponse<{ startChannelSync?: { success?: boolean } | null }>
           >("/graphql", {
             query: `mutation($connectedAccountId: UUID!) {
               startChannelSync(connectedAccountId: $connectedAccountId) {
@@ -131,10 +131,15 @@ export function registerConnectedAccountsCommand(program: Command): void {
             }`,
             variables: { connectedAccountId: id },
           });
+          const syncResult = requireGraphqlField(
+            response.data ?? {},
+            "startChannelSync",
+            `Failed to start channel sync for connected account ${id}.`,
+          );
 
           await services.output.render(
             {
-              success: response.data?.data?.startChannelSync?.success ?? false,
+              success: syncResult?.success ?? false,
               connectedAccountId: id,
             },
             {

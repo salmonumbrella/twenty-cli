@@ -2,7 +2,9 @@ import { Command } from "commander";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { createCommandContext } from "../../utilities/shared/context";
 import { readJsonInput } from "../../utilities/shared/io";
+import { singularize } from "../../utilities/shared/parse";
 import { CliError } from "../../utilities/errors/cli-error";
+import { SearchResult } from "../../utilities/search/services/search.service";
 
 export function registerSearchCommand(program: Command): void {
   const cmd = program
@@ -10,8 +12,8 @@ export function registerSearchCommand(program: Command): void {
     .description("Full-text search across all records")
     .argument("<query>", "Search query")
     .option("--limit <number>", "Maximum results", "20")
-    .option("--objects <list>", "Comma-separated object names to include")
-    .option("--exclude <list>", "Comma-separated object names to exclude")
+    .option("--objects <list>", "Comma-separated object names to include (singular or plural)")
+    .option("--exclude <list>", "Comma-separated object names to exclude (singular or plural)")
     .option("--cursor <cursor>", "Pagination cursor for the next page")
     .option("--include-page-info", "Include top-level pageInfo in output")
     .option("--filter <json>", "JSON filter object")
@@ -26,13 +28,17 @@ export function registerSearchCommand(program: Command): void {
     const response = await services.search.search({
       query,
       limit: parseInt(options.limit, 10),
-      objects: options.objects?.split(","),
-      excludeObjects: options.exclude?.split(","),
+      objects: parseObjectNames(options.objects),
+      excludeObjects: parseObjectNames(options.exclude),
       after: options.cursor,
       filter,
     });
 
-    const output = options.includePageInfo ? response : response.data;
+    const output = options.includePageInfo
+      ? response
+      : globalOptions.output === "text"
+        ? formatTextSearchResults(response.data, query)
+        : response.data;
 
     await services.output.render(output, {
       format: globalOptions.output,
@@ -65,4 +71,87 @@ async function parseSearchFilter(
   }
 
   return filter as Record<string, unknown>;
+}
+
+function parseObjectNames(raw?: string): string[] | undefined {
+  if (!raw) {
+    return undefined;
+  }
+
+  const names = raw
+    .split(",")
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .map((name) => singularize(name.toLowerCase()));
+
+  return names.length > 0 ? names : undefined;
+}
+
+function formatTextSearchResults(results: SearchResult[], query: string): Array<Record<string, string>> {
+  return rankSearchResults(results, query).map((result) => ({
+    name: result.label,
+    title: result.objectLabelSingular,
+    id: result.recordId,
+    object: result.objectNameSingular,
+  }));
+}
+
+function rankSearchResults(results: SearchResult[], query: string): SearchResult[] {
+  return results
+    .map((result, index) => ({
+      result,
+      index,
+      tier: getSearchMatchTier(result.label, query),
+    }))
+    .sort((left, right) => {
+      if (right.tier !== left.tier) {
+        return right.tier - left.tier;
+      }
+
+      if (right.result.tsRankCD !== left.result.tsRankCD) {
+        return right.result.tsRankCD - left.result.tsRankCD;
+      }
+
+      if (right.result.tsRank !== left.result.tsRank) {
+        return right.result.tsRank - left.result.tsRank;
+      }
+
+      return left.index - right.index;
+    })
+    .map((entry) => entry.result);
+}
+
+function getSearchMatchTier(label: string, query: string): number {
+  const normalizedLabel = normalizeSearchPhrase(label);
+  const normalizedQuery = normalizeSearchPhrase(query);
+
+  if (!normalizedLabel || !normalizedQuery) {
+    return 0;
+  }
+
+  if (normalizedLabel === normalizedQuery) {
+    return 4;
+  }
+
+  if (normalizedLabel.startsWith(`${normalizedQuery} `)) {
+    return 3;
+  }
+
+  if (normalizedLabel.split(" ").includes(normalizedQuery)) {
+    return 2;
+  }
+
+  if (normalizedLabel.includes(normalizedQuery)) {
+    return 1;
+  }
+
+  return 0;
+}
+
+function normalizeSearchPhrase(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
 }

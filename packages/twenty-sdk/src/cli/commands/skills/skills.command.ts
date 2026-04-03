@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { parseBody } from "../../utilities/shared/body";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
@@ -11,11 +11,10 @@ interface SkillsOptions {
   set?: string[];
 }
 
-const endpoint = "/graphql";
+const endpoint = "/metadata";
 
 const SKILL_FIELDS = `
   id
-  standardId
   name
   label
   icon
@@ -94,7 +93,8 @@ export function registerSkillsCommand(program: Command): void {
       query: LIST_SKILLS_QUERY,
     });
 
-    await services.output.render(response.data?.data?.skills ?? [], {
+    const skills = requireGraphqlField(response.data ?? {}, "skills", "Failed to list skills.");
+    await services.output.render(skills ?? [], {
       format: globalOptions.output,
       query: globalOptions.query,
     });
@@ -110,10 +110,13 @@ export function registerSkillsCommand(program: Command): void {
       variables: { id: skillId },
     });
 
-    await services.output.render(response.data?.data?.skill, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "skill", `Failed to fetch skill ${skillId}.`),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const createCmd = cmd.command("create").description("Create a skill");
@@ -130,10 +133,13 @@ export function registerSkillsCommand(program: Command): void {
       variables: { input: payload },
     });
 
-    await services.output.render(response.data?.data?.createSkill, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "createSkill", "Failed to create skill."),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const updateCmd = cmd
@@ -159,10 +165,13 @@ export function registerSkillsCommand(program: Command): void {
       },
     });
 
-    await services.output.render(response.data?.data?.updateSkill, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "updateSkill", `Failed to update skill ${skillId}.`),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const deleteCmd = cmd
@@ -178,10 +187,13 @@ export function registerSkillsCommand(program: Command): void {
       variables: { id: skillId },
     });
 
-    await services.output.render(response.data?.data?.deleteSkill, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "deleteSkill", `Failed to delete skill ${skillId}.`),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const activateCmd = cmd
@@ -200,10 +212,17 @@ export function registerSkillsCommand(program: Command): void {
       },
     );
 
-    await services.output.render(response.data?.data?.activateSkill, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "activateSkill",
+        `Failed to activate skill ${skillId}.`,
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const deactivateCmd = cmd
@@ -222,9 +241,16 @@ export function registerSkillsCommand(program: Command): void {
       },
     );
 
-    await services.output.render(response.data?.data?.deactivateSkill, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "deactivateSkill",
+        `Failed to deactivate skill ${skillId}.`,
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 }

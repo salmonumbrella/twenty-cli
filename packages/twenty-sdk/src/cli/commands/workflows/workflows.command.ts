@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { PublicHttpService } from "../../utilities/api/services/public-http.service";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
@@ -243,9 +243,9 @@ async function resolveWorkspaceId(
     return explicitWorkspaceId;
   }
 
-  const response = await publicHttp.request<{
-    data?: { currentWorkspace?: { id?: string } };
-  }>({
+  const response = await publicHttp.request<
+    GraphQLResponse<{ currentWorkspace?: { id?: string } | null }>
+  >({
     authMode: "required",
     method: "post",
     path: "/graphql",
@@ -254,7 +254,12 @@ async function resolveWorkspaceId(
     },
   });
 
-  const workspaceId = response.data?.data?.currentWorkspace?.id;
+  const currentWorkspace = requireGraphqlField(
+    response.data ?? {},
+    "currentWorkspace",
+    "Failed to discover the current workspace ID. Provide --workspace-id explicitly.",
+  );
+  const workspaceId = currentWorkspace?.id;
   if (!workspaceId) {
     throw new CliError(
       "Failed to discover the current workspace ID. Provide --workspace-id explicitly.",

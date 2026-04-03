@@ -109,7 +109,7 @@ describe("roles command", () => {
 
       await program.parseAsync(["node", "test", "roles", "list", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("getRoles"),
       });
 
@@ -161,13 +161,13 @@ describe("roles command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("workspaceMembers"),
       });
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("agents"),
       });
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("apiKeys"),
       });
     });
@@ -215,13 +215,13 @@ describe("roles command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("permissionFlags"),
       });
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("objectPermissions"),
       });
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("fieldPermissions"),
       });
 
@@ -294,7 +294,7 @@ describe("roles command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("createOneRole"),
         variables: {
           createRoleInput: {
@@ -349,7 +349,7 @@ describe("roles command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("updateOneRole"),
         variables: {
           updateRoleInput: {
@@ -381,7 +381,7 @@ describe("roles command", () => {
 
       await program.parseAsync(["node", "test", "roles", "delete", "role-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("deleteOneRole"),
         variables: { roleId: "role-1" },
       });
@@ -424,7 +424,7 @@ describe("roles command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("upsertPermissionFlags"),
         variables: {
           upsertPermissionFlagsInput: {
@@ -465,7 +465,7 @@ describe("roles command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("upsertObjectPermissions"),
         variables: {
           upsertObjectPermissionsInput: {
@@ -512,7 +512,7 @@ describe("roles command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("upsertFieldPermissions"),
         variables: {
           upsertFieldPermissionsInput: {
@@ -552,7 +552,7 @@ describe("roles command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("assignRoleToAgent"),
         variables: {
           agentId: "agent-1",
@@ -590,7 +590,7 @@ describe("roles command", () => {
 
       await program.parseAsync(["node", "test", "roles", "remove-agent", "agent-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("removeRoleFromAgent"),
         variables: {
           agentId: "agent-1",

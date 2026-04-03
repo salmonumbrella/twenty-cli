@@ -4,6 +4,7 @@ import {
   assertGraphqlSuccess,
   formatGraphqlErrors,
   getGraphqlField,
+  requireGraphqlField,
   hasGraphqlField,
   hasSchemaErrorSymbol,
 } from "../graphql-response";
@@ -58,6 +59,18 @@ describe("graphql response helpers", () => {
         "currentWorkspace",
       ),
     ).toEqual({ id: "ws_123" });
+  });
+
+  it("throws when a required graphql field is missing", () => {
+    expect(() =>
+      requireGraphqlField(
+        {
+          data: {},
+        },
+        "currentWorkspace",
+        "Failed to load workspace.",
+      ),
+    ).toThrowError(new CliError("Failed to load workspace.", "API_ERROR"));
   });
 
   it("detects schema-symbol compatibility errors", () => {

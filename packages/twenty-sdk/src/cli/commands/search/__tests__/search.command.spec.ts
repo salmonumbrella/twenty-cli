@@ -200,6 +200,30 @@ describe("search command", () => {
       });
     });
 
+    it("normalizes included objects from plural names and trims whitespace", async () => {
+      mockSearch.mockResolvedValue({ data: [] });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "search",
+        "query",
+        "--objects",
+        " companies , people ",
+        "-o",
+        "json",
+      ]);
+
+      expect(mockSearch).toHaveBeenCalledWith({
+        query: "query",
+        limit: 20,
+        objects: ["company", "person"],
+        excludeObjects: undefined,
+        after: undefined,
+        filter: undefined,
+      });
+    });
+
     it("filters by excluded objects", async () => {
       mockSearch.mockResolvedValue({ data: [] });
 
@@ -210,6 +234,30 @@ describe("search command", () => {
         "query",
         "--exclude",
         "note,task",
+        "-o",
+        "json",
+      ]);
+
+      expect(mockSearch).toHaveBeenCalledWith({
+        query: "query",
+        limit: 20,
+        objects: undefined,
+        excludeObjects: ["note", "task"],
+        after: undefined,
+        filter: undefined,
+      });
+    });
+
+    it("normalizes excluded objects from plural names and trims whitespace", async () => {
+      mockSearch.mockResolvedValue({ data: [] });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "search",
+        "query",
+        "--exclude",
+        " notes , tasks ",
         "-o",
         "json",
       ]);
@@ -368,6 +416,59 @@ describe("search command", () => {
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
       expect(parsed).toEqual([]);
+    });
+
+    it("renders text output as concise search rows with exact matches first", async () => {
+      mockCreateCommandContext.mockReturnValue({
+        globalOptions: {
+          output: "text",
+          query: undefined,
+        },
+        services: {
+          search: {
+            search: mockSearch,
+          },
+          output: {
+            render: vi.fn(async (value: unknown) => {
+              console.log(JSON.stringify(value));
+            }),
+          },
+        },
+      } as never);
+
+      mockSearch.mockResolvedValue({
+        data: [
+          buildSearchResult("rec-1", "Alex Deel"),
+          buildSearchResult("rec-2", "Deel", "company", "Company"),
+          buildSearchResult("rec-3", "Fintechsupport Deel"),
+        ],
+      });
+
+      await program.parseAsync(["node", "test", "search", "Deel"]);
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(output);
+
+      expect(parsed).toEqual([
+        {
+          name: "Deel",
+          title: "Company",
+          id: "rec-2",
+          object: "company",
+        },
+        {
+          name: "Alex Deel",
+          title: "Person",
+          id: "rec-1",
+          object: "person",
+        },
+        {
+          name: "Fintechsupport Deel",
+          title: "Person",
+          id: "rec-3",
+          object: "person",
+        },
+      ]);
     });
   });
 

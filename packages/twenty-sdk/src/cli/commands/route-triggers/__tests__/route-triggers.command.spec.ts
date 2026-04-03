@@ -148,6 +148,18 @@ describe("route-triggers command", () => {
         query: expect.stringContaining("findManyRouteTriggers"),
       });
     });
+
+    it("surfaces a compatibility error when standalone route trigger fields are unavailable", async () => {
+      mockPost.mockResolvedValue({
+        data: {
+          errors: [{ message: 'Cannot query field "findManyRouteTriggers" on type "Query".' }],
+        },
+      });
+
+      await expect(
+        program.parseAsync(["node", "test", "route-triggers", "list", "-o", "json"]),
+      ).rejects.toThrow("Route trigger management is not available");
+    });
   });
 
   describe("get operation", () => {

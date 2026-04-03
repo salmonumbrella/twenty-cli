@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { requireYes } from "../../utilities/shared/confirmation";
@@ -33,7 +33,7 @@ const VALIDATE_APPROVED_ACCESS_DOMAIN_MUTATION = `mutation ValidateApprovedAcces
 }`;
 
 export function registerApprovedAccessDomainsCommand(program: Command): void {
-  const endpoint = "/graphql";
+  const endpoint = "/metadata";
   const cmd = program
     .command("approved-access-domains")
     .description("Manage approved access domains");
@@ -49,10 +49,17 @@ export function registerApprovedAccessDomainsCommand(program: Command): void {
       query: LIST_APPROVED_ACCESS_DOMAINS_QUERY,
     });
 
-    await services.output.render(response.data?.data?.getApprovedAccessDomains ?? [], {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "getApprovedAccessDomains",
+        "Failed to list approved access domains.",
+      ) ?? [],
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const deleteCmd = cmd
@@ -80,7 +87,11 @@ export function registerApprovedAccessDomainsCommand(program: Command): void {
 
       await services.output.render(
         {
-          success: response.data?.data?.deleteApprovedAccessDomain ?? false,
+          success: requireGraphqlField(
+            response.data ?? {},
+            "deleteApprovedAccessDomain",
+            `Failed to delete approved access domain ${id}.`,
+          ),
           id,
         },
         {
@@ -119,10 +130,17 @@ export function registerApprovedAccessDomainsCommand(program: Command): void {
         },
       });
 
-      await services.output.render(response.data?.data?.validateApprovedAccessDomain, {
-        format: globalOptions.output,
-        query: globalOptions.query,
-      });
+      await services.output.render(
+        requireGraphqlField(
+          response.data ?? {},
+          "validateApprovedAccessDomain",
+          `Failed to validate approved access domain ${id}.`,
+        ),
+        {
+          format: globalOptions.output,
+          query: globalOptions.query,
+        },
+      );
     },
   );
 }

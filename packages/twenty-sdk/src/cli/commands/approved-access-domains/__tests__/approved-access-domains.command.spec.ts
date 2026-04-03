@@ -100,7 +100,7 @@ describe("approved-access-domains command", () => {
 
       await program.parseAsync(["node", "test", "approved-access-domains", "list", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("getApprovedAccessDomains"),
       });
 
@@ -137,7 +137,7 @@ describe("approved-access-domains command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("deleteApprovedAccessDomain"),
         variables: {
           input: {
@@ -196,7 +196,7 @@ describe("approved-access-domains command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("validateApprovedAccessDomain"),
         variables: {
           input: {

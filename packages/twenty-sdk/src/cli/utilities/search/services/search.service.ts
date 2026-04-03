@@ -1,6 +1,10 @@
 import { ApiService } from "../../api/services/api.service";
+import { GraphQLResponse, formatGraphqlErrors } from "../../api/graphql-response";
+import { CliError } from "../../errors/cli-error";
 
 type SearchApiClient = Pick<ApiService, "post">;
+
+const DEFAULT_SEARCH_LIMIT = 20;
 
 export interface SearchResult {
   recordId: string;
@@ -23,17 +27,15 @@ export interface SearchResponse {
   pageInfo?: SearchPageInfo;
 }
 
-interface GraphQLSearchResponse {
-  data?: {
-    search?: {
-      edges?: Array<{
-        cursor: string;
-        node: SearchResult;
-      }>;
-      pageInfo?: SearchPageInfo;
-    };
+type GraphQLSearchResponse = GraphQLResponse<{
+  search?: {
+    edges?: Array<{
+      cursor: string;
+      node: SearchResult;
+    }>;
+    pageInfo?: SearchPageInfo;
   };
-}
+}>;
 
 export class SearchService {
   constructor(private api: SearchApiClient) {}
@@ -46,8 +48,9 @@ export class SearchService {
     after?: string;
     filter?: Record<string, unknown>;
   }): Promise<SearchResponse> {
+    const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
     const query = `
-      query Search($searchInput: String!, $limit: Int, $after: String, $filter: ObjectRecordFilterInput, $includedObjectNameSingulars: [String!], $excludedObjectNameSingulars: [String!]) {
+      query Search($searchInput: String!, $limit: Int!, $after: String, $filter: ObjectRecordFilterInput, $includedObjectNameSingulars: [String!], $excludedObjectNameSingulars: [String!]) {
         search(
           searchInput: $searchInput
           limit: $limit
@@ -77,20 +80,29 @@ export class SearchService {
     `;
     const variables = {
       searchInput: options.query,
-      limit: options.limit,
+      limit,
       after: options.after,
       filter: options.filter,
       includedObjectNameSingulars: options.objects,
       excludedObjectNameSingulars: options.excludeObjects,
     };
     const response = await this.api.post<GraphQLSearchResponse>("/graphql", { query, variables });
+    const payload = response.data;
+    const errorMessage = formatGraphqlErrors(payload);
+
+    if (errorMessage) {
+      throw new CliError(errorMessage, "API_ERROR");
+    }
+
+    const search = payload.data?.search;
+
     return {
       data:
-        response.data?.data?.search?.edges?.map((edge) => ({
+        search?.edges?.map((edge) => ({
           ...edge.node,
           cursor: edge.cursor,
         })) ?? [],
-      pageInfo: response.data?.data?.search?.pageInfo,
+      pageInfo: search?.pageInfo,
     };
   }
 }

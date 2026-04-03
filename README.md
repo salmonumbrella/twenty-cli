@@ -555,9 +555,9 @@ twenty search <query> [options]
 | Option                | Description                             |
 | --------------------- | --------------------------------------- |
 | `--limit <n>`         | Maximum results (default: 20)           |
-| `--objects <list>`    | Comma-separated object names to include |
-| `--exclude <list>`    | Comma-separated object names to exclude |
-| `--after <cursor>`    | Pagination cursor for the next page     |
+| `--objects <list>`    | Comma-separated object names to include (singular or plural) |
+| `--exclude <list>`    | Comma-separated object names to exclude (singular or plural) |
+| `--cursor <cursor>`   | Pagination cursor for the next page     |
 | `--include-page-info` | Include top-level `pageInfo` in output  |
 | `--filter <json>`     | JSON filter object                      |
 | `--filter-file`       | Load JSON filter from a file or stdin   |
@@ -568,7 +568,7 @@ twenty search <query> [options]
 twenty search "John Doe"                                      # Search all objects
 twenty search "acme" --objects companies,people               # Search specific objects
 twenty search "engineer" --limit 50 --exclude notes           # Exclude objects
-twenty search "john" --after eyJvZmZzZXQiOjIwfQ==             # Fetch the next page
+twenty search "john" --cursor eyJvZmZzZXQiOjIwfQ==            # Fetch the next page
 twenty search "john" --include-page-info -o json             # Return data plus pageInfo
 twenty search "john" --filter '{"city":{"eq":"Vancouver"}}'   # Apply metadata filter JSON
 twenty search "john" --filter-file ./search-filter.json       # Read filter JSON from a file

@@ -83,7 +83,7 @@ describe("public-domains command", () => {
     await program.parseAsync(["node", "test", "public-domains", "list", "-o", "json"]);
 
     expect(mockPost).toHaveBeenCalledWith(
-      "/graphql",
+      "/metadata",
       expect.objectContaining({
         query: expect.stringContaining("findManyPublicDomains"),
       }),
@@ -119,7 +119,7 @@ describe("public-domains command", () => {
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
-      "/graphql",
+      "/metadata",
       expect.objectContaining({
         query: expect.stringContaining("createPublicDomain"),
         variables: {
@@ -154,7 +154,7 @@ describe("public-domains command", () => {
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
-      "/graphql",
+      "/metadata",
       expect.objectContaining({
         query: expect.stringContaining("deletePublicDomain"),
         variables: {
@@ -203,7 +203,7 @@ describe("public-domains command", () => {
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
-      "/graphql",
+      "/metadata",
       expect.objectContaining({
         query: expect.stringContaining("checkPublicDomainValidRecords"),
         variables: {

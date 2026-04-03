@@ -112,7 +112,7 @@ describe("skills command", () => {
 
       await program.parseAsync(["node", "test", "skills", "list", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("skills"),
       });
 
@@ -160,7 +160,7 @@ describe("skills command", () => {
 
       await program.parseAsync(["node", "test", "skills", "get", "skill-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("skill"),
         variables: { id: "skill-1" },
       });
@@ -223,7 +223,7 @@ describe("skills command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("createSkill"),
         variables: { input: payload },
       });
@@ -270,7 +270,7 @@ describe("skills command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("updateSkill"),
         variables: {
           input: {
@@ -310,7 +310,7 @@ describe("skills command", () => {
 
       await program.parseAsync(["node", "test", "skills", "delete", "skill-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("deleteSkill"),
         variables: { id: "skill-1" },
       });
@@ -335,7 +335,7 @@ describe("skills command", () => {
 
       await program.parseAsync(["node", "test", "skills", "activate", "skill-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("activateSkill"),
         variables: { id: "skill-1" },
       });
@@ -361,7 +361,7 @@ describe("skills command", () => {
 
       await program.parseAsync(["node", "test", "skills", "deactivate", "skill-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("deactivateSkill"),
         variables: { id: "skill-1" },
       });

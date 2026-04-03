@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
 import { createServices } from "../../utilities/shared/services";
@@ -178,10 +178,17 @@ export function registerAuthCommand(program: Command): void {
       },
     );
 
-    await services.output.render(response.data?.data?.currentWorkspace, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(
+        response.data ?? {},
+        "currentWorkspace",
+        "Failed to fetch the current workspace.",
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const discoverCmd = authCmd
@@ -205,10 +212,17 @@ export function registerAuthCommand(program: Command): void {
         },
       });
 
-      await services.output.render(response.data?.data?.getPublicWorkspaceDataByDomain, {
-        format: globalOptions.output,
-        query: globalOptions.query,
-      });
+      await services.output.render(
+        requireGraphqlField(
+          response.data ?? {},
+          "getPublicWorkspaceDataByDomain",
+          `Failed to discover public workspace data for ${origin}.`,
+        ),
+        {
+          format: globalOptions.output,
+          query: globalOptions.query,
+        },
+      );
     },
   );
 
@@ -232,10 +246,13 @@ export function registerAuthCommand(program: Command): void {
       },
     });
 
-    await services.output.render(response.data?.data?.renewToken, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "renewToken", "Failed to renew auth token."),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const ssoUrlCmd = authCmd
@@ -267,10 +284,17 @@ export function registerAuthCommand(program: Command): void {
         },
       );
 
-      await services.output.render(response.data?.data?.getAuthorizationUrlForSSO, {
-        format: globalOptions.output,
-        query: globalOptions.query,
-      });
+      await services.output.render(
+        requireGraphqlField(
+          response.data ?? {},
+          "getAuthorizationUrlForSSO",
+          `Failed to fetch the SSO authorization URL for ${identityProviderId}.`,
+        ),
+        {
+          format: globalOptions.output,
+          query: globalOptions.query,
+        },
+      );
     },
   );
 

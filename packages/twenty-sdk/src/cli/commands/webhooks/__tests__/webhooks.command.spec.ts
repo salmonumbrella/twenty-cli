@@ -118,7 +118,7 @@ describe("webhooks command", () => {
 
       await program.parseAsync(["node", "test", "webhooks", "list", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("webhooks"),
       });
       expect(consoleSpy).toHaveBeenCalled();
@@ -133,7 +133,7 @@ describe("webhooks command", () => {
 
       await program.parseAsync(["node", "test", "webhooks", "-o", "json", "list"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("webhooks"),
       });
     });
@@ -159,6 +159,18 @@ describe("webhooks command", () => {
       const parsed = JSON.parse(output);
       expect(parsed).toEqual([]);
     });
+
+    it("surfaces graphql errors instead of rendering an empty list", async () => {
+      mockPost.mockResolvedValue({
+        data: {
+          errors: [{ message: "Forbidden" }],
+        },
+      });
+
+      await expect(
+        program.parseAsync(["node", "test", "webhooks", "list", "-o", "json"]),
+      ).rejects.toThrow("Forbidden");
+    });
   });
 
   describe("get operation", () => {
@@ -176,7 +188,7 @@ describe("webhooks command", () => {
 
       await program.parseAsync(["node", "test", "webhooks", "get", "wh-1", "-o", "json"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("webhook(input: { id: $id })"),
         variables: { id: "wh-1" },
       });
@@ -216,7 +228,7 @@ describe("webhooks command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("createWebhook"),
         variables: { input: payload },
       });
@@ -256,7 +268,7 @@ describe("webhooks command", () => {
         "json",
       ]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("updateWebhook"),
         variables: {
           input: {
@@ -292,11 +304,24 @@ describe("webhooks command", () => {
 
       await program.parseAsync(["node", "test", "webhooks", "delete", "wh-1"]);
 
-      expect(mockPost).toHaveBeenCalledWith("/graphql", {
+      expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("deleteWebhook(input: { id: $id })"),
         variables: { id: "wh-1" },
       });
       expect(consoleSpy).toHaveBeenCalledWith("Webhook wh-1 deleted.");
+    });
+
+    it("surfaces graphql errors instead of claiming delete succeeded", async () => {
+      mockPost.mockResolvedValue({
+        data: {
+          errors: [{ message: "Webhook is locked" }],
+        },
+      });
+
+      await expect(program.parseAsync(["node", "test", "webhooks", "delete", "wh-1"])).rejects.toThrow(
+        "Webhook is locked",
+      );
+      expect(consoleSpy).not.toHaveBeenCalledWith("Webhook wh-1 deleted.");
     });
 
     it("throws error when ID is missing", async () => {

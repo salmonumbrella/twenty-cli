@@ -1,5 +1,9 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import {
+  hasSchemaErrorSymbol,
+  requireGraphqlField,
+  type GraphQLResponse,
+} from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { parseBody } from "../../utilities/shared/body";
 import { requireYes } from "../../utilities/shared/confirmation";
@@ -56,6 +60,23 @@ function collect(value: string, previous: string[] = []): string[] {
   return previous.concat([value]);
 }
 
+function requireRouteTriggerField<T>(
+  response: GraphQLResponse<Record<string, T>> | undefined,
+  key: string,
+  fallbackMessage: string,
+): T {
+  const payload = response ?? {};
+
+  if (hasSchemaErrorSymbol(payload, [key])) {
+    throw new CliError(
+      "Route trigger management is not available on this workspace's current schema.",
+      "API_ERROR",
+    );
+  }
+
+  return requireGraphqlField(payload, key, fallbackMessage);
+}
+
 export function registerRouteTriggersCommand(program: Command): void {
   const endpoint = "/metadata";
   const cmd = program.command("route-triggers").description("Manage route triggers");
@@ -71,7 +92,12 @@ export function registerRouteTriggersCommand(program: Command): void {
       query: FIND_MANY_ROUTE_TRIGGERS_QUERY,
     });
 
-    await services.output.render(response.data?.data?.findManyRouteTriggers ?? [], {
+    const routeTriggers = requireRouteTriggerField(
+      response.data,
+      "findManyRouteTriggers",
+      "Failed to list route triggers.",
+    );
+    await services.output.render(routeTriggers ?? [], {
       format: globalOptions.output,
       query: globalOptions.query,
     });
@@ -96,10 +122,17 @@ export function registerRouteTriggersCommand(program: Command): void {
       },
     );
 
-    await services.output.render(response.data?.data?.findOneRouteTrigger, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireRouteTriggerField(
+        response.data,
+        "findOneRouteTrigger",
+        `Failed to fetch route trigger ${id}.`,
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const createCmd = cmd.command("create").description("Create a route trigger");
@@ -119,10 +152,17 @@ export function registerRouteTriggersCommand(program: Command): void {
       },
     );
 
-    await services.output.render(response.data?.data?.createOneRouteTrigger, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireRouteTriggerField(
+        response.data,
+        "createOneRouteTrigger",
+        "Failed to create route trigger.",
+      ),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const updateCmd = cmd
@@ -154,10 +194,17 @@ export function registerRouteTriggersCommand(program: Command): void {
         },
       });
 
-      await services.output.render(response.data?.data?.updateOneRouteTrigger, {
-        format: globalOptions.output,
-        query: globalOptions.query,
-      });
+      await services.output.render(
+        requireRouteTriggerField(
+          response.data,
+          "updateOneRouteTrigger",
+          `Failed to update route trigger ${id}.`,
+        ),
+        {
+          format: globalOptions.output,
+          query: globalOptions.query,
+        },
+      );
     },
   );
 
@@ -186,10 +233,17 @@ export function registerRouteTriggersCommand(program: Command): void {
         },
       });
 
-      await services.output.render(response.data?.data?.deleteOneRouteTrigger, {
-        format: globalOptions.output,
-        query: globalOptions.query,
-      });
+      await services.output.render(
+        requireRouteTriggerField(
+          response.data,
+          "deleteOneRouteTrigger",
+          `Failed to delete route trigger ${id}.`,
+        ),
+        {
+          format: globalOptions.output,
+          query: globalOptions.query,
+        },
+      );
     },
   );
 }

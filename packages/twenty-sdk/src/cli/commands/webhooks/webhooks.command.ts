@@ -1,5 +1,5 @@
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { createCommandContext } from "../../utilities/shared/context";
@@ -16,7 +16,7 @@ function collect(value: string, previous: string[] = []): string[] {
 }
 
 export function registerWebhooksCommand(program: Command): void {
-  const endpoint = "/graphql";
+  const endpoint = "/metadata";
   const cmd = program.command("webhooks").description("Manage webhooks");
   applyGlobalOptions(cmd);
 
@@ -24,10 +24,14 @@ export function registerWebhooksCommand(program: Command): void {
   applyGlobalOptions(listCmd);
   listCmd.action(async (_options: unknown, command: Command) => {
     const { globalOptions, services } = createCommandContext(command);
-    const response = await services.api.post<GraphQLResponse<{ webhooks: unknown[] }>>(endpoint, {
-      query: `query { webhooks { id targetUrl operations description createdAt } }`,
-    });
-    await services.output.render(response.data?.data?.webhooks ?? [], {
+    const response = await services.api.post<GraphQLResponse<{ webhooks?: unknown[] | null }>>(
+      endpoint,
+      {
+        query: `query { webhooks { id targetUrl operations description createdAt } }`,
+      },
+    );
+    const webhooks = requireGraphqlField(response.data ?? {}, "webhooks", "Failed to list webhooks.");
+    await services.output.render(webhooks ?? [], {
       format: globalOptions.output,
       query: globalOptions.query,
     });
@@ -42,10 +46,13 @@ export function registerWebhooksCommand(program: Command): void {
       query: `query($id: UUID!) { webhook(input: { id: $id }) { id targetUrl operations description secret createdAt updatedAt } }`,
       variables: { id },
     });
-    await services.output.render(response.data?.data?.webhook, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "webhook", `Failed to fetch webhook ${id}.`),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const createCmd = cmd.command("create").description("Create a webhook");
@@ -64,10 +71,13 @@ export function registerWebhooksCommand(program: Command): void {
         variables: { input: payload },
       },
     );
-    await services.output.render(response.data?.data?.createWebhook, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "createWebhook", "Failed to create webhook."),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const updateCmd = cmd
@@ -95,10 +105,13 @@ export function registerWebhooksCommand(program: Command): void {
         },
       },
     );
-    await services.output.render(response.data?.data?.updateWebhook, {
-      format: globalOptions.output,
-      query: globalOptions.query,
-    });
+    await services.output.render(
+      requireGraphqlField(response.data ?? {}, "updateWebhook", `Failed to update webhook ${id}.`),
+      {
+        format: globalOptions.output,
+        query: globalOptions.query,
+      },
+    );
   });
 
   const deleteCmd = cmd
@@ -109,10 +122,18 @@ export function registerWebhooksCommand(program: Command): void {
   deleteCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
     const { services } = createCommandContext(command);
     if (!id) throw new CliError("Missing webhook ID.", "INVALID_ARGUMENTS");
-    await services.api.post<GraphQLResponse<{ deleteWebhook: boolean }>>(endpoint, {
+    const response = await services.api.post<GraphQLResponse<{ deleteWebhook: boolean }>>(endpoint, {
       query: `mutation($id: UUID!) { deleteWebhook(input: { id: $id }) }`,
       variables: { id },
     });
+    const deleted = requireGraphqlField(
+      response.data ?? {},
+      "deleteWebhook",
+      `Failed to delete webhook ${id}.`,
+    );
+    if (!deleted) {
+      throw new CliError(`Failed to delete webhook ${id}.`, "API_ERROR");
+    }
     // eslint-disable-next-line no-console
     console.log(`Webhook ${id} deleted.`);
   });

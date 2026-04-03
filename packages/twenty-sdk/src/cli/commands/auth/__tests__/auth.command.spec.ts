@@ -372,6 +372,18 @@ describe("auth commands", () => {
       expect(parsed.displayName).toBe("Acme");
       expect(parsed.workspaceUrls.subdomainUrl).toBe("https://acme.twenty.com");
     });
+
+    it("surfaces graphql errors instead of rendering undefined", async () => {
+      mockPost.mockResolvedValue({
+        data: {
+          errors: [{ message: "Workspace access denied" }],
+        },
+      });
+
+      await expect(
+        program.parseAsync(["node", "test", "auth", "workspace", "-o", "json"]),
+      ).rejects.toThrow("Workspace access denied");
+    });
   });
 
   describe("auth discover", () => {

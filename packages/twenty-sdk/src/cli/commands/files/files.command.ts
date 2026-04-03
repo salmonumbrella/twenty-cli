@@ -2,7 +2,7 @@ import fs from "fs-extra";
 import FormData from "form-data";
 import path from "path";
 import { Command } from "commander";
-import { type GraphQLResponse } from "../../utilities/api/graphql-response";
+import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { createCommandContext } from "../../utilities/shared/context";
@@ -349,8 +349,13 @@ async function runUploadCommand(filePath: string | undefined, command: Command):
       headers: form.getHeaders(),
     },
   );
+  const uploadResult = requireGraphqlField(
+    response.data ?? {},
+    resultKey,
+    `Failed to upload file ${filePath}.`,
+  );
 
-  await services.output.render(response.data?.data?.[resultKey], {
+  await services.output.render(uploadResult, {
     format: globalOptions.output,
     query: globalOptions.query,
   });

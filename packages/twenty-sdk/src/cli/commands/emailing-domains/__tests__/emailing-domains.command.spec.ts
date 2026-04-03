@@ -87,7 +87,7 @@ describe("emailing-domains command", () => {
     await program.parseAsync(["node", "test", "emailing-domains", "list", "-o", "json"]);
 
     expect(mockPost).toHaveBeenCalledWith(
-      "/graphql",
+      "/metadata",
       expect.objectContaining({
         query: expect.stringContaining("getEmailingDomains"),
       }),
@@ -134,7 +134,7 @@ describe("emailing-domains command", () => {
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
-      "/graphql",
+      "/metadata",
       expect.objectContaining({
         query: expect.stringContaining("createEmailingDomain"),
         variables: {
@@ -177,7 +177,7 @@ describe("emailing-domains command", () => {
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
-      "/graphql",
+      "/metadata",
       expect.objectContaining({
         query: expect.stringContaining("verifyEmailingDomain"),
         variables: {
@@ -211,7 +211,7 @@ describe("emailing-domains command", () => {
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
-      "/graphql",
+      "/metadata",
       expect.objectContaining({
         query: expect.stringContaining("deleteEmailingDomain"),
         variables: {

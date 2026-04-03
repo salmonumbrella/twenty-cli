@@ -48,7 +48,7 @@ describe("SearchService", () => {
         query: expect.stringContaining("query Search"),
         variables: {
           searchInput: "test",
-          limit: undefined,
+          limit: 20,
           after: undefined,
           filter: undefined,
           includedObjectNameSingulars: undefined,
@@ -138,7 +138,7 @@ describe("SearchService", () => {
         query: expect.stringContaining("query Search"),
         variables: {
           searchInput: "test",
-          limit: undefined,
+          limit: 20,
           after: undefined,
           filter: undefined,
           includedObjectNameSingulars: ["person", "company"],
@@ -181,7 +181,7 @@ describe("SearchService", () => {
         query: expect.stringContaining("query Search"),
         variables: {
           searchInput: "test",
-          limit: undefined,
+          limit: 20,
           after: undefined,
           filter: undefined,
           includedObjectNameSingulars: undefined,
@@ -279,7 +279,7 @@ describe("SearchService", () => {
         query: expect.stringContaining("query Search"),
         variables: {
           searchInput: "jane",
-          limit: undefined,
+          limit: 20,
           after: "cursor-1",
           filter: {
             id: { eq: "rec-2" },
@@ -365,12 +365,22 @@ describe("SearchService", () => {
 
     it("propagates GraphQL errors", async () => {
       const mockApi = {
-        post: vi.fn().mockRejectedValue(new Error("GraphQL validation error")),
+        post: vi.fn().mockResolvedValue({
+          data: {
+            errors: [
+              {
+                message: 'Variable "$limit" of type "Int" used in position expecting type "Int!".',
+              },
+            ],
+          },
+        }),
       };
 
       const service = new SearchService(mockApi as any);
 
-      await expect(service.search({ query: "test" })).rejects.toThrow("GraphQL validation error");
+      await expect(service.search({ query: "test" })).rejects.toThrow(
+        'Variable "$limit" of type "Int" used in position expecting type "Int!".',
+      );
     });
 
     it("sends correct GraphQL query structure", async () => {
@@ -388,7 +398,7 @@ describe("SearchService", () => {
 
       expect(query).toContain("query Search");
       expect(query).toContain("$searchInput: String!");
-      expect(query).toContain("$limit: Int");
+      expect(query).toContain("$limit: Int!");
       expect(query).toContain("$after: String");
       expect(query).toContain("$filter: ObjectRecordFilterInput");
       expect(query).toContain("$includedObjectNameSingulars: [String!]");
@@ -401,6 +411,31 @@ describe("SearchService", () => {
       expect(query).toContain("objectNameSingular");
       expect(query).toContain("objectLabelSingular");
       expect(query).toContain("label");
+    });
+
+    it("defaults limit to 20 when omitted", async () => {
+      const mockApi = {
+        post: vi.fn().mockResolvedValue({
+          data: {
+            data: {
+              search: {
+                edges: [],
+              },
+            },
+          },
+        }),
+      };
+
+      const service = new SearchService(mockApi as any);
+      await service.search({ query: "test" });
+
+      expect(mockApi.post).toHaveBeenCalledWith("/graphql", {
+        query: expect.stringContaining("query Search"),
+        variables: expect.objectContaining({
+          searchInput: "test",
+          limit: 20,
+        }),
+      });
     });
   });
 });
