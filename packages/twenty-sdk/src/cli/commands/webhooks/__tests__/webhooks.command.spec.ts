@@ -318,9 +318,9 @@ describe("webhooks command", () => {
         },
       });
 
-      await expect(program.parseAsync(["node", "test", "webhooks", "delete", "wh-1"])).rejects.toThrow(
-        "Webhook is locked",
-      );
+      await expect(
+        program.parseAsync(["node", "test", "webhooks", "delete", "wh-1"]),
+      ).rejects.toThrow("Webhook is locked");
       expect(consoleSpy).not.toHaveBeenCalledWith("Webhook wh-1 deleted.");
     });
 

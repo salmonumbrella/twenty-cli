@@ -552,15 +552,15 @@ twenty search <query> [options]
 
 **Options:**
 
-| Option                | Description                             |
-| --------------------- | --------------------------------------- |
-| `--limit <n>`         | Maximum results (default: 20)           |
+| Option                | Description                                                  |
+| --------------------- | ------------------------------------------------------------ |
+| `--limit <n>`         | Maximum results (default: 20)                                |
 | `--objects <list>`    | Comma-separated object names to include (singular or plural) |
 | `--exclude <list>`    | Comma-separated object names to exclude (singular or plural) |
-| `--cursor <cursor>`   | Pagination cursor for the next page     |
-| `--include-page-info` | Include top-level `pageInfo` in output  |
-| `--filter <json>`     | JSON filter object                      |
-| `--filter-file`       | Load JSON filter from a file or stdin   |
+| `--cursor <cursor>`   | Pagination cursor for the next page                          |
+| `--include-page-info` | Include top-level `pageInfo` in output                       |
+| `--filter <json>`     | JSON filter object                                           |
+| `--filter-file`       | Load JSON filter from a file or stdin                        |
 
 **Examples:**
 

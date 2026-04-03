@@ -74,7 +74,11 @@ export function registerApiKeysCommand(program: Command): void {
         },
       },
     });
-    const result = requireGraphqlField(response.data ?? {}, "createApiKey", "Failed to create API key.");
+    const result = requireGraphqlField(
+      response.data ?? {},
+      "createApiKey",
+      "Failed to create API key.",
+    );
     if (!result) throw new CliError("Failed to create API key.", "API_ERROR");
     const tokenResponse = await services.api.post<
       GraphQLResponse<{ generateApiKeyToken?: { token?: string } | null }>
@@ -144,13 +148,12 @@ export function registerApiKeysCommand(program: Command): void {
   revokeCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
     const { services } = createCommandContext(command);
     if (!id) throw new CliError("Missing API key ID.", "INVALID_ARGUMENTS");
-    const response = await services.api.post<GraphQLResponse<{ revokeApiKey?: { id: string } | null }>>(
-      endpoint,
-      {
+    const response = await services.api.post<
+      GraphQLResponse<{ revokeApiKey?: { id: string } | null }>
+    >(endpoint, {
       query: `mutation($id: UUID!) { revokeApiKey(input: { id: $id }) { id } }`,
       variables: { id },
-      },
-    );
+    });
     const revoked = requireGraphqlField(
       response.data ?? {},
       "revokeApiKey",

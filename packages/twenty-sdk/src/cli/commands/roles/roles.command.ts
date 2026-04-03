@@ -212,7 +212,11 @@ export function registerRolesCommand(program: Command): void {
             },
           );
 
-          const roles = requireGraphqlField(response.data ?? {}, "getRoles", "Failed to list roles.");
+          const roles = requireGraphqlField(
+            response.data ?? {},
+            "getRoles",
+            "Failed to list roles.",
+          );
           await services.output.render(roles ?? [], {
             format: globalOptions.output,
             query: globalOptions.query,
@@ -231,7 +235,11 @@ export function registerRolesCommand(program: Command): void {
             },
           );
 
-          const roles = requireGraphqlField(response.data ?? {}, "getRoles", "Failed to list roles.");
+          const roles = requireGraphqlField(
+            response.data ?? {},
+            "getRoles",
+            "Failed to list roles.",
+          );
           const role = findRoleById(roles ?? [], id);
 
           if (!role) {
@@ -285,7 +293,11 @@ export function registerRolesCommand(program: Command): void {
           );
 
           await services.output.render(
-            requireGraphqlField(response.data ?? {}, "updateOneRole", `Failed to update role ${id}.`),
+            requireGraphqlField(
+              response.data ?? {},
+              "updateOneRole",
+              `Failed to update role ${id}.`,
+            ),
             {
               format: globalOptions.output,
               query: globalOptions.query,

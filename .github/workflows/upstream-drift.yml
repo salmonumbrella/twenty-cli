@@ -64,7 +64,7 @@ jobs:
           audit_sha="${{ steps.drift.outputs.audit_sha }}"
           latest_sha="${{ steps.drift.outputs.latest_sha }}"
 
-          body="Upstream [\`twentyhq/twenty\`](https://github.com/twentyhq/twenty) moved from \`${audit_sha}\` to \`${latest_sha}\`.
+          body="Upstream \`twentyhq/twenty\` moved from \`${audit_sha}\` to \`${latest_sha}\`.
 
           The following API-surface files changed and may need review:
 
@@ -78,7 +78,7 @@ jobs:
 
           body="${body}
 
-          [Compare on GitHub](https://github.com/twentyhq/twenty/compare/${audit_sha}...${latest_sha})
+          Compare range in \`twentyhq/twenty\`: \`${audit_sha}...${latest_sha}\`
 
           The audit SHA has been auto-bumped. Close this issue once the changes have been reviewed."
 

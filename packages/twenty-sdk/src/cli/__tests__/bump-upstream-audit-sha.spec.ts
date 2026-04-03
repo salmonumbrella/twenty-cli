@@ -15,7 +15,9 @@ describe("bump-upstream-audit-sha", () => {
 
   afterEach(() => {
     copyFileSync(backupPath, targetPath);
-    try { unlinkSync(backupPath); } catch {}
+    try {
+      unlinkSync(backupPath);
+    } catch {}
   });
 
   it("rejects invalid SHA arguments", () => {
@@ -25,9 +27,7 @@ describe("bump-upstream-audit-sha", () => {
   });
 
   it("rejects missing arguments", () => {
-    expect(() =>
-      execFileSync("node", [scriptPath], { encoding: "utf8", stdio: "pipe" }),
-    ).toThrow();
+    expect(() => execFileSync("node", [scriptPath], { encoding: "utf8", stdio: "pipe" })).toThrow();
   });
 
   it("replaces the AUDIT_SHA in the target file", () => {

@@ -30,7 +30,11 @@ export function registerWebhooksCommand(program: Command): void {
         query: `query { webhooks { id targetUrl operations description createdAt } }`,
       },
     );
-    const webhooks = requireGraphqlField(response.data ?? {}, "webhooks", "Failed to list webhooks.");
+    const webhooks = requireGraphqlField(
+      response.data ?? {},
+      "webhooks",
+      "Failed to list webhooks.",
+    );
     await services.output.render(webhooks ?? [], {
       format: globalOptions.output,
       query: globalOptions.query,
@@ -122,10 +126,13 @@ export function registerWebhooksCommand(program: Command): void {
   deleteCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
     const { services } = createCommandContext(command);
     if (!id) throw new CliError("Missing webhook ID.", "INVALID_ARGUMENTS");
-    const response = await services.api.post<GraphQLResponse<{ deleteWebhook: boolean }>>(endpoint, {
-      query: `mutation($id: UUID!) { deleteWebhook(input: { id: $id }) }`,
-      variables: { id },
-    });
+    const response = await services.api.post<GraphQLResponse<{ deleteWebhook: boolean }>>(
+      endpoint,
+      {
+        query: `mutation($id: UUID!) { deleteWebhook(input: { id: $id }) }`,
+        variables: { id },
+      },
+    );
     const deleted = requireGraphqlField(
       response.data ?? {},
       "deleteWebhook",

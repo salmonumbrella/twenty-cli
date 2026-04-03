@@ -84,7 +84,7 @@ describe("repo release consistency", () => {
     expect(releaseWorkflow).toContain("HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}");
     expect(releaseWorkflow).toContain("if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}");
 
-    expect(driftWorkflow).toContain("pnpm check:upstream-drift");
+    expect(driftWorkflow).toContain("pnpm --silent check:upstream-drift");
     expect(upstreamDriftScript).toContain('const AUDIT_SHA = "');
     expect(upstreamDriftScript).not.toContain('"plans"');
     expect(upstreamDriftScript).not.toContain(".md");

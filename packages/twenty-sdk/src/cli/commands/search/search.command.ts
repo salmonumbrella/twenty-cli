@@ -87,7 +87,10 @@ function parseObjectNames(raw?: string): string[] | undefined {
   return names.length > 0 ? names : undefined;
 }
 
-function formatTextSearchResults(results: SearchResult[], query: string): Array<Record<string, string>> {
+function formatTextSearchResults(
+  results: SearchResult[],
+  query: string,
+): Array<Record<string, string>> {
   return rankSearchResults(results, query).map((result) => ({
     name: result.label,
     title: result.objectLabelSingular,
