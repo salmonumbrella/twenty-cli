@@ -2,7 +2,7 @@ version: 2
 updates:
   # npm packages
   - package-ecosystem: "npm"
-    directory: "/packages/twenty-sdk"
+    directory: "/"
     schedule:
       interval: "monthly"
     commit-message:

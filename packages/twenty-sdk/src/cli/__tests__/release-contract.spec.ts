@@ -17,9 +17,13 @@ describe("repo release consistency", () => {
       scripts?: Record<string, string>;
     };
     const sdkPackage = JSON.parse(readRepoFile("packages", "twenty-sdk", "package.json")) as {
+      name?: string;
       private?: boolean;
       files?: string[];
       dependencies?: Record<string, string>;
+      publishConfig?: {
+        access?: string;
+      };
       pkg?: {
         scripts?: string[];
       };
@@ -28,6 +32,7 @@ describe("repo release consistency", () => {
     const liveSmokeWorkflow = readRepoFile(".github", "workflows", "live-smoke.yml");
     const releaseWorkflow = readRepoFile(".github", "workflows", "release.yml");
     const driftWorkflow = readRepoFile(".github", "workflows", "upstream-drift.yml");
+    const dependabotConfig = readRepoFile(".github", "dependabot.yml");
 
     expect(rootPackage.packageManager).toMatch(/^pnpm@/);
     expect(rootPackage.scripts).toMatchObject({
@@ -36,13 +41,15 @@ describe("repo release consistency", () => {
       "readme:generate": "node scripts/render-readme-snippets.mjs",
       "release:build": "node scripts/build-release.mjs",
       "release:metadata": "node scripts/write-release-metadata.mjs",
-      "test:smoke:live": "pnpm --filter twenty-sdk test:e2e:live",
+      "test:smoke:live": "pnpm --filter ./packages/twenty-sdk test:e2e:live",
       "verify:ci":
         "pnpm build && pnpm test && pnpm test:e2e && pnpm check:repo-hygiene && pnpm exec prek run --all-files",
     });
+    expect(sdkPackage.name).toBe("@salmonumbrella/twenty-cli");
     expect(sdkPackage.private).toBe(false);
     expect(sdkPackage.files).toEqual(expect.arrayContaining(["dist/**/*"]));
     expect(sdkPackage.dependencies?.["form-data"]).toBeDefined();
+    expect(sdkPackage.publishConfig?.access).toBe("public");
     expect(sdkPackage.pkg?.scripts).toEqual(
       expect.arrayContaining(["node_modules/axios/dist/node/axios.cjs"]),
     );
@@ -83,6 +90,11 @@ describe("repo release consistency", () => {
     expect(releaseWorkflow).toContain("checksums.txt");
     expect(releaseWorkflow).toContain("HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}");
     expect(releaseWorkflow).toContain("if: ${{ env.HOMEBREW_TAP_TOKEN != '' }}");
+    expect(releaseWorkflow).toContain("NPM_TOKEN: ${{ secrets.NPM_TOKEN }}");
+    expect(releaseWorkflow).toContain("if: ${{ env.NPM_TOKEN != '' }}");
+    expect(releaseWorkflow).toContain(
+      "pnpm --filter ./packages/twenty-sdk publish --no-git-checks",
+    );
 
     expect(driftWorkflow).toContain("pnpm --silent check:upstream-drift");
     expect(upstreamDriftScript).toContain('const AUDIT_SHA = "');
@@ -90,6 +102,10 @@ describe("repo release consistency", () => {
     expect(upstreamDriftScript).not.toContain(".md");
     expect(upstreamDriftScript).not.toContain(".sha");
     expect(upstreamDriftScript).not.toContain("path.join(ROOT");
+
+    expect(dependabotConfig).toContain('package-ecosystem: "npm"');
+    expect(dependabotConfig).toContain('directory: "/"');
+    expect(dependabotConfig).not.toContain('directory: "/packages/twenty-sdk"');
 
     expect(readme).toContain("<!-- GENERATED:INSTALL_AND_AGENT_CONTRACT:START -->");
     expect(readme).toContain("<!-- GENERATED:INSTALL_AND_AGENT_CONTRACT:END -->");

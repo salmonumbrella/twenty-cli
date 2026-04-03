@@ -105,6 +105,7 @@ jobs:
       contents: write
     env:
       HOMEBREW_TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+      NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
@@ -128,6 +129,24 @@ jobs:
 
       - name: Write release metadata
         run: pnpm release:metadata -- --tag "${GITHUB_REF_NAME}" --output-dir dist/release
+
+      - name: Build npm package
+        if: ${{ env.NPM_TOKEN != '' }}
+        run: pnpm build
+
+      - name: Set npm package version
+        if: ${{ env.NPM_TOKEN != '' }}
+        run: pnpm --filter ./packages/twenty-sdk exec npm pkg set version="${GITHUB_REF_NAME#v}"
+
+      - name: Configure npm auth
+        if: ${{ env.NPM_TOKEN != '' }}
+        run: printf '//registry.npmjs.org/:_authToken=%s\n' "${NPM_TOKEN}" > "${HOME}/.npmrc"
+
+      - name: Publish npm package
+        if: ${{ env.NPM_TOKEN != '' }}
+        run: pnpm --filter ./packages/twenty-sdk publish --no-git-checks
+        env:
+          NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
 
       - name: Publish GitHub release assets
         env:

@@ -64,7 +64,7 @@ function renderSnippet() {
   return [
     "## Installation",
     "",
-    "Tagged releases publish standalone `twenty` archives for macOS and Linux, and the release workflow updates the maintained Homebrew formula from those archives.",
+    "Tagged releases publish standalone `twenty` archives for macOS and Linux, update the maintained Homebrew formula, and can publish the scoped npm package `@salmonumbrella/twenty-cli` when `NPM_TOKEN` is configured.",
     "",
     "```bash",
     "# Build from source",

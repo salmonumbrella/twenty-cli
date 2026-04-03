@@ -1,9 +1,22 @@
 {
-  "name": "twenty-sdk",
+  "name": "@salmonumbrella/twenty-cli",
   "version": "0.0.0-dev",
   "private": false,
   "description": "CLI for Twenty CRM",
+  "keywords": [
+    "cli",
+    "crm",
+    "twenty"
+  ],
+  "homepage": "https://github.com/salmonumbrella/twenty-cli",
+  "bugs": {
+    "url": "https://github.com/salmonumbrella/twenty-cli/issues"
+  },
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/salmonumbrella/twenty-cli.git"
+  },
   "bin": {
     "twenty": "dist/cli/cli.js"
   },
@@ -11,6 +24,9 @@
     "dist/**/*"
   ],
   "type": "commonjs",
+  "publishConfig": {
+    "access": "public"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json && mkdir -p dist/cli && cp src/cli/help.txt dist/cli/help.txt",
     "dev": "tsc -p tsconfig.json --watch",
@@ -21,7 +37,7 @@
     "test:e2e:live": "pnpm run build && TWENTY_LIVE_SMOKE=true vitest run -c vitest.e2e.config.ts src/cli/__tests__/e2e/helpers/live-config.spec.ts src/cli/__tests__/e2e/live-smoke.e2e.spec.ts"
   },
   "dependencies": {
-    "axios": "^1.13.5",
+    "axios": "^1.14.0",
     "axios-retry": "^4.1.0",
     "commander": "^14.0.3",
     "dotenv": "^17.3.1",
@@ -36,7 +52,10 @@
     "@types/node": "^25.3.0",
     "@types/papaparse": "^5.3.14",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.2"
+  },
+  "engines": {
+    "node": ">=20"
   },
   "pkg": {
     "scripts": [

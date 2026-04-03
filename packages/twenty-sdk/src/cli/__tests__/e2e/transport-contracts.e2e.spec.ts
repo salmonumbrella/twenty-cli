@@ -14,7 +14,7 @@ const cliPath = resolveBuiltCliPath();
 
 if (!fs.existsSync(cliPath)) {
   throw new Error(
-    `Missing built CLI artifact at ${cliPath}. Run "pnpm --filter twenty-sdk build" first.`,
+    `Missing built CLI artifact at ${cliPath}. Run "pnpm --filter ./packages/twenty-sdk build" first.`,
   );
 }
 
