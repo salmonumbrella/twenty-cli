@@ -113,12 +113,18 @@ describe("CLI help contracts", () => {
     const help = buildHelpJson(buildProgram(), ["mcp", "--help-json"]);
 
     expect(help.path).toEqual(["twenty", "mcp"]);
-    expect(help.operations.map((operation) => operation.name)).toEqual(
-      expect.arrayContaining(["status", "catalog", "schema", "exec", "skills", "search"]),
-    );
-    expect(help.operations.map((operation) => operation.name)).not.toEqual(
-      expect.arrayContaining(["learn", "call", "load-skills", "help-center"]),
-    );
+    expect(help.operations.map((operation) => operation.name).sort()).toEqual([
+      "catalog",
+      "exec",
+      "schema",
+      "search",
+      "skills",
+      "status",
+    ]);
+    expect(help.operations.some((operation) => operation.name === "learn")).toBe(false);
+    expect(help.operations.some((operation) => operation.name === "call")).toBe(false);
+    expect(help.operations.some((operation) => operation.name === "load-skills")).toBe(false);
+    expect(help.operations.some((operation) => operation.name === "help-center")).toBe(false);
     expect(help.operations.find((operation) => operation.name === "exec")).toEqual(
       expect.objectContaining({
         summary: "Execute a Twenty MCP tool",
