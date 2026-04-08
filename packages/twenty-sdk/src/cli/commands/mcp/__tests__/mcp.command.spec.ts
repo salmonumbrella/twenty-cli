@@ -48,9 +48,8 @@ describe("mcp command", () => {
     const command = program.commands.find((candidate) => candidate.name() === "mcp");
     const subcommands = command?.commands.map((candidate) => candidate.name()) ?? [];
 
-    expect(subcommands).toEqual(
-      expect.arrayContaining(["status", "catalog", "learn", "call", "load-skills", "help-center"]),
-    );
+    expect(subcommands).toEqual(["status", "catalog", "schema", "exec", "skills", "search"]);
+    expect(subcommands).not.toEqual(expect.arrayContaining(["learn", "call", "load-skills", "help-center"]));
   });
 
   it("runs mcp status and renders the structured status object", async () => {
@@ -93,7 +92,7 @@ describe("mcp command", () => {
     );
   });
 
-  it("runs mcp learn for exact tool names", async () => {
+  it("runs mcp schema for exact tool names", async () => {
     mockServices.mcp.callTool.mockResolvedValue({
       tools: ["find_companies", "create_person"],
     });
@@ -102,7 +101,7 @@ describe("mcp command", () => {
       "node",
       "test",
       "mcp",
-      "learn",
+      "schema",
       "find_companies",
       "create_person",
       "-o",
@@ -120,21 +119,96 @@ describe("mcp command", () => {
     );
   });
 
-  it("uses --data for mcp call arguments", async () => {
+  it("runs mcp exec with tool arguments from --data", async () => {
     mockServices.mcp.callTool.mockResolvedValue({ ok: true });
 
     await program.parseAsync([
       "node",
       "test",
       "mcp",
-      "call",
-      "execute_tool",
+      "exec",
+      "find_companies",
       "--data",
-      '{"toolName":"find_companies","arguments":{}}',
+      '{"query":"acme"}',
     ]);
 
     expect(mockServices.mcp.callTool).toHaveBeenCalledWith("execute_tool", {
       toolName: "find_companies",
+      arguments: {
+        query: "acme",
+      },
+    });
+    expect(mockServices.output.render).toHaveBeenCalledWith(
+      { ok: true },
+      expect.objectContaining({
+        format: "text",
+      }),
+    );
+  });
+
+  it("rejects --data and --file together for mcp exec", async () => {
+    await expect(
+      program.parseAsync([
+        "node",
+        "test",
+        "mcp",
+        "exec",
+        "find_companies",
+        "--data",
+        "{}",
+        "--file",
+        "/tmp/args.json",
+      ]),
+    ).rejects.toThrow("provide MCP call arguments via --data or --file");
+  });
+
+  it("rejects invalid --data JSON for mcp exec", async () => {
+    await expect(
+      program.parseAsync(["node", "test", "mcp", "exec", "find_companies", "--data", "{not-json}"]),
+    ).rejects.toMatchObject({ code: "INVALID_ARGUMENTS" });
+  });
+
+  it("rejects non-object JSON for mcp exec", async () => {
+    await expect(
+      program.parseAsync([
+        "node",
+        "test",
+        "mcp",
+        "exec",
+        "find_companies",
+        "--data",
+        '["not-an-object"]',
+      ]),
+    ).rejects.toMatchObject({
+      code: "INVALID_ARGUMENTS",
+      message: "MCP call arguments must be a JSON object.",
+    });
+  });
+
+  it("rejects unreadable --file for mcp exec", async () => {
+    await expect(
+      program.parseAsync([
+        "node",
+        "test",
+        "mcp",
+        "exec",
+        "find_companies",
+        "--file",
+        "/missing/file.json",
+      ]),
+    ).rejects.toMatchObject({
+      code: "INVALID_ARGUMENTS",
+      message: expect.stringContaining("Unable to read MCP call arguments file"),
+    });
+  });
+
+  it("sends an empty object when mcp exec has no arguments", async () => {
+    mockServices.mcp.callTool.mockResolvedValue({ ok: true });
+
+    await program.parseAsync(["node", "test", "mcp", "exec", "get_tool_catalog"]);
+
+    expect(mockServices.mcp.callTool).toHaveBeenCalledWith("execute_tool", {
+      toolName: "get_tool_catalog",
       arguments: {},
     });
     expect(mockServices.output.render).toHaveBeenCalledWith(
@@ -145,80 +219,10 @@ describe("mcp command", () => {
     );
   });
 
-  it("rejects --data and --file together", async () => {
-    await expect(
-      program.parseAsync([
-        "node",
-        "test",
-        "mcp",
-        "call",
-        "execute_tool",
-        "--data",
-        "{}",
-        "--file",
-        "/tmp/args.json",
-      ]),
-    ).rejects.toThrow("provide MCP call arguments via --data or --file");
-  });
-
-  it("rejects invalid --data JSON for mcp call", async () => {
-    await expect(
-      program.parseAsync(["node", "test", "mcp", "call", "execute_tool", "--data", "{not-json}"]),
-    ).rejects.toMatchObject({ code: "INVALID_ARGUMENTS" });
-  });
-
-  it("rejects non-object JSON for mcp call", async () => {
-    await expect(
-      program.parseAsync([
-        "node",
-        "test",
-        "mcp",
-        "call",
-        "execute_tool",
-        "--data",
-        '["not-an-object"]',
-      ]),
-    ).rejects.toMatchObject({
-      code: "INVALID_ARGUMENTS",
-      message: "MCP call arguments must be a JSON object.",
-    });
-  });
-
-  it("rejects unreadable --file for mcp call", async () => {
-    await expect(
-      program.parseAsync([
-        "node",
-        "test",
-        "mcp",
-        "call",
-        "execute_tool",
-        "--file",
-        "/missing/file.json",
-      ]),
-    ).rejects.toMatchObject({
-      code: "INVALID_ARGUMENTS",
-      message: expect.stringContaining("Unable to read MCP call arguments file"),
-    });
-  });
-
-  it("sends an empty object when mcp call has no arguments", async () => {
-    mockServices.mcp.callTool.mockResolvedValue({ ok: true });
-
-    await program.parseAsync(["node", "test", "mcp", "call", "get_tool_catalog"]);
-
-    expect(mockServices.mcp.callTool).toHaveBeenCalledWith("get_tool_catalog", {});
-    expect(mockServices.output.render).toHaveBeenCalledWith(
-      { ok: true },
-      expect.objectContaining({
-        format: "text",
-      }),
-    );
-  });
-
-  it("runs mcp load-skills", async () => {
+  it("runs mcp skills", async () => {
     mockServices.mcp.callTool.mockResolvedValue({ loaded: true });
 
-    await program.parseAsync(["node", "test", "mcp", "load-skills", "workflow-building", "xlsx"]);
+    await program.parseAsync(["node", "test", "mcp", "skills", "workflow-building", "xlsx"]);
 
     expect(mockServices.mcp.callTool).toHaveBeenCalledWith("load_skills", {
       skillNames: ["workflow-building", "xlsx"],
@@ -231,10 +235,10 @@ describe("mcp command", () => {
     );
   });
 
-  it("runs mcp help-center", async () => {
+  it("runs mcp search", async () => {
     mockServices.mcp.callTool.mockResolvedValue({ matches: [] });
 
-    await program.parseAsync(["node", "test", "mcp", "help-center", "MCP setup"]);
+    await program.parseAsync(["node", "test", "mcp", "search", "MCP setup"]);
 
     expect(mockServices.mcp.callTool).toHaveBeenCalledWith("search_help_center", {
       query: "MCP setup",
@@ -247,17 +251,17 @@ describe("mcp command", () => {
     );
   });
 
-  it("registers call with explicit tool argument and payload options", () => {
+  it("registers exec with explicit tool argument and payload options", () => {
     const command = program.commands.find((candidate) => candidate.name() === "mcp");
-    const callCommand = command?.commands.find((candidate) => candidate.name() === "call");
+    const execCommand = command?.commands.find((candidate) => candidate.name() === "exec");
 
-    expect(callCommand?.registeredArguments?.[0]?.name()).toBe("tool");
-    expect(callCommand?.options.find((option) => option.long === "--data")).toBeDefined();
-    expect(callCommand?.options.find((option) => option.long === "--file")).toBeDefined();
+    expect(execCommand?.registeredArguments?.[0]?.name()).toBe("tool");
+    expect(execCommand?.options.find((option) => option.long === "--data")).toBeDefined();
+    expect(execCommand?.options.find((option) => option.long === "--file")).toBeDefined();
   });
 
-  it("rejects mcp learn when no tool names are provided", async () => {
-    await expect(program.parseAsync(["node", "test", "mcp", "learn"])).rejects.toThrow(
+  it("rejects mcp schema when no tool names are provided", async () => {
+    await expect(program.parseAsync(["node", "test", "mcp", "schema"])).rejects.toThrow(
       "missing required argument 'toolNames'",
     );
 

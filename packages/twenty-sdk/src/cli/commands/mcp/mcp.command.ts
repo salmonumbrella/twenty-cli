@@ -36,7 +36,7 @@ export function registerMcpCommand(program: Command): void {
     });
   });
 
-  registerCommand(cmd, "learn", "Get guidance for one or more MCP tools", (command) => {
+  registerCommand(cmd, "schema", "Learn the schema for one or more MCP tools", (command) => {
     command.argument("<toolNames...>", "Tool names to learn");
     applyGlobalOptions(command);
     command.action(async (toolNames: string[], _options, actionCommand: Command) => {
@@ -51,7 +51,7 @@ export function registerMcpCommand(program: Command): void {
     });
   });
 
-  registerCommand(cmd, "call", "Call an official MCP tool by name", (command) => {
+  registerCommand(cmd, "exec", "Execute an official MCP tool by name", (command) => {
     command.argument("<tool>", "Official MCP tool name");
     command.option("--data <json>", "Tool arguments as inline JSON");
     command.option(
@@ -59,11 +59,14 @@ export function registerMcpCommand(program: Command): void {
       "Path to a JSON file containing tool arguments (use - for stdin)",
     );
     applyGlobalOptions(command);
-    command.action(async (tool: string, options: CallOptions, actionCommand: Command) => {
+    command.action(async (tool: string, options: ExecOptions, actionCommand: Command) => {
       const globalOptions = resolveGlobalOptions(actionCommand);
       const services = createServices(globalOptions);
-      const argumentsObject = await readMcpCallArguments(options);
-      const result = await services.mcp.callTool(tool, argumentsObject);
+      const argumentsObject = await readMcpExecArguments(options);
+      const result = await services.mcp.callTool("execute_tool", {
+        toolName: tool,
+        arguments: argumentsObject,
+      });
 
       await services.output.render(result, {
         format: globalOptions.output,
@@ -72,7 +75,7 @@ export function registerMcpCommand(program: Command): void {
     });
   });
 
-  registerCommand(cmd, "load-skills", "Load official MCP skills", (command) => {
+  registerCommand(cmd, "skills", "Load official MCP skills", (command) => {
     command.argument("<skillNames...>", "Skill names to load");
     applyGlobalOptions(command);
     command.action(async (skillNames: string[], _options, actionCommand: Command) => {
@@ -87,7 +90,7 @@ export function registerMcpCommand(program: Command): void {
     });
   });
 
-  registerCommand(cmd, "help-center", "Search the official MCP help center", (command) => {
+  registerCommand(cmd, "search", "Search the official MCP help center", (command) => {
     command.argument("<query>", "Help center query");
     applyGlobalOptions(command);
     command.action(async (query: string, _options, actionCommand: Command) => {
@@ -103,12 +106,12 @@ export function registerMcpCommand(program: Command): void {
   });
 }
 
-interface CallOptions {
+interface ExecOptions {
   data?: string;
   file?: string;
 }
 
-async function readMcpCallArguments(options: CallOptions): Promise<Record<string, unknown>> {
+async function readMcpExecArguments(options: ExecOptions): Promise<Record<string, unknown>> {
   const sources = [options.data, options.file].filter((value) => value != null);
   if (sources.length > 1) {
     throw new CliError(
