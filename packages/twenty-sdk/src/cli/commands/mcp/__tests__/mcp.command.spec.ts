@@ -119,6 +119,14 @@ describe("mcp command", () => {
     );
   });
 
+  it("registers schema with schema-focused help text", () => {
+    const command = program.commands.find((candidate) => candidate.name() === "mcp");
+    const schemaCommand = command?.commands.find((candidate) => candidate.name() === "schema");
+
+    expect(schemaCommand?.description()).toBe("Show the schema for one or more MCP tools");
+    expect(schemaCommand?.registeredArguments?.[0]?.description).toBe("Tool names to inspect");
+  });
+
   it("runs mcp exec with tool arguments from --data", async () => {
     mockServices.mcp.callTool.mockResolvedValue({ ok: true });
 
@@ -159,13 +167,16 @@ describe("mcp command", () => {
         "--file",
         "/tmp/args.json",
       ]),
-    ).rejects.toThrow("provide MCP call arguments via --data or --file");
+    ).rejects.toThrow("provide mcp exec arguments via --data or --file");
   });
 
   it("rejects invalid --data JSON for mcp exec", async () => {
     await expect(
       program.parseAsync(["node", "test", "mcp", "exec", "find_companies", "--data", "{not-json}"]),
-    ).rejects.toMatchObject({ code: "INVALID_ARGUMENTS" });
+    ).rejects.toMatchObject({
+      code: "INVALID_ARGUMENTS",
+      message: "mcp exec arguments must be valid JSON.",
+    });
   });
 
   it("rejects non-object JSON for mcp exec", async () => {
@@ -181,7 +192,7 @@ describe("mcp command", () => {
       ]),
     ).rejects.toMatchObject({
       code: "INVALID_ARGUMENTS",
-      message: "MCP call arguments must be a JSON object.",
+      message: "mcp exec arguments must be a JSON object.",
     });
   });
 
@@ -198,7 +209,7 @@ describe("mcp command", () => {
       ]),
     ).rejects.toMatchObject({
       code: "INVALID_ARGUMENTS",
-      message: expect.stringContaining("Unable to read MCP call arguments file"),
+      message: expect.stringContaining("Unable to read mcp exec arguments file"),
     });
   });
 

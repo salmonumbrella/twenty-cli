@@ -36,8 +36,8 @@ export function registerMcpCommand(program: Command): void {
     });
   });
 
-  registerCommand(cmd, "schema", "Learn the schema for one or more MCP tools", (command) => {
-    command.argument("<toolNames...>", "Tool names to learn");
+  registerCommand(cmd, "schema", "Show the schema for one or more MCP tools", (command) => {
+    command.argument("<toolNames...>", "Tool names to inspect");
     applyGlobalOptions(command);
     command.action(async (toolNames: string[], _options, actionCommand: Command) => {
       const globalOptions = resolveGlobalOptions(actionCommand);
@@ -115,7 +115,7 @@ async function readMcpExecArguments(options: ExecOptions): Promise<Record<string
   const sources = [options.data, options.file].filter((value) => value != null);
   if (sources.length > 1) {
     throw new CliError(
-      "provide MCP call arguments via --data or --file, not multiple sources",
+      "provide mcp exec arguments via --data or --file, not multiple sources",
       "INVALID_ARGUMENTS",
     );
   }
@@ -130,7 +130,7 @@ async function readMcpExecArguments(options: ExecOptions): Promise<Record<string
       content = await readFileOrStdin(options.file);
     } catch {
       throw new CliError(
-        `Unable to read MCP call arguments file: ${options.file}`,
+        `Unable to read mcp exec arguments file: ${options.file}`,
         "INVALID_ARGUMENTS",
       );
     }
@@ -154,11 +154,11 @@ function parseMcpCallArguments(rawJson: string | undefined): Record<string, unkn
   try {
     payload = safeJsonParse(rawJson);
   } catch {
-    throw new CliError("MCP call arguments must be valid JSON.", "INVALID_ARGUMENTS");
+    throw new CliError("mcp exec arguments must be valid JSON.", "INVALID_ARGUMENTS");
   }
 
   if (payload === null || typeof payload !== "object" || Array.isArray(payload)) {
-    throw new CliError("MCP call arguments must be a JSON object.", "INVALID_ARGUMENTS");
+    throw new CliError("mcp exec arguments must be a JSON object.", "INVALID_ARGUMENTS");
   }
 
   return payload as Record<string, unknown>;
