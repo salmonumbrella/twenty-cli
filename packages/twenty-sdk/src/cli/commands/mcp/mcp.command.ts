@@ -5,6 +5,9 @@ import { readFileOrStdin, safeJsonParse } from "../../utilities/shared/io";
 import { createServices } from "../../utilities/shared/services";
 import { registerCommand } from "../../utilities/shared/register-command";
 
+const WORKSPACE_SKILLS_UNAVAILABLE_MESSAGE =
+  "The MCP server advertised skill names but returned no loaded skills for this workspace. This is likely a workspace configuration issue, not a CLI transport failure.";
+
 export function registerMcpCommand(program: Command): void {
   const cmd = program.command("mcp").description("Interact with the official Twenty MCP server");
 
@@ -81,7 +84,9 @@ export function registerMcpCommand(program: Command): void {
     command.action(async (skillNames: string[], _options, actionCommand: Command) => {
       const globalOptions = resolveGlobalOptions(actionCommand);
       const services = createServices(globalOptions);
-      const result = await services.mcp.callTool("load_skills", { skillNames });
+      const result = annotateMcpSkillsResult(
+        await services.mcp.callTool("load_skills", { skillNames }),
+      );
 
       await services.output.render(result, {
         format: globalOptions.output,
@@ -162,4 +167,38 @@ function parseMcpCallArguments(rawJson: string | undefined): Record<string, unkn
   }
 
   return payload as Record<string, unknown>;
+}
+
+function annotateMcpSkillsResult(result: unknown): unknown {
+  if (!isAmbiguousSkillsResult(result)) {
+    return result;
+  }
+
+  return {
+    ...result,
+    _cli: {
+      diagnosis: "workspace_skills_unavailable",
+      message: WORKSPACE_SKILLS_UNAVAILABLE_MESSAGE,
+    },
+  };
+}
+
+function isAmbiguousSkillsResult(
+  result: unknown,
+): result is { skills: unknown[]; message: string } & Record<string, unknown> {
+  if (!isRecord(result)) {
+    return false;
+  }
+
+  return (
+    Array.isArray(result.skills) &&
+    result.skills.length === 0 &&
+    typeof result.message === "string" &&
+    result.message.startsWith("No skills found") &&
+    result.message.includes("Available skills:")
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
 }

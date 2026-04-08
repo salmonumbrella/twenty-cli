@@ -45,9 +45,33 @@ export class OutputService {
         break;
       case "text":
       default:
-        this.table.render(result);
+        {
+          const { data: textData, cliMessage } = this.extractTextCliDiagnostic(result);
+          if (cliMessage) {
+            // eslint-disable-next-line no-console
+            console.log(`Note: ${cliMessage}`);
+          }
+          this.table.render(textData);
+        }
         break;
     }
+  }
+
+  private extractTextCliDiagnostic(data: unknown): { data: unknown; cliMessage?: string } {
+    if (!isRecord(data)) {
+      return { data };
+    }
+
+    const cli = data._cli;
+    if (!isRecord(cli) || typeof cli.message !== "string" || cli.message.trim() === "") {
+      return { data };
+    }
+
+    const { _cli, ...rest } = data;
+    return {
+      data: rest,
+      cliMessage: cli.message,
+    };
   }
 
   private formatCsv(data: unknown): string {

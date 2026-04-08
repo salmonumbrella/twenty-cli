@@ -246,6 +246,32 @@ describe("mcp command", () => {
     );
   });
 
+  it("adds a CLI diagnosis when mcp skills returns an ambiguous empty result", async () => {
+    mockServices.mcp.callTool.mockResolvedValue({
+      skills: [],
+      message:
+        "No skills found with names: xlsx. Available skills: workflow-building, data-manipulation, xlsx, pdf.",
+    });
+
+    await program.parseAsync(["node", "test", "mcp", "skills", "xlsx", "-o", "json"]);
+
+    expect(mockServices.output.render).toHaveBeenCalledWith(
+      expect.objectContaining({
+        skills: [],
+        message:
+          "No skills found with names: xlsx. Available skills: workflow-building, data-manipulation, xlsx, pdf.",
+        _cli: {
+          diagnosis: "workspace_skills_unavailable",
+          message:
+            "The MCP server advertised skill names but returned no loaded skills for this workspace. This is likely a workspace configuration issue, not a CLI transport failure.",
+        },
+      }),
+      expect.objectContaining({
+        format: "json",
+      }),
+    );
+  });
+
   it("runs mcp search", async () => {
     mockServices.mcp.callTool.mockResolvedValue({ matches: [] });
 

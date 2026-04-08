@@ -60,6 +60,31 @@ describe("OutputService", () => {
     });
   });
 
+  describe("text output with CLI diagnostics", () => {
+    it("prints a CLI note and omits _cli from the rendered table", async () => {
+      await outputService.render(
+        {
+          message:
+            "No skills found with names: xlsx. Available skills: workflow-building, data-manipulation, xlsx, pdf.",
+          skills: [],
+          _cli: {
+            diagnosis: "workspace_skills_unavailable",
+            message:
+              "The MCP server advertised skill names but returned no loaded skills for this workspace. This is likely a workspace configuration issue, not a CLI transport failure.",
+          },
+        },
+        { format: "text" },
+      );
+
+      expect(consoleSpy).toHaveBeenCalledWith(
+        "Note: The MCP server advertised skill names but returned no loaded skills for this workspace. This is likely a workspace configuration issue, not a CLI transport failure.",
+      );
+      expect(consoleSpy.mock.calls[1]?.[0]).toContain("MESSAGE");
+      expect(consoleSpy.mock.calls[1]?.[0]).toContain("SKILLS");
+      expect(consoleSpy.mock.calls[1]?.[0]).not.toContain("_CLI");
+    });
+  });
+
   describe("JSONL output", () => {
     it("writes arrays as newline-delimited JSON objects", async () => {
       await outputService.render(
