@@ -498,15 +498,15 @@ describe("global-options utilities", () => {
       expect(options.outputKind).toBe("twenty.auth.workspace");
     });
 
-    it("derives agent output kind for mcp help-center from the full command path", () => {
+    it("derives agent output kind for mcp search from the full command path", () => {
       const root = new Command("twenty");
       const mcp = root.command("mcp");
-      const helpCenter = mcp.command("help-center");
-      applyGlobalOptions(helpCenter);
-      root.parse(["node", "twenty", "mcp", "help-center", "-o", "agent"]);
+      const search = mcp.command("search");
+      applyGlobalOptions(search);
+      root.parse(["node", "twenty", "mcp", "search", "-o", "agent"]);
 
-      const options = resolveGlobalOptions(helpCenter);
-      expect(options.outputKind).toBe("twenty.mcp.help-center");
+      const options = resolveGlobalOptions(search);
+      expect(options.outputKind).toBe("twenty.mcp.search");
     });
   });
 });

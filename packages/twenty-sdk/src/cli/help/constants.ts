@@ -20,8 +20,8 @@ Env Precedence:
 Integrations:
   twenty mcp status
   twenty mcp catalog -o json
-  twenty mcp learn find_companies
-  twenty mcp call execute_tool --data '{"toolName":"find_companies","arguments":{}}'
+  twenty mcp schema find_companies
+  twenty mcp exec find_companies --data '{"query":"Acme"}'
 
 Raw Access:
   twenty openapi core
@@ -102,6 +102,10 @@ export const METADATA: Record<string, HelpMetadata> = {
       "twenty serverless list",
       "twenty routes invoke public/ping",
       "twenty workflows invoke-webhook <workflow-id>",
+      "twenty mcp status",
+      "twenty mcp catalog -o json",
+      "twenty mcp schema find_companies",
+      'twenty mcp exec find_companies --data \'{"query":"Acme"}\'',
     ],
   },
   "twenty api": {
@@ -187,16 +191,16 @@ export const METADATA: Record<string, HelpMetadata> = {
     operations: [
       { name: "status", summary: "Show MCP status", mutates: false },
       { name: "catalog", summary: "List available MCP tools", mutates: false },
-      { name: "learn", summary: "Look up MCP tool guidance", mutates: false },
-      { name: "call", summary: "Call an MCP tool directly", mutates: true },
-      { name: "load-skills", summary: "Load MCP skills", mutates: true },
-      { name: "help-center", summary: "Open MCP help resources", mutates: false },
+      { name: "schema", summary: "Get schema guidance for MCP tools", mutates: false },
+      { name: "exec", summary: "Execute a Twenty MCP tool", mutates: true },
+      { name: "skills", summary: "Load MCP skills", mutates: true },
+      { name: "search", summary: "Search MCP help resources", mutates: false },
     ],
     examples: [
       "twenty mcp status",
       "twenty mcp catalog -o json",
-      "twenty mcp learn find_companies",
-      'twenty mcp call execute_tool --data \'{"toolName":"find_companies","arguments":{}}\'',
+      "twenty mcp schema find_companies",
+      'twenty mcp exec find_companies --data \'{"query":"Acme"}\'',
     ],
   },
   "twenty roles": {

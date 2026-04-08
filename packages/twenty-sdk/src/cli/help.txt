@@ -64,8 +64,8 @@ Integrations:
   twenty files upload PATH --target app-tarball
   twenty mcp status
   twenty mcp catalog -o json
-  twenty mcp learn find_companies
-  twenty mcp call execute_tool --data '{"toolName":"find_companies","arguments":{}}'
+  twenty mcp schema find_companies
+  twenty mcp exec find_companies --data '{"query":"Acme"}'
 
 Raw Access:
   twenty openapi core

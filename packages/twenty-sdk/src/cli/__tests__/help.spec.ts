@@ -114,31 +114,35 @@ describe("CLI help contracts", () => {
 
     expect(help.path).toEqual(["twenty", "mcp"]);
     expect(help.operations.map((operation) => operation.name)).toEqual(
-      expect.arrayContaining(["status", "catalog", "learn", "call", "load-skills", "help-center"]),
+      expect.arrayContaining(["status", "catalog", "schema", "exec", "skills", "search"]),
     );
-    expect(help.operations.find((operation) => operation.name === "call")).toEqual(
+    expect(help.operations.map((operation) => operation.name)).not.toEqual(
+      expect.arrayContaining(["learn", "call", "load-skills", "help-center"]),
+    );
+    expect(help.operations.find((operation) => operation.name === "exec")).toEqual(
       expect.objectContaining({
-        summary: "Call an MCP tool directly",
+        summary: "Execute a Twenty MCP tool",
         mutates: true,
       }),
     );
   });
 
-  it("describes the mcp call escape hatch options", () => {
-    const help = buildHelpJson(buildProgram(), ["mcp", "call", "--help-json"]);
+  it("describes the mcp exec escape hatch options", () => {
+    const help = buildHelpJson(buildProgram(), ["mcp", "exec", "--help-json"]);
 
+    expect(help.args.map((argument) => argument.name)).toEqual(["tool"]);
     expect(help.options.some((option) => option.name === "data")).toBe(true);
     expect(help.options.some((option) => option.name === "file")).toBe(true);
     expect(help.options.some((option) => option.name === "args")).toBe(false);
     expect(help.options.some((option) => option.name === "args-file")).toBe(false);
   });
 
-  it("builds command help JSON for mcp help-center", () => {
-    const help = buildHelpJson(buildProgram(), ["mcp", "help-center", "--help-json"]);
+  it("builds command help JSON for mcp search", () => {
+    const help = buildHelpJson(buildProgram(), ["mcp", "search", "--help-json"]);
 
     expect(help.kind).toBe("command");
-    expect(help.path).toEqual(["twenty", "mcp", "help-center"]);
-    expect(help.name).toBe("help-center");
+    expect(help.path).toEqual(["twenty", "mcp", "search"]);
+    expect(help.name).toBe("search");
     expect(help.args.map((argument) => argument.name)).toEqual(["query"]);
   });
 
@@ -223,7 +227,8 @@ describe("CLI help contracts", () => {
 
     expect(mcpHelp.examples).toEqual(
       expect.arrayContaining([
-        'twenty mcp call execute_tool --data \'{"toolName":"find_companies","arguments":{}}\'',
+        "twenty mcp schema find_companies",
+        'twenty mcp exec find_companies --data \'{"query":"Acme"}\'',
       ]),
     );
   });
