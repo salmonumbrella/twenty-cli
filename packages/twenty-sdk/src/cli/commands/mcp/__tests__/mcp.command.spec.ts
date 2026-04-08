@@ -49,7 +49,9 @@ describe("mcp command", () => {
     const subcommands = command?.commands.map((candidate) => candidate.name()) ?? [];
 
     expect(subcommands).toEqual(["status", "catalog", "schema", "exec", "skills", "search"]);
-    expect(subcommands).not.toEqual(expect.arrayContaining(["learn", "call", "load-skills", "help-center"]));
+    expect(subcommands).not.toEqual(
+      expect.arrayContaining(["learn", "call", "load-skills", "help-center"]),
+    );
   });
 
   it("runs mcp status and renders the structured status object", async () => {

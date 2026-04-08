@@ -69,8 +69,10 @@ twenty openapi metadata --output-file metadata-openapi.json
 This wraps Twenty's public `/rest/open-api/core` and `/rest/open-api/metadata` endpoints directly.
 
 ### MCP
+
 Discover and execute logical Twenty tools through the unified MCP endpoint.
 Examples:
+
 - twenty mcp status
 - twenty mcp catalog -o json
 - twenty mcp schema find_companies
