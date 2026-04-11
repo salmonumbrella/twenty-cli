@@ -11,7 +11,7 @@ Rework the upstream Raycast `extensions/twenty` extension through a sequence of 
 The target outcome is:
 
 - keep `extensions/twenty` as the upstream extension instead of creating a forked store entry
-- add correct self-hosted Twenty support through a base URL preference
+- improve the existing base URL preference so onboarding clearly supports hosted and self-hosted Twenty instances
 - internally replace the current narrow `TwentySDK` implementation with a typed client/service layer
 - preserve and improve generic native Twenty object-record creation
 - add a Google-Contacts-style people workflow backed by the native Twenty `people` object
@@ -36,7 +36,7 @@ Current state:
 
 - active upstream extension with recent maintenance
 - only supports a single `Create Object Record` command
-- already exposes a token preference and a URL preference
+- already exposes a token preference and a URL preference, but the hosted versus self-hosted onboarding is not clear enough
 - current implementation is built around a narrow `TwentySDK` wrapper and object-create form flow
 
 Problems in the current implementation:
@@ -69,6 +69,16 @@ The local `twenty-cli` repo contains cleaner primitives than the current Raycast
 - search service for Twenty GraphQL search
 
 These patterns should be ported into the Raycast extension, but the Raycast extension should not directly depend on the external `@salmonumbrella/twenty-cli` package at runtime.
+
+## Implementation Setup
+
+Before implementation begins, clone `raycast/extensions` locally and work in that checkout as the PR source.
+
+Optional helper workflow:
+
+- generate a local digest or gitingest-style summary for fast agent orientation
+
+But the source of truth should remain the local upstream clone itself, not a generated digest file.
 
 ## Goals
 
@@ -115,6 +125,7 @@ PR 1 should introduce a typed internal service layer with responsibilities rough
 
 - config and preference resolution
 - URL normalization
+- onboarding-friendly preference defaults and validation
 - HTTP client and error translation
 - metadata service for objects and fields
 - records service for list/get/create/update/delete
@@ -129,6 +140,8 @@ The client layer should normalize:
 - input values that may already include `/rest`
 
 The client layer should not silently fall back to production hosted Twenty when the user supplied an invalid self-hosted URL. Invalid user input should surface as configuration error.
+
+The onboarding flow should make it obvious that users can point the extension at a custom Twenty URL. The hosted default should be treated as a first-class configurable value rather than an invisible fallback.
 
 ### Generic Object Handling
 
@@ -166,6 +179,8 @@ Expected behaviors:
 - create a new person from a full form
 - quick-add a person from arguments or a compact form
 - action shortcuts for relevant contact operations when the fields exist
+- direct copy actions for primary email and phone, with keyboard shortcuts where Raycast supports them
+- linked-note lookup when a person has related Twenty notes that can be fetched cleanly via API
 
 Field mapping should remain Twenty-native. Examples of likely mappings:
 
@@ -179,21 +194,25 @@ Field mapping should remain Twenty-native. Examples of likely mappings:
 
 Not every Google Contacts feature should be mirrored. If a feature does not map cleanly to native Twenty `people`, it should be omitted or adapted instead of faked.
 
+The `people` workflow must be metadata-driven enough to support custom fields on the native `people` object. Standard fields should get polished handling, but custom fields on `people` should still be displayed and editable through the same API-backed form and detail flow.
+
 ## Delivery Plan
 
 ### PR 1: Foundation Rewrite And Self-Hosted Support
 
 Scope:
 
-- add and validate explicit base URL preference handling
+- validate and improve explicit base URL preference handling
 - rewrite the current `TwentySDK` into a typed internal client/service layer
 - clean up error handling and configuration failures
 - rebuild generic object-create flow on top of the new services
 - finish generic native field support for phone number, currency, boolean, rating, and multi-select
+- make hosted versus self-hosted onboarding clearer for first-time setup
 
 Exit criteria:
 
 - hosted and self-hosted instances both work
+- onboarding clearly presents the hosted default URL and the ability to override it with a custom instance URL
 - no object-name hacks for primary-field assumptions remain in the core create flow unless forced by missing metadata
 - generic create flow remains functional
 
@@ -206,11 +225,15 @@ Scope:
 - add create/edit person flow
 - add quick-add person command
 - add person actions that map cleanly to native Twenty data
+- support copy-email and copy-phone actions with shortcuts where possible
+- fetch and surface linked Twenty notes when the person schema or relations make that available
+- ensure custom fields on the native `people` object are visible and editable through metadata-driven rendering
 
 Exit criteria:
 
 - extension can be used as a contact browser/editor for a normal Twenty `people` dataset
 - self-hosted instances work the same as hosted ones
+- custom fields on `people` do not disappear just because the UI was designed around standard fields
 
 ### PR 3: Extension Expansion
 
