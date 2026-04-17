@@ -10,10 +10,14 @@ import { ExportService } from "../file/services/export.service";
 import { ImportService } from "../file/services/import.service";
 import { McpService } from "../mcp/services/mcp.service";
 import { SearchService } from "../search/services/search.service";
+import { DbProfileService } from "../db/services/db-profile.service";
+import { DbStatusService } from "../db/services/db-status.service";
 import { GlobalOptions } from "./global-options";
 
 export interface CliServices {
   config: ConfigService;
+  dbProfiles: DbProfileService;
+  dbStatus: DbStatusService;
   api: ApiService;
   publicHttp: PublicHttpService;
   search: SearchService;
@@ -33,6 +37,8 @@ export function createOutputService(globalOptions: GlobalOptions): OutputService
 
 export function createServices(globalOptions: GlobalOptions): CliServices {
   const config = new ConfigService();
+  const dbProfiles = new DbProfileService(config);
+  const dbStatus = new DbStatusService(dbProfiles);
   const api = new ApiService(config, {
     workspace: globalOptions.workspace,
     debug: globalOptions.debug,
@@ -56,6 +62,8 @@ export function createServices(globalOptions: GlobalOptions): CliServices {
 
   return {
     config,
+    dbProfiles,
+    dbStatus,
     api,
     publicHttp,
     search,

@@ -21,6 +21,8 @@ Auth & Workspace:
   twenty auth status            Show the active auth/config state
   twenty auth workspace         Query the current workspace
   twenty auth discover ORIGIN   Discover a public workspace by domain
+  twenty db status              Show db-first read diagnostics
+  twenty db profile list        List cached db profiles
 
 Records:
   twenty api list people -o json
@@ -93,6 +95,8 @@ Environment:
   TWENTY_TOKEN                  API token
   TWENTY_BASE_URL               Base URL (default: https://api.twenty.com)
   TWENTY_PROFILE                Default workspace profile
+  TWENTY_DB_PROFILE             Default db profile
+  TWENTY_DB_PROXY_URL           Default db proxy URL
   TWENTY_OUTPUT                 Default output format
   TWENTY_QUERY                  Default JMESPath output filter
   TWENTY_ENV_FILE               Default explicit env file path
