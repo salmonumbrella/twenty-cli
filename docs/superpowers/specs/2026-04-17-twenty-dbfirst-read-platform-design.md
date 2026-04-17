@@ -8,8 +8,8 @@ Scope: Implicit DB-first read architecture for `twenty-cli`
 
 Local reference repos used during this design:
 
-- `beeper-cli`: `/Users/sadimir/code/experiments/beeper-cli`
-- `chatwoot-cli`: `/Users/sadimir/repositories/github.com/wanver/chatwoot-cli`
+- `beeper-cli`: `~/code/experiments/beeper-cli`
+- `chatwoot-cli`: `~/repositories/github.com/wanver/chatwoot-cli`
 
 These paths matter because this design intentionally borrows:
 
