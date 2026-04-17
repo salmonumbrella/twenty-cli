@@ -4,6 +4,18 @@ Date: 2026-04-17
 Status: Proposed
 Scope: Implicit DB-first read architecture for `twenty-cli`
 
+## Reference Codebases
+
+Local reference repos used during this design:
+
+- `beeper-cli`: `/Users/sadimir/code/experiments/beeper-cli`
+- `chatwoot-cli`: `/Users/sadimir/repositories/github.com/wanver/chatwoot-cli`
+
+These paths matter because this design intentionally borrows:
+
+- operator diagnostics ideas from `beeper-cli`
+- the backend-owned DB-first read architecture from `chatwoot-cli`
+
 ## Summary
 
 `twenty-cli` should adopt a DB-first read architecture for self-hosted and
