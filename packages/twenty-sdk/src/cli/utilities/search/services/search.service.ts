@@ -1,108 +1,32 @@
 import { ApiService } from "../../api/services/api.service";
-import { GraphQLResponse, formatGraphqlErrors } from "../../api/graphql-response";
-import { CliError } from "../../errors/cli-error";
+import type { SearchReadBackend } from "../../readbackend/types";
+import { ApiSearchService, type SearchOptions } from "./api-search.service";
 
 type SearchApiClient = Pick<ApiService, "post">;
 
-const DEFAULT_SEARCH_LIMIT = 20;
-
-export interface SearchResult {
-  recordId: string;
-  objectNameSingular: string;
-  objectLabelSingular: string;
-  label: string;
-  imageUrl?: string | null;
-  tsRankCD: number;
-  tsRank: number;
-  cursor?: string;
-}
-
-export interface SearchPageInfo {
-  hasNextPage?: boolean;
-  endCursor?: string;
-}
-
-export interface SearchResponse {
-  data: SearchResult[];
-  pageInfo?: SearchPageInfo;
-}
-
-type GraphQLSearchResponse = GraphQLResponse<{
-  search?: {
-    edges?: Array<{
-      cursor: string;
-      node: SearchResult;
-    }>;
-    pageInfo?: SearchPageInfo;
-  };
-}>;
+export type {
+  SearchOptions,
+  SearchPageInfo,
+  SearchResponse,
+  SearchResult,
+} from "./api-search.service";
 
 export class SearchService {
-  constructor(private api: SearchApiClient) {}
+  private readonly readBackend: SearchReadBackend;
 
-  async search(options: {
-    query: string;
-    limit?: number;
-    objects?: string[];
-    excludeObjects?: string[];
-    after?: string;
-    filter?: Record<string, unknown>;
-  }): Promise<SearchResponse> {
-    const limit = options.limit ?? DEFAULT_SEARCH_LIMIT;
-    const query = `
-      query Search($searchInput: String!, $limit: Int!, $after: String, $filter: ObjectRecordFilterInput, $includedObjectNameSingulars: [String!], $excludedObjectNameSingulars: [String!]) {
-        search(
-          searchInput: $searchInput
-          limit: $limit
-          after: $after
-          filter: $filter
-          includedObjectNameSingulars: $includedObjectNameSingulars
-          excludedObjectNameSingulars: $excludedObjectNameSingulars
-        ) {
-          edges {
-            cursor
-            node {
-              recordId
-              objectNameSingular
-              objectLabelSingular
-              label
-              imageUrl
-              tsRankCD
-              tsRank
-            }
-          }
-          pageInfo {
-            hasNextPage
-            endCursor
-          }
-        }
-      }
-    `;
-    const variables = {
-      searchInput: options.query,
-      limit,
-      after: options.after,
-      filter: options.filter,
-      includedObjectNameSingulars: options.objects,
-      excludedObjectNameSingulars: options.excludeObjects,
-    };
-    const response = await this.api.post<GraphQLSearchResponse>("/graphql", { query, variables });
-    const payload = response.data;
-    const errorMessage = formatGraphqlErrors(payload);
-
-    if (errorMessage) {
-      throw new CliError(errorMessage, "API_ERROR");
+  constructor(api: SearchApiClient, readBackend?: SearchReadBackend) {
+    if (readBackend) {
+      this.readBackend = readBackend;
+      return;
     }
 
-    const search = payload.data?.search;
-
-    return {
-      data:
-        search?.edges?.map((edge) => ({
-          ...edge.node,
-          cursor: edge.cursor,
-        })) ?? [],
-      pageInfo: search?.pageInfo,
+    const apiSearch = new ApiSearchService(api);
+    this.readBackend = {
+      runSearch: (options) => apiSearch.search(options),
     };
+  }
+
+  async search(options: SearchOptions) {
+    return this.readBackend.runSearch(options);
   }
 }

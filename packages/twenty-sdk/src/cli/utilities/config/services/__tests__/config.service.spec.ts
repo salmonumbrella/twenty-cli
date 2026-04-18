@@ -391,7 +391,7 @@ describe("ConfigService", () => {
       await service.saveDbProfile("prod", {
         name: "readonly",
         workspace: "prod",
-        proxyUrl: "http://localhost:4010",
+        databaseUrl: "postgresql://db.example.com:5432/twenty",
         credentialSource: "env",
       });
 
@@ -402,7 +402,7 @@ describe("ConfigService", () => {
       expect((savedConfig.workspaces?.prod as any).db.profiles.readonly).toEqual({
         name: "readonly",
         workspace: "prod",
-        proxyUrl: "http://localhost:4010",
+        databaseUrl: "postgresql://db.example.com:5432/twenty",
         credentialSource: "env",
       });
     });
@@ -419,13 +419,13 @@ describe("ConfigService", () => {
                 readonly: {
                   name: "readonly",
                   workspace: "prod",
-                  proxyUrl: "http://localhost:4010",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty",
                   credentialSource: "env",
                 },
                 writer: {
                   name: "writer",
                   workspace: "prod",
-                  proxyUrl: "http://localhost:4011",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty_writer",
                   credentialSource: "env",
                 },
               },
@@ -466,13 +466,13 @@ describe("ConfigService", () => {
                 readonly: {
                   name: "readonly",
                   workspace: "prod",
-                  proxyUrl: "http://localhost:4010",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty",
                   credentialSource: "env",
                 },
                 writer: {
                   name: "writer",
                   workspace: "prod",
-                  proxyUrl: "http://localhost:4011",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty_writer",
                   credentialSource: "env",
                 },
               },
@@ -490,13 +490,13 @@ describe("ConfigService", () => {
         {
           name: "readonly",
           workspace: "prod",
-          proxyUrl: "http://localhost:4010",
+          databaseUrl: "postgresql://db.example.com:5432/twenty",
           credentialSource: "env",
         },
         {
           name: "writer",
           workspace: "prod",
-          proxyUrl: "http://localhost:4011",
+          databaseUrl: "postgresql://db.example.com:5432/twenty_writer",
           credentialSource: "env",
         },
       ]);
@@ -520,7 +520,7 @@ describe("ConfigService", () => {
                 readonly: {
                   name: "readonly",
                   workspace: "prod",
-                  proxyUrl: "http://localhost:4010",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty",
                   credentialSource: "env",
                 },
               },

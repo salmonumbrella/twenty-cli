@@ -22,7 +22,7 @@ describe("db command", () => {
 
   beforeEach(() => {
     delete process.env.TWENTY_DB_PROFILE;
-    delete process.env.TWENTY_DB_PROXY_URL;
+    delete process.env.TWENTY_DATABASE_URL;
     program = new Command();
     program.exitOverride();
     registerDbCommand(program);
@@ -75,7 +75,7 @@ describe("db command", () => {
   afterEach(() => {
     consoleSpy.mockRestore();
     delete process.env.TWENTY_DB_PROFILE;
-    delete process.env.TWENTY_DB_PROXY_URL;
+    delete process.env.TWENTY_DATABASE_URL;
     vi.clearAllMocks();
   });
 
@@ -125,7 +125,7 @@ describe("db command", () => {
     mockGetProfile.mockResolvedValue({
       name: "explicit",
       workspace: "prod",
-      proxyUrl: "http://localhost:4010",
+      databaseUrl: "postgresql://db.example.com:5432/twenty",
       credentialSource: "manual",
     });
 
@@ -147,7 +147,7 @@ describe("db command", () => {
     mockGetProfile.mockResolvedValue({
       name: "cached",
       workspace: "prod",
-      proxyUrl: "http://localhost:4011",
+      databaseUrl: "postgresql://db.example.com:5432/twenty",
       credentialSource: "manual",
     });
 
@@ -166,7 +166,7 @@ describe("db command", () => {
     mockGetProfile.mockResolvedValue({
       name: "status-profile",
       workspace: "prod",
-      proxyUrl: "http://localhost:4012",
+      databaseUrl: "postgresql://db.example.com:5432/twenty",
       credentialSource: "manual",
     });
 
@@ -188,11 +188,11 @@ describe("db command", () => {
     );
   });
 
-  it("initializes a db profile from a proxy URL", async () => {
+  it("initializes a db profile from a database URL", async () => {
     mockInitProfile.mockResolvedValue({
       name: "readonly",
       workspace: "default",
-      proxyUrl: "http://localhost:4010",
+      databaseUrl: "postgresql://db.example.com:5432/twenty",
       credentialSource: "manual",
       notes: "seeded",
     });
@@ -204,8 +204,8 @@ describe("db command", () => {
       "profile",
       "init",
       "readonly",
-      "--proxy-url",
-      "http://localhost:4010",
+      "--database-url",
+      "postgresql://db.example.com:5432/twenty",
       "--notes",
       "seeded",
     ]);
@@ -213,13 +213,13 @@ describe("db command", () => {
     expect(mockInitProfile).toHaveBeenCalledWith({
       workspace: undefined,
       name: "readonly",
-      proxyUrl: "http://localhost:4010",
+      databaseUrl: "postgresql://db.example.com:5432/twenty",
       notes: "seeded",
     });
     expect(outputRender).toHaveBeenCalledWith(
       expect.objectContaining({
         name: "readonly",
-        proxyUrl: "http://localhost:4010",
+        databaseUrl: "postgresql://db.example.com:5432/twenty",
         credentialSource: "manual",
         notes: "seeded",
       }),
@@ -229,12 +229,12 @@ describe("db command", () => {
     );
   });
 
-  it("uses TWENTY_DB_PROXY_URL when initializing a db profile", async () => {
-    process.env.TWENTY_DB_PROXY_URL = "http://localhost:4999";
+  it("uses TWENTY_DATABASE_URL when initializing a db profile", async () => {
+    process.env.TWENTY_DATABASE_URL = "postgresql://db.example.com:5432/twenty";
     mockInitProfile.mockResolvedValue({
       name: "cached",
       workspace: "default",
-      proxyUrl: "http://localhost:4999",
+      databaseUrl: "postgresql://db.example.com:5432/twenty",
       credentialSource: "manual",
     });
 
@@ -243,7 +243,7 @@ describe("db command", () => {
     expect(mockInitProfile).toHaveBeenCalledWith({
       workspace: undefined,
       name: "cached",
-      proxyUrl: "http://localhost:4999",
+      databaseUrl: "postgresql://db.example.com:5432/twenty",
       notes: undefined,
     });
   });

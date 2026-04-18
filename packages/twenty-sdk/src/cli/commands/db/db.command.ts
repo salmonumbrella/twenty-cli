@@ -5,7 +5,7 @@ import { createCommandContext } from "../../utilities/shared/context";
 import { registerCommand } from "../../utilities/shared/register-command";
 
 interface DbProfileInitOptions {
-  proxyUrl?: string;
+  databaseUrl?: string;
   notes?: string;
 }
 
@@ -38,25 +38,25 @@ export function registerDbCommand(program: Command): void {
 
   registerCommand(profileCmd, "init", "Initialize a db profile", (command) => {
     command.argument("<name>", "Profile name");
-    command.option("--proxy-url <url>", "DB proxy URL");
+    command.option("--database-url <url>", "Database URL");
     command.option("--notes <text>", "Profile notes");
     applyGlobalOptions(command);
     command.action(async (name: string, options: DbProfileInitOptions, actionCommand: Command) => {
       const { globalOptions, services } = createCommandContext(actionCommand);
-      const proxyUrl = options.proxyUrl ?? process.env.TWENTY_DB_PROXY_URL;
+      const databaseUrl = options.databaseUrl ?? process.env.TWENTY_DATABASE_URL;
 
-      if (!proxyUrl) {
+      if (!databaseUrl) {
         throw new CliError(
-          "Missing DB proxy URL.",
+          "Missing database URL.",
           "INVALID_ARGUMENTS",
-          'Provide --proxy-url or set TWENTY_DB_PROXY_URL.',
+          "Provide --database-url or set TWENTY_DATABASE_URL.",
         );
       }
 
       const profile = await services.dbProfiles.initProfile({
         workspace: globalOptions.workspace,
         name,
-        proxyUrl,
+        databaseUrl,
         notes: options.notes,
       });
 
@@ -86,9 +86,10 @@ export function registerDbCommand(program: Command): void {
     command.action(async (name: string | undefined, _options: unknown, actionCommand: Command) => {
       const { globalOptions, services } = createCommandContext(actionCommand);
       const envName = process.env.TWENTY_DB_PROFILE;
-      const resolvedStatus = name || envName
-        ? undefined
-        : await services.dbStatus.getStatus({ workspace: globalOptions.workspace });
+      const resolvedStatus =
+        name || envName
+          ? undefined
+          : await services.dbStatus.getStatus({ workspace: globalOptions.workspace });
       const resolvedName = resolveProfileName(name, envName, resolvedStatus?.profileName);
 
       if (!resolvedName) {

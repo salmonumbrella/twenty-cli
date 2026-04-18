@@ -27,8 +27,10 @@ Auth & Workspace:
 Records:
   twenty api list people -o json
   twenty api get companies RECORD_ID
+  twenty api group-by people --field city
   twenty api create notes --data '{"title":"Hello"}'
   twenty search "acme" --objects person,company
+  Supported reads auto prefer DB when TWENTY_DATABASE_URL or an active db profile is set; writes stay on the API
 
 Metadata & Admin:
   twenty api-metadata objects list
@@ -96,7 +98,7 @@ Environment:
   TWENTY_BASE_URL               Base URL (default: https://api.twenty.com)
   TWENTY_PROFILE                Default workspace profile
   TWENTY_DB_PROFILE             Default db profile
-  TWENTY_DB_PROXY_URL           Default db proxy URL
+  TWENTY_DATABASE_URL           Default database URL
   TWENTY_OUTPUT                 Default output format
   TWENTY_QUERY                  Default JMESPath output filter
   TWENTY_ENV_FILE               Default explicit env file path

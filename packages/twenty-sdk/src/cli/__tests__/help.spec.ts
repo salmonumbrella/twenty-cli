@@ -563,6 +563,19 @@ describe("CLI help contracts", () => {
     }
   });
 
+  it("renders the direct database env var in root help text", async () => {
+    const program = buildProgram();
+    const write = vi.fn();
+
+    const handled = await maybeHandleInlineHelp(program, [], write);
+
+    expect(handled).toBe(true);
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write.mock.calls[0][0]).toContain("TWENTY_DATABASE_URL");
+    expect(write.mock.calls[0][0]).toContain("Supported reads auto prefer DB");
+    expect(write.mock.calls[0][0]).not.toContain("TWENTY_DB_PROXY_URL");
+  });
+
   it("renders command help JSON without requiring positional operations", async () => {
     const program = buildProgram();
     const write = vi.fn();

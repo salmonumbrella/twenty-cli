@@ -13,7 +13,7 @@ export interface DbProfileConfig {
   name: string;
   workspace: string;
   workspaceId?: string;
-  proxyUrl: string;
+  databaseUrl: string;
   credentialSource: string;
   cachedUser?: string;
   cachedPassword?: string;

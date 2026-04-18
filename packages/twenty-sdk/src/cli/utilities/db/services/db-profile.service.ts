@@ -4,7 +4,7 @@ import { ConfigService, type DbProfileConfig } from "../../config/services/confi
 export interface DbProfileInitInput {
   workspace?: string;
   name: string;
-  proxyUrl: string;
+  databaseUrl: string;
   notes?: string;
   workspaceId?: string;
   cachedUser?: string;
@@ -28,7 +28,7 @@ export class DbProfileService {
     const profile: DbProfileConfig = {
       name: input.name,
       workspace,
-      proxyUrl: input.proxyUrl,
+      databaseUrl: input.databaseUrl,
       credentialSource: "manual",
       notes: input.notes,
       workspaceId: input.workspaceId,
