@@ -6,6 +6,25 @@ import { CliError } from "../../errors/cli-error";
 export interface WorkspaceConfig {
   apiUrl?: string;
   apiKey?: string;
+  db?: WorkspaceDbConfig;
+}
+
+export interface DbProfileConfig {
+  name: string;
+  workspace: string;
+  workspaceId?: string;
+  databaseUrl: string;
+  credentialSource: string;
+  cachedUser?: string;
+  cachedPassword?: string;
+  lastRefreshedAt?: string;
+  lastValidatedAt?: string;
+  notes?: string;
+}
+
+export interface WorkspaceDbConfig {
+  activeProfile?: string;
+  profiles?: Record<string, DbProfileConfig>;
 }
 
 export interface TwentyConfigFile {
@@ -152,7 +171,10 @@ export class ConfigService {
       config.defaultWorkspace = name;
     }
 
-    config.workspaces[name] = workspaceConfig;
+    config.workspaces[name] = {
+      ...config.workspaces[name],
+      ...workspaceConfig,
+    };
     await this.saveConfigFile(config);
   }
 
@@ -177,7 +199,134 @@ export class ConfigService {
     await this.saveConfigFile(config);
   }
 
+  async saveDbProfile(workspace: string, profile: DbProfileConfig): Promise<void> {
+    const config = await this.loadConfigFile();
+    if (!config) {
+      throw new CliError(
+        `Workspace '${workspace}' does not exist`,
+        "INVALID_ARGUMENTS",
+        'Use "twenty auth list" to see available workspaces.',
+      );
+    }
+    const workspaceConfig = this.ensureWorkspaceExists(config, workspace);
+
+    if (!workspaceConfig.db) {
+      workspaceConfig.db = {};
+    }
+    if (!workspaceConfig.db.profiles) {
+      workspaceConfig.db.profiles = {};
+    }
+
+    workspaceConfig.db.profiles[profile.name] = profile;
+    await this.saveConfigFile(config);
+  }
+
+  async setActiveDbProfile(workspace: string, name: string): Promise<void> {
+    const config = await this.loadConfigFile();
+    if (!config) {
+      throw new CliError(
+        `Workspace '${workspace}' does not exist`,
+        "INVALID_ARGUMENTS",
+        'Use "twenty auth list" to see available workspaces.',
+      );
+    }
+    const workspaceConfig = this.ensureWorkspaceExists(config, workspace);
+    this.getDbProfileFromWorkspaceConfig(workspaceConfig, workspace, name);
+
+    if (!workspaceConfig.db) {
+      workspaceConfig.db = {};
+    }
+
+    workspaceConfig.db.activeProfile = name;
+    await this.saveConfigFile(config);
+  }
+
+  async getDbProfile(workspace: string, name: string): Promise<DbProfileConfig> {
+    const config = await this.loadConfigFile();
+    const workspaceConfig = this.ensureWorkspaceExists(config, workspace);
+    return this.getDbProfileFromWorkspaceConfig(workspaceConfig, workspace, name);
+  }
+
+  async getActiveDbProfile(workspace: string): Promise<DbProfileConfig | undefined> {
+    const config = await this.loadConfigFile();
+    const workspaceConfig = this.ensureWorkspaceExists(config, workspace);
+    const activeProfile = workspaceConfig.db?.activeProfile;
+    if (!activeProfile) {
+      return undefined;
+    }
+
+    return this.getDbProfileFromWorkspaceConfig(workspaceConfig, workspace, activeProfile);
+  }
+
+  async listDbProfiles(workspace: string): Promise<DbProfileConfig[]> {
+    const config = await this.loadConfigFile();
+    const workspaceConfig = this.ensureWorkspaceExists(config, workspace);
+    return Object.values(workspaceConfig.db?.profiles ?? {});
+  }
+
+  async removeDbProfile(workspace: string, name: string): Promise<void> {
+    const config = await this.loadConfigFile();
+    if (!config) {
+      throw new CliError(
+        `Workspace '${workspace}' does not exist`,
+        "INVALID_ARGUMENTS",
+        'Use "twenty auth list" to see available workspaces.',
+      );
+    }
+    const workspaceConfig = this.ensureWorkspaceExists(config, workspace);
+    const profiles = workspaceConfig.db?.profiles;
+    if (!profiles || !profiles[name]) {
+      throw new CliError(
+        `DB profile '${name}' does not exist in workspace '${workspace}'`,
+        "INVALID_ARGUMENTS",
+        'Use "twenty db profile list" to see available profiles.',
+      );
+    }
+
+    delete profiles[name];
+
+    if (workspaceConfig.db?.activeProfile === name) {
+      const remainingProfiles = Object.keys(profiles);
+      workspaceConfig.db.activeProfile = remainingProfiles[0];
+    }
+
+    await this.saveConfigFile(config);
+  }
+
   private async saveConfigFile(config: TwentyConfigFile): Promise<void> {
     await fs.outputFile(this.configPath, JSON.stringify(config, null, 2), "utf-8");
+  }
+
+  private ensureWorkspaceExists(
+    config: TwentyConfigFile | null,
+    workspace: string,
+  ): WorkspaceConfig {
+    const workspaceConfig = config?.workspaces?.[workspace];
+    if (!config?.workspaces || !workspaceConfig) {
+      throw new CliError(
+        `Workspace '${workspace}' does not exist`,
+        "INVALID_ARGUMENTS",
+        'Use "twenty auth list" to see available workspaces.',
+      );
+    }
+
+    return workspaceConfig;
+  }
+
+  private getDbProfileFromWorkspaceConfig(
+    workspaceConfig: WorkspaceConfig,
+    workspace: string,
+    name: string,
+  ): DbProfileConfig {
+    const profile = workspaceConfig.db?.profiles?.[name];
+    if (!profile) {
+      throw new CliError(
+        `DB profile '${name}' does not exist in workspace '${workspace}'`,
+        "INVALID_ARGUMENTS",
+        'Use "twenty db profile list" to see available profiles.',
+      );
+    }
+
+    return profile;
   }
 }

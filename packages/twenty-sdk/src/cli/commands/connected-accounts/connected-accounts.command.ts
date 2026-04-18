@@ -102,7 +102,7 @@ export function registerConnectedAccountsCommand(program: Command): void {
             cursor: options.cursor,
           });
           await services.output.render(
-            response.data.map((row) => sanitizeConnectedAccount(row, options)),
+            response.data.map((row: unknown) => sanitizeConnectedAccount(row, options)),
             {
               format: globalOptions.output,
               query: globalOptions.query,

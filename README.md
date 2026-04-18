@@ -210,6 +210,8 @@ The current upstream enum only exposes `AWS_SES`, so the CLI defaults `--driver`
 ### Postgres Proxy
 
 Manage the workspace Postgres proxy credential lifecycle.
+This is optional bootstrap support for deployments that expose it, not the
+primary DB-first configuration path.
 
 ```bash
 twenty postgres-proxy <operation> [options]
@@ -239,6 +241,25 @@ twenty postgres-proxy disable
 ```
 
 Upstream returns plaintext credentials for all three operations, so the CLI masks `password` by default unless `--show-password` is set explicitly.
+
+### DB-First Reads
+
+For self-hosted deployments, the CLI can automatically prefer direct database
+reads for supported lookup paths when you provide `TWENTY_DATABASE_URL` in
+`.env`, `.env.local`, your explicit `--env-file`, or the process environment.
+You can also save the same URL into a workspace-scoped DB profile and make that
+profile active with `twenty db profile use <name>`.
+
+Today the DB-first path is intended for fast, read-only lookups:
+
+- `twenty search`
+- `twenty api list <object>`
+- `twenty api get <object> <id>`
+- `twenty api group-by <object>`
+
+Mutations stay on the official Twenty API even when DB-first reads are active.
+If no DB configuration is present, or if a supported DB read cannot run safely,
+the CLI falls back to the API path.
 
 ### Roles
 

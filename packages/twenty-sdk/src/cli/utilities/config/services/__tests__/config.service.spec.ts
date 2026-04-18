@@ -10,13 +10,21 @@ vi.mock("os");
 describe("ConfigService", () => {
   const mockHomedir = "/home/testuser";
   const mockConfigPath = `${mockHomedir}/.twenty/config.json`;
+  const envKeys = ["TWENTY_TOKEN", "TWENTY_BASE_URL", "TWENTY_PROFILE"] as const;
+  let originalEnv: NodeJS.ProcessEnv;
 
   beforeEach(() => {
+    originalEnv = process.env;
     vi.mocked(os.homedir).mockReturnValue(mockHomedir);
     vi.clearAllMocks();
+    process.env = { ...originalEnv };
+    for (const key of envKeys) {
+      delete process.env[key];
+    }
   });
 
   afterEach(() => {
+    process.env = originalEnv;
     vi.restoreAllMocks();
   });
 
@@ -109,11 +117,7 @@ describe("ConfigService", () => {
     });
 
     it("resolves apiUrl from TWENTY_BASE_URL without requiring auth", async () => {
-      const originalEnv = process.env;
-      process.env = {
-        ...originalEnv,
-        TWENTY_BASE_URL: "https://env.twenty.com",
-      };
+      process.env.TWENTY_BASE_URL = "https://env.twenty.com";
       vi.mocked(fs.pathExists).mockResolvedValue(false as never);
 
       const service = new ConfigService();
@@ -121,8 +125,6 @@ describe("ConfigService", () => {
 
       expect(result.apiUrl).toBe("https://env.twenty.com");
       expect(result.apiKey).toBe("");
-
-      process.env = originalEnv;
     });
 
     it("throws the selected workspace auth guidance when auth is required and missing", async () => {
@@ -370,6 +372,175 @@ describe("ConfigService", () => {
       expect(savedConfig.workspaces?.beta).toBeUndefined();
       // Should pick one of the remaining workspaces as default
       expect(["alpha", "gamma"]).toContain(savedConfig.defaultWorkspace);
+    });
+  });
+
+  describe("db profiles", () => {
+    it("stores named db profiles under a workspace", async () => {
+      const config = {
+        workspaces: {
+          prod: { apiKey: "key1", apiUrl: "https://api.twenty.com" },
+        },
+        defaultWorkspace: "prod",
+      } as TwentyConfigFile;
+      vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(config) as never);
+      vi.mocked(fs.outputFile).mockResolvedValue(undefined as never);
+
+      const service = new ConfigService();
+      await service.saveDbProfile("prod", {
+        name: "readonly",
+        workspace: "prod",
+        databaseUrl: "postgresql://db.example.com:5432/twenty",
+        credentialSource: "env",
+      });
+
+      const savedConfig = JSON.parse(
+        vi.mocked(fs.outputFile).mock.calls[0][1] as string,
+      ) as TwentyConfigFile;
+
+      expect((savedConfig.workspaces?.prod as any).db.profiles.readonly).toEqual({
+        name: "readonly",
+        workspace: "prod",
+        databaseUrl: "postgresql://db.example.com:5432/twenty",
+        credentialSource: "env",
+      });
+    });
+
+    it("switches active db profile without changing api config", async () => {
+      const config = {
+        workspaces: {
+          prod: {
+            apiKey: "key1",
+            apiUrl: "https://api.twenty.com",
+            db: {
+              activeProfile: "readonly",
+              profiles: {
+                readonly: {
+                  name: "readonly",
+                  workspace: "prod",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty",
+                  credentialSource: "env",
+                },
+                writer: {
+                  name: "writer",
+                  workspace: "prod",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty_writer",
+                  credentialSource: "env",
+                },
+              },
+            },
+          },
+        },
+        defaultWorkspace: "prod",
+      } as TwentyConfigFile;
+      vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(config) as never);
+      vi.mocked(fs.outputFile).mockResolvedValue(undefined as never);
+
+      const service = new ConfigService();
+      const before = await service.resolveApiConfig({ workspace: "prod", requireAuth: false });
+      await service.setActiveDbProfile("prod", "writer");
+      const after = await service.resolveApiConfig({ workspace: "prod", requireAuth: false });
+
+      expect(before).toEqual(after);
+      expect(before).toEqual({
+        apiUrl: "https://api.twenty.com",
+        apiKey: "key1",
+        workspace: "prod",
+      });
+      const savedConfig = JSON.parse(
+        vi.mocked(fs.outputFile).mock.calls[0][1] as string,
+      ) as TwentyConfigFile;
+      expect((savedConfig.workspaces?.prod as any).db.activeProfile).toBe("writer");
+    });
+
+    it("lists and removes db profiles", async () => {
+      const config = {
+        workspaces: {
+          prod: {
+            apiKey: "key1",
+            db: {
+              activeProfile: "readonly",
+              profiles: {
+                readonly: {
+                  name: "readonly",
+                  workspace: "prod",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty",
+                  credentialSource: "env",
+                },
+                writer: {
+                  name: "writer",
+                  workspace: "prod",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty_writer",
+                  credentialSource: "env",
+                },
+              },
+            },
+          },
+        },
+        defaultWorkspace: "prod",
+      } as TwentyConfigFile;
+      vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(config) as never);
+      vi.mocked(fs.outputFile).mockResolvedValue(undefined as never);
+
+      const service = new ConfigService();
+      expect(await service.listDbProfiles("prod")).toEqual([
+        {
+          name: "readonly",
+          workspace: "prod",
+          databaseUrl: "postgresql://db.example.com:5432/twenty",
+          credentialSource: "env",
+        },
+        {
+          name: "writer",
+          workspace: "prod",
+          databaseUrl: "postgresql://db.example.com:5432/twenty_writer",
+          credentialSource: "env",
+        },
+      ]);
+
+      await service.removeDbProfile("prod", "writer");
+
+      const savedConfig = JSON.parse(
+        vi.mocked(fs.outputFile).mock.calls[0][1] as string,
+      ) as TwentyConfigFile;
+      expect((savedConfig.workspaces?.prod as any).db.profiles.writer).toBeUndefined();
+      expect((savedConfig.workspaces?.prod as any).db.activeProfile).toBe("readonly");
+    });
+
+    it("throws when setting an unknown active db profile", async () => {
+      const config = {
+        workspaces: {
+          prod: {
+            apiKey: "key1",
+            db: {
+              profiles: {
+                readonly: {
+                  name: "readonly",
+                  workspace: "prod",
+                  databaseUrl: "postgresql://db.example.com:5432/twenty",
+                  credentialSource: "env",
+                },
+              },
+            },
+          },
+        },
+        defaultWorkspace: "prod",
+      } as TwentyConfigFile;
+      vi.mocked(fs.pathExists).mockResolvedValue(true as never);
+      vi.mocked(fs.readFile).mockResolvedValue(JSON.stringify(config) as never);
+
+      const service = new ConfigService();
+
+      await expect(service.setActiveDbProfile("prod", "writer")).rejects.toEqual(
+        new CliError(
+          "DB profile 'writer' does not exist in workspace 'prod'",
+          "INVALID_ARGUMENTS",
+          'Use "twenty db profile list" to see available profiles.',
+        ),
+      );
     });
   });
 });

@@ -1,5 +1,6 @@
 import { Command } from "commander";
 import { registerApiCommand } from "./commands/api/api.command";
+import { registerDbCommand } from "./commands/db/db.command";
 import { registerApprovedAccessDomainsCommand } from "./commands/approved-access-domains/approved-access-domains.command";
 import { registerApiMetadataCommand } from "./commands/api-metadata/api-metadata.command";
 import { registerRawCommand } from "./commands/raw/raw.command";
@@ -38,6 +39,7 @@ export function buildProgram(): Command {
   program.exitOverride();
 
   registerApiCommand(program);
+  registerDbCommand(program);
   registerApprovedAccessDomainsCommand(program);
   registerApiMetadataCommand(program);
   registerRawCommand(program);

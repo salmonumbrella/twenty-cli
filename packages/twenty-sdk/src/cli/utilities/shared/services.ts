@@ -10,10 +10,20 @@ import { ExportService } from "../file/services/export.service";
 import { ImportService } from "../file/services/import.service";
 import { McpService } from "../mcp/services/mcp.service";
 import { SearchService } from "../search/services/search.service";
+import { ApiSearchService } from "../search/services/api-search.service";
+import { DbConfigResolverService } from "../db/services/db-config-resolver.service";
+import { DbRecordsReadService } from "../db/services/db-records-read.service";
+import { DbSearchService } from "../db/services/db-search.service";
+import { DbProfileService } from "../db/services/db-profile.service";
+import { DbStatusService } from "../db/services/db-status.service";
+import { ReadBackendService } from "../readbackend/read-backend.service";
+import { ApiRecordsReadService } from "../records/services/api-records-read.service";
 import { GlobalOptions } from "./global-options";
 
 export interface CliServices {
   config: ConfigService;
+  dbProfiles: DbProfileService;
+  dbStatus: DbStatusService;
   api: ApiService;
   publicHttp: PublicHttpService;
   search: SearchService;
@@ -33,6 +43,9 @@ export function createOutputService(globalOptions: GlobalOptions): OutputService
 
 export function createServices(globalOptions: GlobalOptions): CliServices {
   const config = new ConfigService();
+  const dbProfiles = new DbProfileService(config);
+  const dbConfigResolver = new DbConfigResolverService(dbProfiles);
+  const dbStatus = new DbStatusService(dbConfigResolver);
   const api = new ApiService(config, {
     workspace: globalOptions.workspace,
     debug: globalOptions.debug,
@@ -43,19 +56,33 @@ export function createServices(globalOptions: GlobalOptions): CliServices {
     debug: globalOptions.debug,
     noRetry: globalOptions.noRetry,
   });
-  const search = new SearchService(api);
+  const metadata = new MetadataService(api);
+  const apiSearch = new ApiSearchService(api);
+  const apiRecordsRead = new ApiRecordsReadService(api);
+  const readBackend = new ReadBackendService(
+    dbConfigResolver,
+    apiSearch,
+    apiRecordsRead,
+    {
+      search: new DbSearchService(metadata),
+      records: new DbRecordsReadService(metadata),
+    },
+    { workspace: globalOptions.workspace },
+  );
+  const search = new SearchService(api, readBackend);
   const mcp = new McpService(api, config, {
     workspace: globalOptions.workspace,
     debug: globalOptions.debug,
   });
-  const records = new RecordsService(api);
-  const metadata = new MetadataService(api);
+  const records = new RecordsService(api, { readBackend });
   const output = createOutputService(globalOptions);
   const importer = new ImportService();
   const exporter = new ExportService();
 
   return {
     config,
+    dbProfiles,
+    dbStatus,
     api,
     publicHttp,
     search,

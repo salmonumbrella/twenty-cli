@@ -23,6 +23,12 @@ Integrations:
   twenty mcp schema find_companies
   twenty mcp exec find_companies --data '{"query":"Acme"}'
 
+Environment:
+  TWENTY_DATABASE_URL           Default database URL
+
+Records:
+  Supported reads auto prefer DB when TWENTY_DATABASE_URL or an active db profile is set; writes stay on the API.
+
 Raw Access:
   twenty openapi core
   twenty raw graphql query --document 'query { currentWorkspace { id } }'

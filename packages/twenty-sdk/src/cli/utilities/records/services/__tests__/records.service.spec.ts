@@ -2,6 +2,67 @@ import { describe, it, expect, vi } from "vitest";
 import { RecordsService } from "../records.service";
 
 describe("RecordsService", () => {
+  describe("read backend delegation", () => {
+    it("delegates read methods through the shared read backend when provided", async () => {
+      const mockApi = {
+        get: vi.fn(),
+        post: vi.fn(),
+        patch: vi.fn(),
+        delete: vi.fn(),
+      };
+      const mockReadBackend = {
+        list: vi.fn().mockResolvedValue({ data: [{ id: "1" }] }),
+        listAll: vi.fn().mockResolvedValue({ data: [{ id: "1" }, { id: "2" }] }),
+        get: vi.fn().mockResolvedValue({ id: "1" }),
+        groupBy: vi.fn().mockResolvedValue({ groups: [{ key: "NYC" }] }),
+      };
+
+      const service = new RecordsService(mockApi as any, { readBackend: mockReadBackend as any });
+
+      await expect(service.list("people", { limit: 1 })).resolves.toEqual({ data: [{ id: "1" }] });
+      await expect(service.listAll("people")).resolves.toEqual({
+        data: [{ id: "1" }, { id: "2" }],
+      });
+      await expect(service.get("people", "1")).resolves.toEqual({ id: "1" });
+      await expect(service.groupBy("people", { groupBy: [{ city: true }] })).resolves.toEqual({
+        groups: [{ key: "NYC" }],
+      });
+
+      expect(mockReadBackend.list).toHaveBeenCalledWith("people", { limit: 1 });
+      expect(mockReadBackend.listAll).toHaveBeenCalledWith("people", {});
+      expect(mockReadBackend.get).toHaveBeenCalledWith("people", "1", undefined);
+      expect(mockReadBackend.groupBy).toHaveBeenCalledWith(
+        "people",
+        { groupBy: [{ city: true }] },
+        undefined,
+      );
+      expect(mockApi.get).not.toHaveBeenCalled();
+    });
+
+    it("keeps mutations on the API service even when a read backend is provided", async () => {
+      const mockApi = {
+        get: vi.fn(),
+        post: vi.fn().mockResolvedValue({
+          data: { data: { createPerson: { id: "1", name: "Alice" } } },
+        }),
+        patch: vi.fn(),
+        delete: vi.fn(),
+      };
+      const mockReadBackend = {
+        list: vi.fn(),
+        listAll: vi.fn(),
+        get: vi.fn(),
+        groupBy: vi.fn(),
+      };
+
+      const service = new RecordsService(mockApi as any, { readBackend: mockReadBackend as any });
+      const result = await service.create("people", { name: "Alice" });
+
+      expect(mockApi.post).toHaveBeenCalledWith("/rest/people", { name: "Alice" });
+      expect(result).toEqual({ id: "1", name: "Alice" });
+    });
+  });
+
   describe("list", () => {
     it("lists records with params", async () => {
       const mockApi = {

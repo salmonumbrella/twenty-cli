@@ -26,6 +26,7 @@ describe("CLI help contracts", () => {
     expect(help.subcommands.some((command) => command.name === "openapi")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "routes")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "mcp")).toBe(true);
+    expect(help.subcommands.some((command) => command.name === "db")).toBe(true);
     expect(help.exit_codes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: 0 }),
@@ -267,6 +268,17 @@ describe("CLI help contracts", () => {
       expect.arrayContaining(["get", "enable", "disable"]),
     );
     expect(help.examples).toContain("twenty postgres-proxy get --show-password");
+  });
+
+  it("builds command help JSON for db profile commands", () => {
+    const help = buildHelpJson(buildProgram(), ["db", "profile", "--help-json"]);
+
+    expect(help.kind).toBe("command");
+    expect(help.path).toEqual(["twenty", "db", "profile"]);
+    expect(help.subcommands.map((command) => command.name)).toEqual(
+      expect.arrayContaining(["init", "list", "show", "use", "test", "refresh-creds", "remove"]),
+    );
+    expect(help.operations).toEqual([]);
   });
 
   it.each([
@@ -549,6 +561,19 @@ describe("CLI help contracts", () => {
     } finally {
       pathExistsSpy.mockRestore();
     }
+  });
+
+  it("renders the direct database env var in root help text", async () => {
+    const program = buildProgram();
+    const write = vi.fn();
+
+    const handled = await maybeHandleInlineHelp(program, [], write);
+
+    expect(handled).toBe(true);
+    expect(write).toHaveBeenCalledTimes(1);
+    expect(write.mock.calls[0][0]).toContain("TWENTY_DATABASE_URL");
+    expect(write.mock.calls[0][0]).toContain("Supported reads auto prefer DB");
+    expect(write.mock.calls[0][0]).not.toContain("TWENTY_DB_PROXY_URL");
   });
 
   it("renders command help JSON without requiring positional operations", async () => {
