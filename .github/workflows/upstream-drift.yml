@@ -6,16 +6,29 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
   issues: write
 
 jobs:
-  check:
+  coverage:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: twenty-cli
     steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - name: Checkout CLI
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
-          persist-credentials: true
+          path: twenty-cli
+          persist-credentials: false
+
+      - name: Checkout upstream Twenty
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: twentyhq/twenty
+          ref: main
+          path: twenty-upstream
+          fetch-depth: 1
 
       - uses: pnpm/action-setup@v5
         with:
@@ -25,71 +38,86 @@ jobs:
         with:
           node-version: 20
           cache: pnpm
+          cache-dependency-path: twenty-cli/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check upstream drift
-        id: drift
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          result=$(pnpm --silent check:upstream-drift)
-          echo "$result" | jq .
-          echo "status=$(echo "$result" | jq -r .status)" >> "$GITHUB_OUTPUT"
-          echo "latest_sha=$(echo "$result" | jq -r .latestSha)" >> "$GITHUB_OUTPUT"
-          echo "audit_sha=$(echo "$result" | jq -r .auditSha)" >> "$GITHUB_OUTPUT"
-          echo "$result" | jq -r '.relevantFiles // [] | .[]' > /tmp/relevant-files.txt
+      - name: Build CLI
+        run: pnpm build
 
-      - name: Bump audit SHA
-        if: steps.drift.outputs.status != 'current'
+      - name: Run coverage audit
+        id: coverage
         run: |
-          node scripts/bump-upstream-audit-sha.mjs "${{ steps.drift.outputs.latest_sha }}"
+          upstream_sha=$(git -C ../twenty-upstream rev-parse HEAD)
+          echo "upstream_sha=${upstream_sha}" >> "$GITHUB_OUTPUT"
 
-      - name: Commit updated SHA
-        if: steps.drift.outputs.status != 'current'
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add scripts/check-upstream-drift.mjs
-          git diff --cached --quiet && echo "No changes to commit" && exit 0
-          git commit -m "chore: bump upstream audit SHA to $(echo '${{ steps.drift.outputs.latest_sha }}' | head -c 12)"
-          git push
+          set +e
+          node packages/twenty-sdk/dist/cli/cli.js coverage compare \
+            --upstream ../twenty-upstream \
+            --fail-on-unexpected \
+            -o json \
+            --full > /tmp/upstream-coverage-report.json
+          exit_code=$?
+          set -e
 
-      - name: Open issue for API drift
-        if: steps.drift.outputs.status == 'relevant_drift'
+          jq . /tmp/upstream-coverage-report.json
+          status=$(jq -r '.status' /tmp/upstream-coverage-report.json)
+          unexpected_count=$(jq -r '.summary["missing:unexpected"] // 0' /tmp/upstream-coverage-report.json)
+          echo "status=${status}" >> "$GITHUB_OUTPUT"
+          echo "unexpected_count=${unexpected_count}" >> "$GITHUB_OUTPUT"
+
+          if [ "$exit_code" -ne 0 ] && [ "$status" != "missing_coverage" ]; then
+            exit "$exit_code"
+          fi
+
+      - name: Reconcile upstream drift issue
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          audit_sha="${{ steps.drift.outputs.audit_sha }}"
-          latest_sha="${{ steps.drift.outputs.latest_sha }}"
-
-          body="Upstream \`twentyhq/twenty\` moved from \`${audit_sha}\` to \`${latest_sha}\`.
-
-          The following API-surface files changed and may need review:
-
-          "
-
-          # Append file list as markdown bullets
-          while IFS= read -r f; do
-            body="${body}
-          - \`${f}\`"
-          done < /tmp/relevant-files.txt
-
-          body="${body}
-
-          Compare range in \`twentyhq/twenty\`: \`${audit_sha}...${latest_sha}\`
-
-          The audit SHA has been auto-bumped. Close this issue once the changes have been reviewed."
-
-          # Don't open duplicate issues
           existing=$(gh issue list --label "upstream-drift" --state open --limit 1 --json number -q '.[0].number // empty')
+          status="${{ steps.coverage.outputs.status }}"
+          upstream_sha="${{ steps.coverage.outputs.upstream_sha }}"
+
+          if [ "$status" = "ok" ]; then
+            if [ -n "$existing" ]; then
+              gh issue comment "$existing" --body "The coverage auditor found no unexpected gaps against \`twentyhq/twenty@${upstream_sha}\`. Closing this stale heuristic drift issue."
+              gh issue close "$existing" --reason completed
+            fi
+            exit 0
+          fi
+
+          {
+            echo "The coverage auditor found unexpected first-class CLI coverage gaps against \`twentyhq/twenty@${upstream_sha}\`."
+            echo
+            echo "Summary:"
+            jq -r '.summary | to_entries[] | "- `\(.key)`: \(.value)"' /tmp/upstream-coverage-report.json
+            echo
+            echo "Unexpected gaps:"
+            jq -r '.unexpectedMissing[:50][] | "- `\(.surface)` `\(.name)` -> `\(.suggestedCommand)`"' /tmp/upstream-coverage-report.json
+            overflow=$(jq -r '([.unexpectedMissing | length, 50] | max) - 50' /tmp/upstream-coverage-report.json)
+            if [ "$overflow" -gt 0 ]; then
+              echo "- ...and ${overflow} more."
+            fi
+            echo
+            echo "Run locally:"
+            echo
+            echo "\`\`\`bash"
+            echo "pnpm build"
+            echo "node packages/twenty-sdk/dist/cli/cli.js coverage compare --upstream /path/to/twenty --fail-on-unexpected -o json --full"
+            echo "\`\`\`"
+          } > /tmp/upstream-drift-issue.md
+
+          gh label create upstream-drift --color "d93f0b" --force 2>/dev/null || true
           if [ -n "$existing" ]; then
-            gh issue comment "$existing" --body "$body"
+            gh issue edit "$existing" \
+              --title "Upstream coverage drift: unexpected gaps" \
+              --body-file /tmp/upstream-drift-issue.md
           else
-            gh label create upstream-drift --color "d93f0b" --force 2>/dev/null || true
             gh issue create \
-              --title "Upstream API drift: review needed" \
-              --body "$body" \
+              --title "Upstream coverage drift: unexpected gaps" \
+              --body-file /tmp/upstream-drift-issue.md \
               --label "upstream-drift"
           fi
+
+          exit 1

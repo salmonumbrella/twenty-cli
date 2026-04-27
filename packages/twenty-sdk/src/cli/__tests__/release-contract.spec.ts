@@ -11,7 +11,6 @@ function readRepoFile(...segments: string[]) {
 describe("repo release consistency", () => {
   it("keeps package metadata, workflows, and install docs aligned", () => {
     const readme = readRepoFile("README.md");
-    const upstreamDriftScript = readRepoFile("scripts", "check-upstream-drift.mjs");
     const rootPackage = JSON.parse(readRepoFile("package.json")) as {
       packageManager?: string;
       scripts?: Record<string, string>;
@@ -36,7 +35,6 @@ describe("repo release consistency", () => {
 
     expect(rootPackage.packageManager).toMatch(/^pnpm@/);
     expect(rootPackage.scripts).toMatchObject({
-      "check:upstream-drift": "node scripts/check-upstream-drift.mjs",
       "check:repo-hygiene": "node scripts/check-repo-hygiene.mjs",
       "readme:generate": "node scripts/render-readme-snippets.mjs",
       "release:build": "node scripts/build-release.mjs",
@@ -96,12 +94,19 @@ describe("repo release consistency", () => {
       "pnpm --filter ./packages/twenty-sdk publish --no-git-checks",
     );
 
-    expect(driftWorkflow).toContain("pnpm --silent check:upstream-drift");
-    expect(upstreamDriftScript).toContain('const AUDIT_SHA = "');
-    expect(upstreamDriftScript).not.toContain('"plans"');
-    expect(upstreamDriftScript).not.toContain(".md");
-    expect(upstreamDriftScript).not.toContain(".sha");
-    expect(upstreamDriftScript).not.toContain("path.join(ROOT");
+    expect(rootPackage.scripts?.["check:upstream-drift"]).toBeUndefined();
+    expect(driftWorkflow).toContain("repository: twentyhq/twenty");
+    expect(driftWorkflow).toContain("path: twenty-upstream");
+    expect(driftWorkflow).toContain("coverage compare");
+    expect(driftWorkflow).toContain("--upstream ../twenty-upstream");
+    expect(driftWorkflow).toContain("gh issue edit");
+    expect(driftWorkflow).toContain("gh issue close");
+    expect(driftWorkflow).toContain("contents: read");
+    expect(driftWorkflow).not.toContain("contents: write");
+    expect(driftWorkflow).not.toContain("Bump audit SHA");
+    expect(driftWorkflow).not.toContain("Commit updated SHA");
+    expect(driftWorkflow).not.toContain("check:upstream-drift");
+    expect(driftWorkflow).not.toContain("AUDIT_SHA");
 
     expect(dependabotConfig).toContain('package-ecosystem: "npm"');
     expect(dependabotConfig).toContain('directory: "/"');

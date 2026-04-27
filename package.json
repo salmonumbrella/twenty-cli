@@ -5,7 +5,6 @@
   "scripts": {
     "build": "pnpm --filter ./packages/twenty-sdk build",
     "check:repo-hygiene": "node scripts/check-repo-hygiene.mjs",
-    "check:upstream-drift": "node scripts/check-upstream-drift.mjs",
     "readme:generate": "node scripts/render-readme-snippets.mjs",
     "release:build": "node scripts/build-release.mjs",
     "release:metadata": "node scripts/write-release-metadata.mjs",
