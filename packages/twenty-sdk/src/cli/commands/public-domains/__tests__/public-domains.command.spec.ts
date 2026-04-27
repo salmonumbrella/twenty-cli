@@ -80,7 +80,7 @@ describe("public-domains command", () => {
       },
     });
 
-    await program.parseAsync(["node", "test", "public-domains", "list", "-o", "json"]);
+    await program.parseAsync(["node", "test", "public-domains", "list", "-o", "json", "--full"]);
 
     expect(mockPost).toHaveBeenCalledWith(
       "/metadata",
@@ -116,6 +116,7 @@ describe("public-domains command", () => {
       "app.example.com",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
@@ -151,6 +152,7 @@ describe("public-domains command", () => {
       "--yes",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
@@ -200,6 +202,7 @@ describe("public-domains command", () => {
       "app.example.com",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(

@@ -7,6 +7,18 @@ import os from "os";
 vi.mock("fs-extra");
 vi.mock("os");
 
+function getWorkspaceConfig(config: TwentyConfigFile, workspace: string) {
+  const workspaceConfig = config.workspaces?.[workspace];
+  expect(workspaceConfig).toBeDefined();
+  return workspaceConfig as NonNullable<TwentyConfigFile["workspaces"]>[string];
+}
+
+function getWorkspaceDbConfig(config: TwentyConfigFile, workspace: string) {
+  const workspaceConfig = getWorkspaceConfig(config, workspace);
+  expect(workspaceConfig.db).toBeDefined();
+  return workspaceConfig.db!;
+}
+
 describe("ConfigService", () => {
   const mockHomedir = "/home/testuser";
   const mockConfigPath = `${mockHomedir}/.twenty/config.json`;
@@ -399,7 +411,8 @@ describe("ConfigService", () => {
         vi.mocked(fs.outputFile).mock.calls[0][1] as string,
       ) as TwentyConfigFile;
 
-      expect((savedConfig.workspaces?.prod as any).db.profiles.readonly).toEqual({
+      const prodDb = getWorkspaceDbConfig(savedConfig, "prod");
+      expect(prodDb.profiles.readonly).toEqual({
         name: "readonly",
         workspace: "prod",
         databaseUrl: "postgresql://db.example.com:5432/twenty",
@@ -452,7 +465,8 @@ describe("ConfigService", () => {
       const savedConfig = JSON.parse(
         vi.mocked(fs.outputFile).mock.calls[0][1] as string,
       ) as TwentyConfigFile;
-      expect((savedConfig.workspaces?.prod as any).db.activeProfile).toBe("writer");
+      const prodDb = getWorkspaceDbConfig(savedConfig, "prod");
+      expect(prodDb.activeProfile).toBe("writer");
     });
 
     it("lists and removes db profiles", async () => {
@@ -506,8 +520,9 @@ describe("ConfigService", () => {
       const savedConfig = JSON.parse(
         vi.mocked(fs.outputFile).mock.calls[0][1] as string,
       ) as TwentyConfigFile;
-      expect((savedConfig.workspaces?.prod as any).db.profiles.writer).toBeUndefined();
-      expect((savedConfig.workspaces?.prod as any).db.activeProfile).toBe("readonly");
+      const prodDb = getWorkspaceDbConfig(savedConfig, "prod");
+      expect(prodDb.profiles.writer).toBeUndefined();
+      expect(prodDb.activeProfile).toBe("readonly");
     });
 
     it("throws when setting an unknown active db profile", async () => {

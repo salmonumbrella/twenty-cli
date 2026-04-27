@@ -112,7 +112,8 @@ describe("repo release consistency", () => {
     expect(readme).toContain("Homebrew formula");
     expect(readme).toContain("twenty --help-json");
     expect(readme).toContain("jsonl");
-    expect(readme).toContain("agent");
+    expect(readme).toContain("--agent-mode");
+    expect(readme).not.toContain("Stable agent envelope output");
     expect(readme).not.toContain("npm install -g twenty-sdk");
   });
 });

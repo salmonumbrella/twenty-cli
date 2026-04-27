@@ -114,6 +114,7 @@ describe("serverless command", () => {
         "fn-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -230,7 +231,7 @@ describe("serverless command", () => {
       ];
       mockPost.mockResolvedValue({ data: { data: { findManyServerlessFunctions: functions } } });
 
-      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("findManyServerlessFunctions"),
@@ -245,7 +246,7 @@ describe("serverless command", () => {
     it("handles empty functions list", async () => {
       mockPost.mockResolvedValue({ data: { data: { findManyServerlessFunctions: [] } } });
 
-      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json", "--full"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -256,7 +257,7 @@ describe("serverless command", () => {
     it("handles null functions response", async () => {
       mockPost.mockResolvedValue({ data: { data: { findManyServerlessFunctions: null } } });
 
-      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json", "--full"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -276,7 +277,7 @@ describe("serverless command", () => {
           data: { data: { findManyLogicFunctions: functions } },
         });
 
-      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "serverless", "list", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenNthCalledWith(1, "/metadata", {
         query: expect.stringContaining("findManyServerlessFunctions"),
@@ -296,7 +297,7 @@ describe("serverless command", () => {
       });
 
       await expect(
-        program.parseAsync(["node", "test", "serverless", "list", "-o", "json"]),
+        program.parseAsync(["node", "test", "serverless", "list", "-o", "json", "--full"]),
       ).rejects.toMatchObject({
         message: "Workspace auth failed.",
         code: "API_ERROR",
@@ -324,7 +325,16 @@ describe("serverless command", () => {
       };
       mockPost.mockResolvedValue({ data: { data: { findOneServerlessFunction: func } } });
 
-      await program.parseAsync(["node", "test", "serverless", "get", "fn-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "get",
+        "fn-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("findOneServerlessFunction(input: $input)"),
@@ -368,6 +378,7 @@ describe("serverless command", () => {
         "45",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -407,6 +418,7 @@ describe("serverless command", () => {
         JSON.stringify(payload),
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -447,6 +459,7 @@ describe("serverless command", () => {
         }),
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -486,6 +499,7 @@ describe("serverless command", () => {
         JSON.stringify(payload),
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -514,6 +528,7 @@ describe("serverless command", () => {
         "90",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -549,6 +564,7 @@ describe("serverless command", () => {
         }),
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -638,6 +654,7 @@ describe("serverless command", () => {
         JSON.stringify(payload),
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -655,7 +672,16 @@ describe("serverless command", () => {
       const result = { data: null, logs: "", status: "SUCCESS", duration: 50 };
       mockPost.mockResolvedValue({ data: { data: { executeOneServerlessFunction: result } } });
 
-      await program.parseAsync(["node", "test", "serverless", "execute", "fn-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "execute",
+        "fn-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("executeOneServerlessFunction(input: $input)"),
@@ -675,7 +701,16 @@ describe("serverless command", () => {
       const result = { lodash: "^4.17.21", zod: "^3.25.0" };
       mockPost.mockResolvedValue({ data: { data: { getAvailablePackages: result } } });
 
-      await program.parseAsync(["node", "test", "serverless", "packages", "fn-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "packages",
+        "fn-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("getAvailablePackages(input: $input)"),
@@ -720,6 +755,7 @@ describe("serverless command", () => {
         "zod@^3.25.0:",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -766,7 +802,7 @@ describe("serverless command", () => {
   describe("logs operation", () => {
     it("requires bounded collection for json log output", async () => {
       await expect(
-        program.parseAsync(["node", "test", "serverless", "logs", "fn-1", "-o", "json"]),
+        program.parseAsync(["node", "test", "serverless", "logs", "fn-1", "-o", "json", "--full"]),
       ).rejects.toMatchObject({
         message:
           "Streaming JSON output requires --max-events or --wait-seconds so the command can terminate with a complete array.",
@@ -800,6 +836,7 @@ describe("serverless command", () => {
         "1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(consoleSpy).toHaveBeenCalledTimes(1);
@@ -864,7 +901,7 @@ describe("serverless command", () => {
         query: expect.stringContaining("getServerlessFunctionSourceCode(input: $input)"),
         variables: { input: { id: "fn-1" } },
       });
-      expect(consoleSpy).toHaveBeenCalledWith(sourceCode);
+      expect(consoleSpy).toHaveBeenCalledWith(JSON.stringify({ sourceCode }));
     });
 
     it("handles null source code", async () => {
@@ -872,7 +909,7 @@ describe("serverless command", () => {
 
       await program.parseAsync(["node", "test", "serverless", "source", "fn-1"]);
 
-      expect(consoleSpy).toHaveBeenCalledWith("");
+      expect(consoleSpy).toHaveBeenCalledWith(JSON.stringify({ sourceCode: "" }));
     });
 
     it("renders source code as structured output for json format", async () => {
@@ -881,7 +918,16 @@ describe("serverless command", () => {
         data: { data: { getServerlessFunctionSourceCode: sourceCode } },
       });
 
-      await program.parseAsync(["node", "test", "serverless", "source", "fn-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "source",
+        "fn-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
@@ -910,7 +956,7 @@ describe("serverless command", () => {
         query: expect.stringContaining("getLogicFunctionSourceCode(input: $input)"),
         variables: { input: { id: "fn-1" } },
       });
-      expect(consoleSpy).toHaveBeenCalledWith(sourceCode);
+      expect(consoleSpy).toHaveBeenCalledWith(JSON.stringify({ sourceCode }));
     });
 
     it("throws error when ID is missing", async () => {
@@ -938,7 +984,16 @@ describe("serverless command", () => {
         data: { data: { publishServerlessFunction: { id: "fn-1", name: "Published" } } },
       });
 
-      await program.parseAsync(["node", "test", "serverless", "publish", "fn-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "serverless",
+        "publish",
+        "fn-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("publishServerlessFunction(input: $input)"),
@@ -962,7 +1017,7 @@ describe("serverless command", () => {
 
     it("rejects mixed-case router-era operations as unknown subcommands", async () => {
       await expect(
-        program.parseAsync(["node", "test", "serverless", "LIST", "-o", "json"]),
+        program.parseAsync(["node", "test", "serverless", "LIST", "-o", "json", "--full"]),
       ).rejects.toMatchObject({
         code: "commander.unknownCommand",
       });

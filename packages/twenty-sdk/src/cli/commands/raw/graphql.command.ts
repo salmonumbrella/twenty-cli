@@ -1,9 +1,16 @@
 import { Command } from "commander";
-import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
+import {
+  applyGlobalOptions,
+  resolveGlobalOptions,
+  type GlobalOptions,
+} from "../../utilities/shared/global-options";
 import { createServices } from "../../utilities/shared/services";
 import fs from "fs-extra";
 import { readFileOrStdin, readJsonInput } from "../../utilities/shared/io";
 import { CliError } from "../../utilities/errors/cli-error";
+import { resolveOperationAlias } from "../../utilities/shared/command-aliases";
+
+const GRAPHQL_OPERATIONS = ["query", "mutate", "schema"] as const;
 
 export function registerGraphqlCommand(parent: Command): void {
   const cmd = parent
@@ -26,7 +33,7 @@ export function registerGraphqlCommand(parent: Command): void {
     const globalOptions = resolveGlobalOptions(resolvedCommand);
     const services = createServices(globalOptions);
 
-    const op = operation.toLowerCase();
+    const op = resolveOperationAlias(operation, GRAPHQL_OPERATIONS);
     if (op === "schema") {
       const payload = { query: introspectionQuery };
       const response = await services.api.post(normalizeEndpoint(rawOptions.endpoint), payload);
@@ -102,7 +109,7 @@ function normalizeEndpoint(endpoint: string): string {
 
 async function outputGraphqlResult(
   data: unknown,
-  globalOptions: { output?: string; query?: string },
+  globalOptions: Pick<GlobalOptions, "output" | "query">,
   services: ReturnType<typeof createServices>,
   outputFile?: string,
 ): Promise<void> {

@@ -1,3 +1,4 @@
+import { extractCollection, extractDeleteResult, extractResource } from "../../api/rest-response";
 import { ApiService } from "../../api/services/api.service";
 
 interface GraphQLResponse<T = unknown> {
@@ -171,15 +172,13 @@ export class MetadataService {
 
   async listObjects(): Promise<ObjectMetadata[]> {
     const response = await this.api.get("/rest/metadata/objects");
-    const payload = response.data as any;
-    return payload?.data?.objects ?? [];
+    return extractCollection(response.data, "objects") as ObjectMetadata[];
   }
 
   async getObject(nameOrId: string): Promise<ObjectMetadata> {
     if (looksLikeUuid(nameOrId)) {
       const response = await this.api.get(`/rest/metadata/objects/${nameOrId}`);
-      const payload = response.data as any;
-      return payload?.data?.object ?? payload?.data ?? {};
+      return extractResource<ObjectMetadata>(response.data, "object");
     }
 
     const objects = await this.listObjects();
@@ -191,8 +190,7 @@ export class MetadataService {
     }
 
     const response = await this.api.get(`/rest/metadata/objects/${match.id}`);
-    const payload = response.data as any;
-    return payload?.data?.object ?? payload?.data ?? {};
+    return extractResource<ObjectMetadata>(response.data, "object");
   }
 
   async createObject(data: Record<string, unknown>): Promise<unknown> {
@@ -211,14 +209,12 @@ export class MetadataService {
 
   async listFields(): Promise<FieldMetadata[]> {
     const response = await this.api.get("/rest/metadata/fields");
-    const payload = response.data as any;
-    return payload?.data?.fields ?? [];
+    return extractCollection(response.data, "fields") as FieldMetadata[];
   }
 
   async getField(id: string): Promise<FieldMetadata> {
     const response = await this.api.get(`/rest/metadata/fields/${id}`);
-    const payload = response.data as any;
-    return payload?.data?.field ?? payload?.data ?? {};
+    return extractResource<FieldMetadata>(response.data, "field");
   }
 
   async createField(data: Record<string, unknown>): Promise<unknown> {
@@ -521,12 +517,12 @@ export class MetadataService {
   ): Promise<MetadataResource[]> {
     const config = buildQueryConfig(params);
     const response = config ? await this.api.get(path, config) : await this.api.get(path);
-    return extractCollection(response.data, key);
+    return extractCollection(response.data, key) as MetadataResource[];
   }
 
   private async getResource(path: string, key: string): Promise<MetadataResource> {
     const response = await this.api.get(path);
-    return extractResource(response.data, key);
+    return extractResource<MetadataResource>(response.data, key);
   }
 
   private async createResource(path: string, data: Record<string, unknown>): Promise<unknown> {
@@ -627,62 +623,6 @@ function buildQueryConfig(
   }
 
   return { params: filtered };
-}
-
-function extractCollection(payload: any, key: string): MetadataResource[] {
-  if (Array.isArray(payload)) {
-    return payload;
-  }
-
-  if (Array.isArray(payload?.data?.[key])) {
-    return payload.data[key];
-  }
-
-  if (Array.isArray(payload?.[key])) {
-    return payload[key];
-  }
-
-  if (Array.isArray(payload?.data)) {
-    return payload.data;
-  }
-
-  return [];
-}
-
-function extractResource(payload: any, key: string): MetadataResource {
-  if (payload?.data?.[key]) {
-    return payload.data[key];
-  }
-
-  if (payload?.[key]) {
-    return payload[key];
-  }
-
-  if (payload?.data && typeof payload.data === "object" && !Array.isArray(payload.data)) {
-    return payload.data;
-  }
-
-  return payload ?? {};
-}
-
-function extractDeleteResult(payload: any): boolean {
-  if (typeof payload === "boolean") {
-    return payload;
-  }
-
-  if (typeof payload?.success === "boolean") {
-    return payload.success;
-  }
-
-  if (typeof payload?.data?.success === "boolean") {
-    return payload.data.success;
-  }
-
-  if (typeof payload?.data === "boolean") {
-    return payload.data;
-  }
-
-  return false;
 }
 
 function ensureNoGraphqlErrors(payload: GraphQLResponse<unknown>): void {

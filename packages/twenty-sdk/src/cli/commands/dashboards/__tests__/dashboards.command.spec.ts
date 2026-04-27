@@ -75,6 +75,7 @@ describe("dashboards command", () => {
       "dashboard-1",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/rest/dashboards/dashboard-1/duplicate");

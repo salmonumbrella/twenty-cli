@@ -103,6 +103,7 @@ describe("event logs command", () => {
       "2026-03-01T00:00:00.000Z",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -157,6 +158,7 @@ describe("event logs command", () => {
       "--include-page-info",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual({

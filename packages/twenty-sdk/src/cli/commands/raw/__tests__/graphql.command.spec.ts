@@ -370,6 +370,7 @@ describe("graphql command", () => {
         "query { people { id } }",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockServices.output.render).toHaveBeenCalledWith(

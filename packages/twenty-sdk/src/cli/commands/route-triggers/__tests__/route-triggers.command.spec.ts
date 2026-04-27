@@ -114,7 +114,7 @@ describe("route-triggers command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "route-triggers", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "route-triggers", "list", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("findManyRouteTriggers"),
@@ -142,7 +142,7 @@ describe("route-triggers command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "route-triggers", "-o", "json", "list"]);
+      await program.parseAsync(["node", "test", "route-triggers", "-o", "json", "--full", "list"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("findManyRouteTriggers"),
@@ -157,7 +157,7 @@ describe("route-triggers command", () => {
       });
 
       await expect(
-        program.parseAsync(["node", "test", "route-triggers", "list", "-o", "json"]),
+        program.parseAsync(["node", "test", "route-triggers", "list", "-o", "json", "--full"]),
       ).rejects.toThrow("Route trigger management is not available");
     });
   });
@@ -179,7 +179,16 @@ describe("route-triggers command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "route-triggers", "get", "route-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "route-triggers",
+        "get",
+        "route-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("findOneRouteTrigger"),
@@ -236,6 +245,7 @@ describe("route-triggers command", () => {
         JSON.stringify(payload),
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -280,6 +290,7 @@ describe("route-triggers command", () => {
         '{"path":"/updated","isAuthRequired":false,"httpMethod":"PATCH"}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -330,6 +341,7 @@ describe("route-triggers command", () => {
         "--yes",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {

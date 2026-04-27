@@ -4,6 +4,15 @@ import { applyGlobalOptions } from "../../utilities/shared/global-options";
 import { createCommandContext } from "../../utilities/shared/context";
 import { parseBody } from "../../utilities/shared/body";
 import { CliError } from "../../utilities/errors/cli-error";
+import { resolveOperationAlias } from "../../utilities/shared/command-aliases";
+
+const CONNECTED_ACCOUNT_OPERATIONS = [
+  "list",
+  "get",
+  "sync",
+  "get-imap-smtp-caldav",
+  "save-imap-smtp-caldav",
+] as const;
 
 interface ConnectedAccountsOptions {
   limit?: string;
@@ -93,7 +102,7 @@ export function registerConnectedAccountsCommand(program: Command): void {
       command: Command,
     ) => {
       const { globalOptions, services } = createCommandContext(command);
-      const op = operation.toLowerCase();
+      const op = resolveOperationAlias(operation, CONNECTED_ACCOUNT_OPERATIONS);
 
       switch (op) {
         case "list": {

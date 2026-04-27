@@ -116,7 +116,7 @@ describe("webhooks command", () => {
       ];
       mockPost.mockResolvedValue({ data: { data: { webhooks } } });
 
-      await program.parseAsync(["node", "test", "webhooks", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "webhooks", "list", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("webhooks"),
@@ -131,7 +131,7 @@ describe("webhooks command", () => {
     it("accepts parent-first global options before the list subcommand", async () => {
       mockPost.mockResolvedValue({ data: { data: { webhooks: [] } } });
 
-      await program.parseAsync(["node", "test", "webhooks", "-o", "json", "list"]);
+      await program.parseAsync(["node", "test", "webhooks", "-o", "json", "--full", "list"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("webhooks"),
@@ -141,7 +141,7 @@ describe("webhooks command", () => {
     it("handles empty webhooks list", async () => {
       mockPost.mockResolvedValue({ data: { data: { webhooks: [] } } });
 
-      await program.parseAsync(["node", "test", "webhooks", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "webhooks", "list", "-o", "json", "--full"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -152,7 +152,7 @@ describe("webhooks command", () => {
     it("handles null webhooks response", async () => {
       mockPost.mockResolvedValue({ data: { data: { webhooks: null } } });
 
-      await program.parseAsync(["node", "test", "webhooks", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "webhooks", "list", "-o", "json", "--full"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -168,7 +168,7 @@ describe("webhooks command", () => {
       });
 
       await expect(
-        program.parseAsync(["node", "test", "webhooks", "list", "-o", "json"]),
+        program.parseAsync(["node", "test", "webhooks", "list", "-o", "json", "--full"]),
       ).rejects.toThrow("Forbidden");
     });
   });
@@ -186,7 +186,7 @@ describe("webhooks command", () => {
       };
       mockPost.mockResolvedValue({ data: { data: { webhook } } });
 
-      await program.parseAsync(["node", "test", "webhooks", "get", "wh-1", "-o", "json"]);
+      await program.parseAsync(["node", "test", "webhooks", "get", "wh-1", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("webhook(input: { id: $id })"),
@@ -226,6 +226,7 @@ describe("webhooks command", () => {
         JSON.stringify(payload),
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -266,6 +267,7 @@ describe("webhooks command", () => {
         JSON.stringify(payload),
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {

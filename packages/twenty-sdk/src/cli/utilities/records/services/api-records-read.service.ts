@@ -1,3 +1,4 @@
+import { extractCollection, extractFirstValue, getDataSection } from "../../api/rest-response";
 import { ApiService } from "../../api/services/api.service";
 import { singularize } from "../../shared/parse";
 
@@ -47,13 +48,13 @@ export class ApiRecordsReadService {
     }
 
     const response = await this.api.get(`/rest/${object}`, { params });
-    const payload = response.data as any;
-    const dataSection = payload?.data ?? {};
-    const records = extractArray(dataSection, object);
+    const payload = response.data;
+    const dataSection = getDataSection(payload);
+    const records = extractCollection({ data: dataSection }, object);
     return {
       data: records,
-      totalCount: payload?.totalCount,
-      pageInfo: payload?.pageInfo,
+      totalCount: isRecord(payload) ? (payload.totalCount as number | undefined) : undefined,
+      pageInfo: isRecord(payload) ? (payload.pageInfo as PageInfo | undefined) : undefined,
     };
   }
 
@@ -83,10 +84,9 @@ export class ApiRecordsReadService {
       params.depth = "1";
     }
     const response = await this.api.get(`/rest/${object}/${id}`, { params });
-    const payload = response.data as any;
-    const dataSection = payload?.data ?? {};
+    const dataSection = getDataSection(response.data);
     const singular = singularize(object);
-    return dataSection[singular] ?? dataSection[object] ?? firstValue(dataSection);
+    return dataSection[singular] ?? dataSection[object] ?? extractFirstValue(dataSection);
   }
 
   async groupBy(object: string, payload?: unknown, params?: GroupByParams): Promise<unknown> {
@@ -99,21 +99,6 @@ export class ApiRecordsReadService {
     });
     return response.data ?? null;
   }
-}
-
-function extractArray(dataSection: Record<string, unknown>, object: string): unknown[] {
-  const raw = dataSection?.[object];
-  if (Array.isArray(raw)) return raw;
-  for (const value of Object.values(dataSection)) {
-    if (Array.isArray(value)) return value as unknown[];
-  }
-  return [];
-}
-
-function firstValue(dataSection: Record<string, unknown>): unknown {
-  const values = Object.values(dataSection);
-  if (values.length === 0) return undefined;
-  return values[0];
 }
 
 function flattenParams(

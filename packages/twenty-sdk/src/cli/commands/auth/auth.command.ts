@@ -83,33 +83,30 @@ export function registerAuthCommand(program: Command): void {
   const authCmd = program.command("auth").description("Manage authentication and workspaces");
 
   // auth list
-  authCmd
-    .command("list")
-    .description("List configured workspaces")
-    .option("-o, --output <format>", "Output format (text, json, jsonl, agent, csv)", "text")
-    .option("--env-file <path>", "Load environment variables from file")
-    .action(async (options: { output: string; envFile?: string }, command: Command) => {
-      const { globalOptions, services } = createCommandContext(command);
+  const listCmd = authCmd.command("list").description("List configured workspaces");
+  applyGlobalOptions(listCmd);
+  listCmd.action(async (_options: unknown, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
 
-      const workspaces = await services.config.listWorkspaces();
+    const workspaces = await services.config.listWorkspaces();
 
-      if (workspaces.length === 0) {
-        // eslint-disable-next-line no-console
-        console.log('No workspaces configured. Use "twenty auth login" to add a workspace.');
-        return;
-      }
+    if (workspaces.length === 0) {
+      // eslint-disable-next-line no-console
+      console.log('No workspaces configured. Use "twenty auth login" to add a workspace.');
+      return;
+    }
 
-      const displayData = workspaces.map((ws) => ({
-        name: ws.name,
-        default: ws.isDefault ? "Y" : "",
-        apiUrl: ws.apiUrl ?? "",
-      }));
+    const displayData = workspaces.map((ws) => ({
+      name: ws.name,
+      default: ws.isDefault ? "Y" : "",
+      apiUrl: ws.apiUrl ?? "",
+    }));
 
-      await services.output.render(displayData, {
-        format: globalOptions.output,
-        query: globalOptions.query,
-      });
+    await services.output.render(displayData, {
+      format: globalOptions.output,
+      query: globalOptions.query,
     });
+  });
 
   // auth switch
   applyEnvFileOption(

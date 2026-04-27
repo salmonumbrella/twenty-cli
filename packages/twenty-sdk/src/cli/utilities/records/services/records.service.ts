@@ -1,3 +1,4 @@
+import { extractFirstValue, getDataSection } from "../../api/rest-response";
 import { ApiService } from "../../api/services/api.service";
 import { CliError } from "../../errors/cli-error";
 import type { RecordsReadBackend } from "../../readbackend/types";
@@ -51,18 +52,16 @@ export class RecordsService {
 
   async create(object: string, data: Record<string, unknown>): Promise<unknown> {
     const response = await this.api.post(`/rest/${object}`, data);
-    const payload = response.data as any;
-    const dataSection = payload?.data ?? {};
+    const dataSection = getDataSection(response.data);
     const key = `create${capitalize(singularize(object))}`;
-    return dataSection[key] ?? firstValue(dataSection);
+    return dataSection[key] ?? extractFirstValue(dataSection);
   }
 
   async update(object: string, id: string, data: Record<string, unknown>): Promise<unknown> {
     const response = await this.api.patch(`/rest/${object}/${id}`, data);
-    const payload = response.data as any;
-    const dataSection = payload?.data ?? {};
+    const dataSection = getDataSection(response.data);
     const key = `update${capitalize(singularize(object))}`;
-    return dataSection[key] ?? firstValue(dataSection);
+    return dataSection[key] ?? extractFirstValue(dataSection);
   }
 
   async delete(object: string, id: string): Promise<unknown> {
@@ -148,12 +147,6 @@ export class RecordsService {
     const response = await this.api.patch(`/rest/${object}/merge`, payload);
     return response.data ?? null;
   }
-}
-
-function firstValue(dataSection: Record<string, unknown>): unknown {
-  const values = Object.values(dataSection);
-  if (values.length === 0) return undefined;
-  return values[0];
 }
 
 function extractRecordId(record: Record<string, unknown>): string {

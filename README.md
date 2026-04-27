@@ -30,6 +30,7 @@ twenty auth list --help-json
 
 - Prefer twenty CMD --help-json before executing mutations
 - Stable JSON fields: path, args, options, operations, capabilities, exit_codes, output_contract
+- Canonical command names and short aliases are both supported; inspect aliases with --help-json
 
 ### Environment Loading
 
@@ -37,10 +38,12 @@ twenty auth list --help-json
 
 ### Output Guarantees
 
-- --query runs before output formatting
-- json renders pretty-printed 2-space JSON
+- no-flag output is compact JSON
+- --query runs before light projection and output formatting
+- --light/--li renders compact short-key JSON fields
+- --full renders canonical JSON field names
+- --agent-mode forces JSON and behaves like --li unless --full is present
 - jsonl renders one compact JSON record per line
-- agent renders stable envelopes for arrays, objects, and scalar data
 - csv wraps singleton values and JSON-encodes nested objects/arrays
 - text renders best-effort tables
 
@@ -1092,15 +1095,16 @@ twenty serverless publish <serverless-function-id>
 
 ## Output Formats
 
-All commands support `--output` / `-o`:
+All commands support `--output` / `-o`. No-flag output is compact JSON for agents and scripts.
 
-| Format  | Description                    |
-| ------- | ------------------------------ |
-| `text`  | Human-readable table (default) |
-| `json`  | Pretty-printed JSON output     |
-| `jsonl` | Newline-delimited JSON output  |
-| `agent` | Stable agent envelope output   |
-| `csv`   | CSV output                     |
+| Format  | Description                   |
+| ------- | ----------------------------- |
+| `json`  | Compact JSON output (default) |
+| `jsonl` | Newline-delimited JSON output |
+| `csv`   | CSV output                    |
+| `text`  | Human-readable table          |
+
+Use `--light` / `--li` for compact short-key JSON, `--full` for canonical field names, and `--agent-mode` / `--ai` to force JSON with light payloads by default.
 
 **JMESPath Queries:**
 
@@ -1113,14 +1117,17 @@ twenty api opportunities list -o json --query "[?stage=='Qualification'].id"
 
 ## Global Options
 
-| Option                  | Description                                  |
-| ----------------------- | -------------------------------------------- |
-| `-o, --output <format>` | Output format: text, json, jsonl, agent, csv |
-| `--query <expr>`        | JMESPath filter expression                   |
-| `--workspace <name>`    | Workspace profile to use                     |
-| `--env-file <path>`     | Load env vars from a file                    |
-| `--debug`               | Show request/response details                |
-| `--no-retry`            | Disable automatic retry                      |
+| Option                  | Description                           |
+| ----------------------- | ------------------------------------- |
+| `-o, --output <format>` | Output format: json, jsonl, csv, text |
+| `--query <expr>`        | JMESPath filter expression            |
+| `--workspace <name>`    | Workspace profile to use              |
+| `--env-file <path>`     | Load env vars from a file             |
+| `--debug`               | Show request/response details         |
+| `--no-retry`            | Disable automatic retry               |
+| `--light`, `--li`       | Render compact short-key JSON         |
+| `--full`                | Render canonical full JSON            |
+| `--agent-mode`, `--ai`  | Force JSON with light payloads        |
 
 ## Configuration
 

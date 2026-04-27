@@ -85,7 +85,7 @@ describe("twenty clean-home transport contracts", () => {
 
     try {
       const result = await runBuiltCliWithTempHomeAsync(
-        ["auth", "discover", "https://acme.twenty.com", "-o", "json"],
+        ["auth", "discover", "https://acme.twenty.com", "-o", "json", "--full"],
         {
           env: createLocalRequestEnv(server.baseUrl),
         },
@@ -183,7 +183,7 @@ describe("twenty clean-home transport contracts", () => {
 
     try {
       const result = await runBuiltCliWithTempHomeAsync(
-        ["auth", "renew-token", "--app-token", "refresh-token", "-o", "json"],
+        ["auth", "renew-token", "--app-token", "refresh-token", "-o", "json", "--full"],
         {
           env: createLocalRequestEnv(server.baseUrl),
         },
@@ -219,7 +219,16 @@ describe("twenty clean-home transport contracts", () => {
 
     try {
       const result = await runBuiltCliWithTempHomeAsync(
-        ["auth", "sso-url", "idp-1", "--workspace-invite-hash", "invite-123", "-o", "json"],
+        [
+          "auth",
+          "sso-url",
+          "idp-1",
+          "--workspace-invite-hash",
+          "invite-123",
+          "-o",
+          "json",
+          "--full",
+        ],
         {
           env: createLocalRequestEnv(server.baseUrl),
         },

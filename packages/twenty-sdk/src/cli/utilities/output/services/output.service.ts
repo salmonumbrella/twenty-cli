@@ -1,16 +1,18 @@
 import Papa from "papaparse";
+import type { OutputFormat } from "../../shared/global-options";
+import { toLightPayload } from "./compact-aliases";
 import { QueryService } from "./query.service";
 import { TableService } from "./table.service";
 
 export interface OutputOptions {
-  format?: string;
+  format?: OutputFormat;
   query?: string;
-  kind?: string;
+  light?: boolean;
+  full?: boolean;
+  agentMode?: boolean;
 }
 
-interface OutputServiceDefaults {
-  kind?: string;
-}
+interface OutputServiceDefaults extends OutputOptions {}
 
 export class OutputService {
   constructor(
@@ -19,32 +21,33 @@ export class OutputService {
     private defaults: OutputServiceDefaults = {},
   ) {}
 
-  async render(data: unknown, options: OutputOptions): Promise<void> {
+  async render(data: unknown, options: OutputOptions = {}): Promise<void> {
+    const query = options.query ?? this.defaults.query;
+    const full = options.full ?? this.defaults.full ?? false;
+    const light = !full && (options.light ?? this.defaults.light ?? false);
     let result: unknown = data;
-    if (options.query) {
-      result = this.queryService.apply(result, options.query);
+    if (query) {
+      result = this.queryService.apply(result, query);
+    }
+    if (light) {
+      result = toLightPayload(result);
     }
 
-    const format = options.format ?? "text";
+    const format = options.format ?? this.defaults.format ?? "json";
     switch (format) {
       case "json":
         // eslint-disable-next-line no-console
-        console.log(JSON.stringify(result, null, 2));
+        console.log(JSON.stringify(result));
         break;
       case "jsonl":
         // eslint-disable-next-line no-console
         console.log(this.formatJsonLines(result));
-        break;
-      case "agent":
-        // eslint-disable-next-line no-console
-        console.log(JSON.stringify(this.wrapAgentPayload(result, options), null, 2));
         break;
       case "csv":
         // eslint-disable-next-line no-console
         console.log(this.formatCsv(result));
         break;
       case "text":
-      default:
         {
           const { data: textData, cliMessage } = this.extractTextCliDiagnostic(result);
           if (cliMessage) {
@@ -54,6 +57,8 @@ export class OutputService {
           this.table.render(textData);
         }
         break;
+      default:
+        throw new Error(`Unsupported output format: ${format}`);
     }
   }
 
@@ -83,29 +88,6 @@ export class OutputService {
   private formatJsonLines(data: unknown): string {
     const records = Array.isArray(data) ? data : [data];
     return records.map((record) => JSON.stringify(record)).join("\n");
-  }
-
-  private wrapAgentPayload(data: unknown, options: OutputOptions): Record<string, unknown> {
-    const kind = options.kind ?? this.defaults.kind ?? "result";
-
-    if (Array.isArray(data)) {
-      return {
-        kind,
-        items: data,
-      };
-    }
-
-    if (isRecord(data)) {
-      return {
-        kind,
-        item: data,
-      };
-    }
-
-    return {
-      kind,
-      data,
-    };
   }
 
   private preprocessForCsv(record: unknown): unknown {

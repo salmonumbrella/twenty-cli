@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { assertGraphqlSuccess, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { parseBody } from "../../utilities/shared/body";
+import { resolveOperationAlias } from "../../utilities/shared/command-aliases";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
 import { createServices } from "../../utilities/shared/services";
 
@@ -13,6 +14,22 @@ interface ApplicationRegistrationsOptions {
 }
 
 const endpoint = "/metadata";
+
+const APPLICATION_REGISTRATION_OPERATIONS = [
+  "list",
+  "get",
+  "stats",
+  "tarball-url",
+  "list-variables",
+  "create",
+  "update",
+  "delete",
+  "create-variable",
+  "update-variable",
+  "delete-variable",
+  "rotate-secret",
+  "transfer-ownership",
+] as const;
 
 const APPLICATION_REGISTRATION_FIELDS = `
   id
@@ -174,7 +191,7 @@ export function registerApplicationRegistrationsCommand(program: Command): void 
     ) => {
       const globalOptions = resolveGlobalOptions(command);
       const services = createServices(globalOptions);
-      const op = operation.toLowerCase();
+      const op = resolveOperationAlias(operation, APPLICATION_REGISTRATION_OPERATIONS);
 
       switch (op) {
         case "list": {

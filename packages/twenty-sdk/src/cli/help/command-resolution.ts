@@ -30,7 +30,9 @@ export function resolveTargetCommand(
     }
 
     const nextCommand = current.commands.find(
-      (candidate) => candidate.name() !== "help" && candidate.name() === token,
+      (candidate) =>
+        candidate.name() !== "help" &&
+        (candidate.name() === token || candidate.aliases().includes(token)),
     );
 
     if (!nextCommand) {

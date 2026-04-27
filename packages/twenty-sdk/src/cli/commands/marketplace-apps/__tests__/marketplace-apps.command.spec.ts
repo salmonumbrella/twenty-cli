@@ -73,7 +73,7 @@ describe("marketplace-apps command", () => {
     const apps = [{ id: "app-1", name: "Inbox", version: "1.0.0" }];
     mockPost.mockResolvedValue({ data: { data: { findManyMarketplaceApps: apps } } });
 
-    await program.parseAsync(["node", "test", "marketplace-apps", "-o", "json", "list"]);
+    await program.parseAsync(["node", "test", "marketplace-apps", "-o", "json", "--full", "list"]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
       query: expect.stringContaining("findManyMarketplaceApps"),
@@ -93,6 +93,7 @@ describe("marketplace-apps command", () => {
       "com.example.inbox",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -115,6 +116,7 @@ describe("marketplace-apps command", () => {
       "1.2.0",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { OutputService } from "../output.service";
 import { QueryService } from "../query.service";
 import { TableService } from "../table.service";
+import { assertCompactAliasesAreValid, toLightPayload } from "../compact-aliases";
 
 describe("OutputService", () => {
   let outputService: OutputService;
@@ -108,68 +109,72 @@ describe("OutputService", () => {
     });
   });
 
-  describe("agent output", () => {
-    it("wraps arrays in a list envelope", async () => {
-      await outputService.render([{ id: "1" }], {
-        format: "agent",
-        kind: "applications.list",
-      });
-
-      expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual({
-        kind: "applications.list",
-        items: [{ id: "1" }],
-      });
+  describe("compact light output", () => {
+    it("keeps compact aliases unique", () => {
+      expect(() => assertCompactAliasesAreValid()).not.toThrow();
     });
 
-    it("wraps objects in an item envelope", async () => {
-      await outputService.render(
-        { id: "fn-1", name: "BuildFunction" },
-        {
-          format: "agent",
-          kind: "serverless.get",
+    it("projects known canonical fields to short keys recursively", () => {
+      expect(
+        toLightPayload({
+          id: "person-1",
+          displayName: "Ada Lovelace",
+          primaryEmail: "ada@example.test",
+          createdAt: "2026-04-26T00:00:00.000Z",
+          company: {
+            id: "company-1",
+            displayName: "Analytical Engines",
+          },
+        }),
+      ).toEqual({
+        id: "person-1",
+        dn: "Ada Lovelace",
+        pem: "ada@example.test",
+        ca: "2026-04-26T00:00:00.000Z",
+        co: {
+          id: "company-1",
+          dn: "Analytical Engines",
         },
-      );
-
-      expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual({
-        kind: "serverless.get",
-        item: { id: "fn-1", name: "BuildFunction" },
       });
     });
 
-    it("wraps primitives in a data envelope", async () => {
-      await outputService.render(true, {
-        format: "agent",
-        kind: "applications.install",
-      });
+    it("writes compact JSON without pretty-print whitespace", async () => {
+      await outputService.render({ id: "1", name: "Ada" }, { format: "json" });
 
-      expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual({
-        kind: "applications.install",
-        data: true,
-      });
+      expect(consoleSpy).toHaveBeenCalledWith('{"id":"1","name":"Ada"}');
     });
 
-    it("applies queries before wrapping the agent envelope", async () => {
+    it("applies queries before light projection", async () => {
       await outputService.render(
         {
           records: [
-            { id: "1", name: "Ada" },
-            { id: "2", name: "Linus" },
+            { id: "1", displayName: "Ada", primaryEmail: "ada@example.test" },
+            { id: "2", displayName: "Linus", primaryEmail: "linus@example.test" },
           ],
         },
         {
-          format: "agent",
-          kind: "people.list",
+          format: "json",
+          light: true,
           query: "records",
         },
       );
 
-      expect(JSON.parse(consoleSpy.mock.calls[0][0] as string)).toEqual({
-        kind: "people.list",
-        items: [
-          { id: "1", name: "Ada" },
-          { id: "2", name: "Linus" },
-        ],
+      expect(consoleSpy).toHaveBeenCalledWith(
+        '[{"id":"1","dn":"Ada","pem":"ada@example.test"},{"id":"2","dn":"Linus","pem":"linus@example.test"}]',
+      );
+    });
+
+    it("uses default light mode unless full is explicit", async () => {
+      outputService = new OutputService(new TableService(), new QueryService(), {
+        format: "json",
+        light: true,
       });
+
+      await outputService.render({ displayName: "Ada" }, {});
+      await outputService.render({ displayName: "Ada" }, { full: true });
+
+      expect(consoleSpy.mock.calls[0][0]).toBe('{"dn":"Ada"}');
+      expect(consoleSpy.mock.calls[1][0]).toBe('{"displayName":"Ada"}');
     });
   });
 });

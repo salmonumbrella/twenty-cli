@@ -172,6 +172,7 @@ describe("files command", () => {
         "ai-chat",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(fs.pathExists).toHaveBeenCalledWith("/path/to/test.txt");
@@ -226,6 +227,7 @@ describe("files command", () => {
         "field-123",
         "-o",
         "json",
+        "--full",
       ]);
 
       const operationsCall = mockFormData.append.mock.calls.find(([name]) => name === "operations");
@@ -267,6 +269,7 @@ describe("files command", () => {
         "com.example.widget",
         "-o",
         "json",
+        "--full",
       ]);
 
       const operationsCall = mockFormData.append.mock.calls.find(([name]) => name === "operations");
@@ -314,6 +317,7 @@ describe("files command", () => {
         "images/logo.svg",
         "-o",
         "json",
+        "--full",
       ]);
 
       const operationsCall = mockFormData.append.mock.calls.find(([name]) => name === "operations");

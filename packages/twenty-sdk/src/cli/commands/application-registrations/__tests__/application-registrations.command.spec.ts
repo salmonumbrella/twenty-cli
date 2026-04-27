@@ -76,7 +76,15 @@ describe("application-registrations command", () => {
       data: { data: { findManyApplicationRegistrations: registrations } },
     });
 
-    await program.parseAsync(["node", "test", "application-registrations", "list", "-o", "json"]);
+    await program.parseAsync([
+      "node",
+      "test",
+      "application-registrations",
+      "list",
+      "-o",
+      "json",
+      "--full",
+    ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
       query: expect.stringContaining("findManyApplicationRegistrations"),
@@ -98,6 +106,7 @@ describe("application-registrations command", () => {
       "reg-1",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -123,6 +132,7 @@ describe("application-registrations command", () => {
       "reg-1",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -150,6 +160,7 @@ describe("application-registrations command", () => {
       "reg-1",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -176,6 +187,7 @@ describe("application-registrations command", () => {
       "reg-1",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -209,6 +221,7 @@ describe("application-registrations command", () => {
       '{"name":"Widget App","websiteUrl":"https://example.com"}',
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -244,6 +257,7 @@ describe("application-registrations command", () => {
       '{"name":"Updated Widget App"}',
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -270,6 +284,7 @@ describe("application-registrations command", () => {
       "reg-1",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -301,6 +316,7 @@ describe("application-registrations command", () => {
       '{"applicationRegistrationId":"reg-1","key":"API_TOKEN","value":"secret"}',
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -336,6 +352,7 @@ describe("application-registrations command", () => {
       '{"description":"Updated"}',
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -363,6 +380,7 @@ describe("application-registrations command", () => {
       "var-1",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -394,6 +412,7 @@ describe("application-registrations command", () => {
       "reg-1",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -426,6 +445,7 @@ describe("application-registrations command", () => {
       "other-workspace",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith("/metadata", {

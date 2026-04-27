@@ -84,7 +84,7 @@ describe("emailing-domains command", () => {
       },
     });
 
-    await program.parseAsync(["node", "test", "emailing-domains", "list", "-o", "json"]);
+    await program.parseAsync(["node", "test", "emailing-domains", "list", "-o", "json", "--full"]);
 
     expect(mockPost).toHaveBeenCalledWith(
       "/metadata",
@@ -131,6 +131,7 @@ describe("emailing-domains command", () => {
       "mail.example.com",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
@@ -174,6 +175,7 @@ describe("emailing-domains command", () => {
       "domain-1",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(
@@ -208,6 +210,7 @@ describe("emailing-domains command", () => {
       "--yes",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockPost).toHaveBeenCalledWith(

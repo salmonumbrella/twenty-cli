@@ -228,7 +228,19 @@ describe("global-options utilities", () => {
   describe("shared metadata", () => {
     it("exports the canonical global option names", () => {
       expect(GLOBAL_OPTION_NAMES).toEqual(
-        new Set(["output", "query", "workspace", "env-file", "debug", "no-retry"]),
+        new Set([
+          "output",
+          "query",
+          "workspace",
+          "env-file",
+          "debug",
+          "no-retry",
+          "light",
+          "li",
+          "full",
+          "agent-mode",
+          "ai",
+        ]),
       );
     });
 
@@ -288,6 +300,17 @@ describe("global-options utilities", () => {
       const noRetryOption = command.options.find((opt) => opt.long === "--no-retry");
       expect(noRetryOption).toBeDefined();
     });
+
+    it("adds agent-light mode flags to command", () => {
+      const command = new Command("test");
+      applyGlobalOptions(command);
+
+      expect(command.options.find((opt) => opt.long === "--light")).toBeDefined();
+      expect(command.options.find((opt) => opt.long === "--li")).toBeDefined();
+      expect(command.options.find((opt) => opt.long === "--full")).toBeDefined();
+      expect(command.options.find((opt) => opt.long === "--agent-mode")).toBeDefined();
+      expect(command.options.find((opt) => opt.long === "--ai")).toBeDefined();
+    });
   });
 
   describe("resolveGlobalOptions", () => {
@@ -301,19 +324,43 @@ describe("global-options utilities", () => {
       delete process.env.TWENTY_PROFILE;
       delete process.env.TWENTY_DEBUG;
       delete process.env.TWENTY_NO_RETRY;
+      delete process.env.TWENTY_AGENT;
     });
 
     afterEach(() => {
       process.env = originalEnv;
     });
 
-    it("returns default output format as text", () => {
+    it("returns default output format as light compact JSON", () => {
       const command = new Command("test");
       applyGlobalOptions(command);
       command.parse(["node", "test"]);
 
       const options = resolveGlobalOptions(command);
-      expect(options.output).toBe("text");
+      expect(options.output).toBe("json");
+      expect(options.light).toBe(true);
+      expect(options.full).toBe(false);
+      expect(options.agentMode).toBe(false);
+    });
+
+    it("keeps explicit text output out of light mode unless requested", () => {
+      const command = new Command("test");
+      applyGlobalOptions(command);
+      command.parse(["node", "test", "--output", "text"]);
+
+      expect(resolveGlobalOptions(command)).toMatchObject({
+        output: "text",
+        light: false,
+      });
+
+      const lightCommand = new Command("light");
+      applyGlobalOptions(lightCommand);
+      lightCommand.parse(["node", "light", "--output", "text", "--li"]);
+
+      expect(resolveGlobalOptions(lightCommand)).toMatchObject({
+        output: "text",
+        light: true,
+      });
     });
 
     it("reads output from command option", () => {
@@ -345,15 +392,16 @@ describe("global-options utilities", () => {
       expect(options.output).toBe("jsonl");
     });
 
-    it("accepts agent output format", () => {
+    it("rejects agent output format", () => {
       process.env.TWENTY_OUTPUT = "agent";
 
       const command = new Command("test");
       applyGlobalOptions(command);
       command.parse(["node", "test"]);
 
-      const options = resolveGlobalOptions(command);
-      expect(options.output).toBe("agent");
+      expect(() => resolveGlobalOptions(command)).toThrow(
+        'Output format "agent" has been removed; use --agent-mode and optionally --li or --full.',
+      );
     });
 
     it("prefers command option over env var for output", () => {
@@ -367,15 +415,96 @@ describe("global-options utilities", () => {
       expect(options.output).toBe("json");
     });
 
-    it("falls back to text for invalid output format", () => {
+    it("rejects invalid output format", () => {
       process.env.TWENTY_OUTPUT = "invalid";
 
       const command = new Command("test");
       applyGlobalOptions(command);
       command.parse(["node", "test"]);
 
-      const options = resolveGlobalOptions(command);
-      expect(options.output).toBe("text");
+      expect(() => resolveGlobalOptions(command)).toThrow(
+        'Unsupported output format "invalid". Valid formats: json, jsonl, csv, text.',
+      );
+    });
+
+    it("resolves light mode from --light and --li", () => {
+      const longCommand = new Command("long");
+      applyGlobalOptions(longCommand);
+      longCommand.parse(["node", "long", "--light"]);
+
+      const aliasCommand = new Command("alias");
+      applyGlobalOptions(aliasCommand);
+      aliasCommand.parse(["node", "alias", "--li"]);
+
+      expect(resolveGlobalOptions(longCommand)).toMatchObject({
+        output: "json",
+        light: true,
+        full: false,
+      });
+      expect(resolveGlobalOptions(aliasCommand)).toMatchObject({
+        output: "json",
+        light: true,
+        full: false,
+      });
+    });
+
+    it("resolves full mode from --full", () => {
+      const command = new Command("test");
+      applyGlobalOptions(command);
+      command.parse(["node", "test", "--full"]);
+
+      expect(resolveGlobalOptions(command)).toMatchObject({
+        output: "json",
+        light: false,
+        full: true,
+      });
+    });
+
+    it("rejects light and full together", () => {
+      const command = new Command("test");
+      applyGlobalOptions(command);
+      command.parse(["node", "test", "--li", "--full"]);
+
+      expect(() => resolveGlobalOptions(command)).toThrow(
+        "--light and --full cannot be used together.",
+      );
+    });
+
+    it("resolves agent mode as JSON light output unless full is explicit", () => {
+      const lightCommand = new Command("light");
+      applyGlobalOptions(lightCommand);
+      lightCommand.parse(["node", "light", "--agent-mode"]);
+
+      const aliasCommand = new Command("alias");
+      applyGlobalOptions(aliasCommand);
+      aliasCommand.parse(["node", "alias", "--ai", "--full"]);
+
+      expect(resolveGlobalOptions(lightCommand)).toMatchObject({
+        output: "json",
+        agentMode: true,
+        light: true,
+        full: false,
+      });
+      expect(resolveGlobalOptions(aliasCommand)).toMatchObject({
+        output: "json",
+        agentMode: true,
+        light: false,
+        full: true,
+      });
+    });
+
+    it("resolves agent mode from TWENTY_AGENT", () => {
+      process.env.TWENTY_AGENT = "true";
+
+      const command = new Command("test");
+      applyGlobalOptions(command);
+      command.parse(["node", "test"]);
+
+      expect(resolveGlobalOptions(command)).toMatchObject({
+        output: "json",
+        agentMode: true,
+        light: true,
+      });
     });
 
     it("reads query from command option", () => {
@@ -498,12 +627,12 @@ describe("global-options utilities", () => {
       expect(options.outputKind).toBe("twenty.auth.workspace");
     });
 
-    it("derives agent output kind for mcp search from the full command path", () => {
+    it("derives output kind for mcp search from the full command path", () => {
       const root = new Command("twenty");
       const mcp = root.command("mcp");
       const search = mcp.command("search");
       applyGlobalOptions(search);
-      root.parse(["node", "twenty", "mcp", "search", "-o", "agent"]);
+      root.parse(["node", "twenty", "mcp", "search", "--agent-mode"]);
 
       const options = resolveGlobalOptions(search);
       expect(options.outputKind).toBe("twenty.mcp.search");
@@ -661,11 +790,13 @@ describe("services factory", () => {
       auth.addCommand(command);
       root.addCommand(auth);
       applyGlobalOptions(command);
-      root.parse(["node", "twenty", "auth", "status", "--output", "agent"]);
+      root.parse(["node", "twenty", "auth", "status", "--agent-mode"]);
 
       const context = createOutputContext(command);
 
-      expect(context.globalOptions.output).toBe("agent");
+      expect(context.globalOptions.output).toBe("json");
+      expect(context.globalOptions.agentMode).toBe(true);
+      expect(context.globalOptions.light).toBe(true);
       expect(context.globalOptions.outputKind).toBe("twenty.auth.status");
       expect(OutputService).toHaveBeenCalled();
       expect(context.output).toHaveProperty("render");

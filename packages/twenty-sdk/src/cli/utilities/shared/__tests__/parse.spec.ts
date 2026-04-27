@@ -207,6 +207,18 @@ describe("parse utilities", () => {
     it("handles chunk size of 1", () => {
       expect(chunkArray([1, 2, 3], 1)).toEqual([[1], [2], [3]]);
     });
+
+    it("throws for zero chunk size", () => {
+      expect(() => chunkArray([1, 2, 3], 0)).toThrow("Chunk size must be a positive integer.");
+    });
+
+    it("throws for negative chunk size", () => {
+      expect(() => chunkArray([1, 2, 3], -1)).toThrow("Chunk size must be a positive integer.");
+    });
+
+    it("throws for fractional chunk size", () => {
+      expect(() => chunkArray([1, 2, 3], 1.5)).toThrow("Chunk size must be a positive integer.");
+    });
   });
 
   describe("parseBooleanEnv", () => {

@@ -85,7 +85,7 @@ describe("auth commands", () => {
       ];
       vi.mocked(ConfigService.prototype.listWorkspaces).mockResolvedValue(workspaces);
 
-      await program.parseAsync(["node", "test", "auth", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "auth", "list", "-o", "json", "--full"]);
 
       expect(ConfigService.prototype.listWorkspaces).toHaveBeenCalled();
       // JSON output will contain the formatted workspace data
@@ -214,7 +214,7 @@ describe("auth commands", () => {
       };
       vi.mocked(ConfigService.prototype.getConfig).mockResolvedValue(config);
 
-      await program.parseAsync(["node", "test", "auth", "status", "-o", "json"]);
+      await program.parseAsync(["node", "test", "auth", "status", "-o", "json", "--full"]);
 
       expect(ConfigService.prototype.getConfig).toHaveBeenCalledWith({
         workspace: undefined,
@@ -247,6 +247,7 @@ describe("auth commands", () => {
         "smoke",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(ConfigService.prototype.getConfig).toHaveBeenCalledWith({
@@ -268,7 +269,16 @@ describe("auth commands", () => {
       };
       vi.mocked(ConfigService.prototype.getConfig).mockResolvedValue(config);
 
-      await program.parseAsync(["node", "test", "auth", "status", "--show-token", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "auth",
+        "status",
+        "--show-token",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -289,7 +299,7 @@ describe("auth commands", () => {
       );
       vi.mocked(ConfigService.prototype.getConfig).mockRejectedValue(authError);
 
-      await program.parseAsync(["node", "test", "auth", "status", "-o", "json"]);
+      await program.parseAsync(["node", "test", "auth", "status", "-o", "json", "--full"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -308,7 +318,7 @@ describe("auth commands", () => {
       };
       vi.mocked(ConfigService.prototype.getConfig).mockResolvedValue(config);
 
-      await program.parseAsync(["node", "test", "auth", "status", "-o", "json"]);
+      await program.parseAsync(["node", "test", "auth", "status", "-o", "json", "--full"]);
 
       const output = consoleSpy.mock.calls[0][0] as string;
       const parsed = JSON.parse(output);
@@ -332,6 +342,7 @@ describe("auth commands", () => {
         ".env.test",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(loadCliEnvironment).toHaveBeenCalledTimes(1);
@@ -361,7 +372,7 @@ describe("auth commands", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "auth", "workspace", "-o", "json"]);
+      await program.parseAsync(["node", "test", "auth", "workspace", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("currentWorkspace"),
@@ -381,7 +392,7 @@ describe("auth commands", () => {
       });
 
       await expect(
-        program.parseAsync(["node", "test", "auth", "workspace", "-o", "json"]),
+        program.parseAsync(["node", "test", "auth", "workspace", "-o", "json", "--full"]),
       ).rejects.toThrow("Workspace access denied");
     });
   });
@@ -425,6 +436,7 @@ describe("auth commands", () => {
         "https://acme.twenty.com",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPublicRequest).toHaveBeenCalledWith({
@@ -484,6 +496,7 @@ describe("auth commands", () => {
         "refresh-token",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPublicRequest).toHaveBeenCalledWith({
@@ -543,6 +556,7 @@ describe("auth commands", () => {
         "refresh-token",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPublicRequest).toHaveBeenCalledWith({
@@ -590,6 +604,7 @@ describe("auth commands", () => {
         "invite-123",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPublicRequest).toHaveBeenCalledWith({
@@ -637,7 +652,16 @@ describe("auth commands", () => {
       mockPost.mockResolvedValue(response);
       mockPublicRequest.mockResolvedValue(response);
 
-      await program.parseAsync(["node", "test", "auth", "sso-url", "idp-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "auth",
+        "sso-url",
+        "idp-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPublicRequest).toHaveBeenCalledWith({
         authMode: "none",
@@ -676,7 +700,16 @@ describe("auth commands", () => {
       mockPost.mockResolvedValue(response);
       mockPublicRequest.mockResolvedValue(response);
 
-      await program.parseAsync(["node", "test", "auth", "sso-url", "idp-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "auth",
+        "sso-url",
+        "idp-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPublicRequest).toHaveBeenCalledWith({
         authMode: "none",

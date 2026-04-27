@@ -22,6 +22,7 @@ describe("api-keys command", () => {
   let program: Command;
   let consoleSpy: ReturnType<typeof vi.spyOn>;
   let mockPost: ReturnType<typeof vi.fn>;
+  let mockDelete: ReturnType<typeof vi.fn>;
 
   beforeEach(() => {
     program = new Command();
@@ -29,6 +30,7 @@ describe("api-keys command", () => {
     registerApiKeysCommand(program);
     consoleSpy = vi.spyOn(console, "log").mockImplementation(() => {});
     mockPost = vi.fn();
+    mockDelete = vi.fn();
     vi.mocked(ApiService).mockImplementation(
       mockConstructor(
         () =>
@@ -37,7 +39,7 @@ describe("api-keys command", () => {
             get: vi.fn(),
             put: vi.fn(),
             patch: vi.fn(),
-            delete: vi.fn(),
+            delete: mockDelete,
             request: vi.fn(),
           }) as unknown as ApiService,
       ),
@@ -62,13 +64,22 @@ describe("api-keys command", () => {
       const help = apiKeysCmd?.helpInformation() ?? "";
 
       expect(subcommands).toEqual(
-        expect.arrayContaining(["list", "get", "create", "update", "revoke", "assign-role"]),
+        expect.arrayContaining([
+          "list",
+          "get",
+          "create",
+          "update",
+          "delete",
+          "revoke",
+          "assign-role",
+        ]),
       );
       expect(help).toContain("Commands:");
       expect(help).toContain("list");
       expect(help).toContain("get");
       expect(help).toContain("create");
       expect(help).toContain("update");
+      expect(help).toContain("delete");
       expect(help).toContain("revoke");
       expect(help).toContain("assign-role");
     });
@@ -112,7 +123,7 @@ describe("api-keys command", () => {
       ];
       mockPost.mockResolvedValue({ data: { data: { apiKeys } } });
 
-      await program.parseAsync(["node", "test", "api-keys", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "api-keys", "list", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("apiKeys"),
@@ -127,7 +138,7 @@ describe("api-keys command", () => {
     it("accepts parent-first global options before the list subcommand", async () => {
       mockPost.mockResolvedValue({ data: { data: { apiKeys: [] } } });
 
-      await program.parseAsync(["node", "test", "api-keys", "-o", "json", "list"]);
+      await program.parseAsync(["node", "test", "api-keys", "-o", "json", "--full", "list"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("apiKeys"),
@@ -137,7 +148,7 @@ describe("api-keys command", () => {
     it("handles empty API keys list", async () => {
       mockPost.mockResolvedValue({ data: { data: { apiKeys: [] } } });
 
-      await program.parseAsync(["node", "test", "api-keys", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "api-keys", "list", "-o", "json", "--full"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -148,7 +159,7 @@ describe("api-keys command", () => {
     it("handles null API keys response", async () => {
       mockPost.mockResolvedValue({ data: { data: { apiKeys: null } } });
 
-      await program.parseAsync(["node", "test", "api-keys", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "api-keys", "list", "-o", "json", "--full"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -169,7 +180,16 @@ describe("api-keys command", () => {
       };
       mockPost.mockResolvedValue({ data: { data: { apiKey } } });
 
-      await program.parseAsync(["node", "test", "api-keys", "get", "key-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "api-keys",
+        "get",
+        "key-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("apiKey(input: { id: $id })"),
@@ -210,6 +230,7 @@ describe("api-keys command", () => {
         "role-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenNthCalledWith(1, "/metadata", {
@@ -297,6 +318,7 @@ describe("api-keys command", () => {
         "2026-01-01T00:00:00Z",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -333,6 +355,55 @@ describe("api-keys command", () => {
     });
   });
 
+  describe("delete operation", () => {
+    it("deletes an API key through the metadata REST endpoint", async () => {
+      const deletedApiKey = { id: "key-1", name: "Deleted Key", revokedAt: "2026-01-01T00:00:00Z" };
+      mockDelete.mockResolvedValue({ data: deletedApiKey });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "api-keys",
+        "delete",
+        "key-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
+
+      expect(mockDelete).toHaveBeenCalledWith("/rest/metadata/apiKeys/key-1");
+      expect(consoleSpy).toHaveBeenCalled();
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(output);
+      expect(parsed).toEqual(deletedApiKey);
+    });
+
+    it("renders a stable fallback when the delete response is empty", async () => {
+      mockDelete.mockResolvedValue({ data: undefined });
+
+      await program.parseAsync([
+        "node",
+        "test",
+        "api-keys",
+        "delete",
+        "key-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
+
+      const output = consoleSpy.mock.calls[0][0] as string;
+      const parsed = JSON.parse(output);
+      expect(parsed).toEqual({ id: "key-1", deleted: true });
+    });
+
+    it("throws error when delete ID is missing", async () => {
+      await expect(program.parseAsync(["node", "test", "api-keys", "delete"])).rejects.toThrow(
+        CliError,
+      );
+    });
+  });
+
   describe("assign-role operation", () => {
     it("assigns a role to an API key", async () => {
       mockPost.mockResolvedValue({ data: { data: { assignRoleToApiKey: true } } });
@@ -347,6 +418,7 @@ describe("api-keys command", () => {
         "role-2",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {

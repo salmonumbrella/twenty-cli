@@ -110,7 +110,7 @@ describe("skills command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "skills", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "skills", "list", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("skills"),
@@ -158,7 +158,16 @@ describe("skills command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "skills", "get", "skill-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "skills",
+        "get",
+        "skill-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("skill"),
@@ -221,6 +230,7 @@ describe("skills command", () => {
         JSON.stringify(payload),
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -268,6 +278,7 @@ describe("skills command", () => {
         '{"label":"Workflow Design","content":"# Updated","isActive":false}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -308,7 +319,16 @@ describe("skills command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "skills", "delete", "skill-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "skills",
+        "delete",
+        "skill-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("deleteSkill"),
@@ -333,7 +353,16 @@ describe("skills command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "skills", "activate", "skill-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "skills",
+        "activate",
+        "skill-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("activateSkill"),
@@ -359,7 +388,16 @@ describe("skills command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "skills", "deactivate", "skill-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "skills",
+        "deactivate",
+        "skill-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("deactivateSkill"),

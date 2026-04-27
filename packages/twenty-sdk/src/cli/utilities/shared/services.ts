@@ -11,6 +11,7 @@ import { ImportService } from "../file/services/import.service";
 import { McpService } from "../mcp/services/mcp.service";
 import { SearchService } from "../search/services/search.service";
 import { ApiSearchService } from "../search/services/api-search.service";
+import { SchemaCacheService } from "../schema/schema-cache.service";
 import { DbConfigResolverService } from "../db/services/db-config-resolver.service";
 import { DbRecordsReadService } from "../db/services/db-records-read.service";
 import { DbSearchService } from "../db/services/db-search.service";
@@ -28,6 +29,7 @@ export interface CliServices {
   publicHttp: PublicHttpService;
   search: SearchService;
   mcp: McpService;
+  schemaCache: SchemaCacheService;
   records: RecordsService;
   metadata: MetadataService;
   output: OutputService;
@@ -37,7 +39,10 @@ export interface CliServices {
 
 export function createOutputService(globalOptions: GlobalOptions): OutputService {
   return new OutputService(new TableService(), new QueryService(), {
-    kind: globalOptions.outputKind,
+    format: globalOptions.output,
+    light: globalOptions.light,
+    full: globalOptions.full,
+    agentMode: globalOptions.agentMode,
   });
 }
 
@@ -74,6 +79,7 @@ export function createServices(globalOptions: GlobalOptions): CliServices {
     workspace: globalOptions.workspace,
     debug: globalOptions.debug,
   });
+  const schemaCache = new SchemaCacheService(config, api);
   const records = new RecordsService(api, { readBackend });
   const output = createOutputService(globalOptions);
   const importer = new ImportService();
@@ -87,6 +93,7 @@ export function createServices(globalOptions: GlobalOptions): CliServices {
     publicHttp,
     search,
     mcp,
+    schemaCache,
     records,
     metadata,
     output,

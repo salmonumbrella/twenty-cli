@@ -107,7 +107,7 @@ describe("roles command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "roles", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "roles", "list", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("getRoles"),
@@ -159,6 +159,7 @@ describe("roles command", () => {
         "--include-targets",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -213,6 +214,7 @@ describe("roles command", () => {
         "--include-permissions",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -253,7 +255,7 @@ describe("roles command", () => {
       });
 
       await expect(
-        program.parseAsync(["node", "test", "roles", "get", "role-1", "-o", "json"]),
+        program.parseAsync(["node", "test", "roles", "get", "role-1", "-o", "json", "--full"]),
       ).rejects.toThrow("Role role-1 not found.");
     });
   });
@@ -292,6 +294,7 @@ describe("roles command", () => {
         '{"label":"Support","description":"Support role"}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -347,6 +350,7 @@ describe("roles command", () => {
         '{"description":"Updated"}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -379,7 +383,16 @@ describe("roles command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "roles", "delete", "role-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "roles",
+        "delete",
+        "role-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("deleteOneRole"),
@@ -422,6 +435,7 @@ describe("roles command", () => {
         '{"roleId":"role-1","permissionFlagKeys":["WORKSPACE"]}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -463,6 +477,7 @@ describe("roles command", () => {
         '{"roleId":"role-1","objectPermissions":[{"objectMetadataId":"obj-1","canReadObjectRecords":true}]}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -510,6 +525,7 @@ describe("roles command", () => {
         '{"roleId":"role-1","fieldPermissions":[{"objectMetadataId":"obj-1","fieldMetadataId":"field-1","canReadFieldValue":true}]}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -550,6 +566,7 @@ describe("roles command", () => {
         "role-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -588,7 +605,16 @@ describe("roles command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "roles", "remove-agent", "agent-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "roles",
+        "remove-agent",
+        "agent-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("removeRoleFromAgent"),

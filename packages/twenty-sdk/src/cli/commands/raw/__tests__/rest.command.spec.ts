@@ -197,7 +197,17 @@ describe("rest command", () => {
 
   describe("output format", () => {
     it("passes output format to render", async () => {
-      await program.parseAsync(["node", "test", "raw", "rest", "GET", "/people", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "raw",
+        "rest",
+        "GET",
+        "/people",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockServices.output.render).toHaveBeenCalledWith(
         { id: "test-id" },

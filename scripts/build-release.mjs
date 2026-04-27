@@ -3,7 +3,6 @@ import {
   chmodSync,
   copyFileSync,
   createReadStream,
-  existsSync,
   mkdirSync,
   readdirSync,
   readFileSync,

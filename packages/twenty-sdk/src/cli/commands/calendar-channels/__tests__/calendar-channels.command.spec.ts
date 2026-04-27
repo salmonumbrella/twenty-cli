@@ -155,6 +155,7 @@ describe("calendar-channels command", () => {
         "cursor-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();
@@ -186,7 +187,16 @@ describe("calendar-channels command", () => {
         syncCursor: "cursor-value",
       });
 
-      await program.parseAsync(["node", "test", "calendar-channels", "get", "cc-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "calendar-channels",
+        "get",
+        "cc-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();
       expect(RecordsService).not.toHaveBeenCalled();
@@ -225,6 +235,7 @@ describe("calendar-channels command", () => {
         '{"isSyncEnabled":false,"visibility":"NOTHING"}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();

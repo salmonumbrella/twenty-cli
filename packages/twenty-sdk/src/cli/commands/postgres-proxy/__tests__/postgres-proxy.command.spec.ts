@@ -83,7 +83,7 @@ describe("postgres-proxy command", () => {
       },
     });
 
-    await program.parseAsync(["node", "test", "postgres-proxy", "get", "-o", "json"]);
+    await program.parseAsync(["node", "test", "postgres-proxy", "get", "-o", "json", "--full"]);
 
     expect(mockPost).toHaveBeenCalledWith(
       "/graphql",
@@ -122,6 +122,7 @@ describe("postgres-proxy command", () => {
       "--show-password",
       "-o",
       "json",
+      "--full",
     ]);
 
     const output = consoleSpy.mock.calls[0][0] as string;
@@ -147,7 +148,7 @@ describe("postgres-proxy command", () => {
       },
     });
 
-    await program.parseAsync(["node", "test", "postgres-proxy", "enable", "-o", "json"]);
+    await program.parseAsync(["node", "test", "postgres-proxy", "enable", "-o", "json", "--full"]);
 
     expect(mockPost).toHaveBeenCalledWith(
       "/graphql",
@@ -175,7 +176,7 @@ describe("postgres-proxy command", () => {
       },
     });
 
-    await program.parseAsync(["node", "test", "postgres-proxy", "disable", "-o", "json"]);
+    await program.parseAsync(["node", "test", "postgres-proxy", "disable", "-o", "json", "--full"]);
 
     expect(mockPost).toHaveBeenCalledWith(
       "/graphql",
@@ -200,7 +201,7 @@ describe("postgres-proxy command", () => {
     });
 
     await expect(
-      program.parseAsync(["node", "test", "postgres-proxy", "get", "-o", "json"]),
+      program.parseAsync(["node", "test", "postgres-proxy", "get", "-o", "json", "--full"]),
     ).rejects.toThrow(
       "Postgres proxy is not available on this workspace because it does not expose getPostgresCredentials.",
     );

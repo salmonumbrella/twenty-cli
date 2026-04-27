@@ -2,6 +2,7 @@ import { Command } from "commander";
 import { requireGraphqlField, type GraphQLResponse } from "../../utilities/api/graphql-response";
 import { CliError } from "../../utilities/errors/cli-error";
 import { parseBody } from "../../utilities/shared/body";
+import { resolveOperationAlias } from "../../utilities/shared/command-aliases";
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
 import { createServices } from "../../utilities/shared/services";
 
@@ -30,6 +31,19 @@ const ROLE_FIELDS = `
   canBeAssignedToAgents
   canBeAssignedToApiKeys
 `;
+
+const ROLE_OPERATIONS = [
+  "list",
+  "get",
+  "create",
+  "update",
+  "delete",
+  "upsert-permission-flags",
+  "upsert-object-permissions",
+  "upsert-field-permissions",
+  "assign-agent",
+  "remove-agent",
+] as const;
 
 const ROLE_TARGET_FIELDS = `
   workspaceMembers {
@@ -201,7 +215,7 @@ export function registerRolesCommand(program: Command): void {
     async (operation: string, id: string | undefined, options: RolesOptions, command: Command) => {
       const globalOptions = resolveGlobalOptions(command);
       const services = createServices(globalOptions);
-      const op = operation.toLowerCase();
+      const op = resolveOperationAlias(operation, ROLE_OPERATIONS);
 
       switch (op) {
         case "list": {

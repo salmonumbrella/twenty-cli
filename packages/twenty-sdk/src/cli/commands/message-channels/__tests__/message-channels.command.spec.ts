@@ -155,6 +155,7 @@ describe("message-channels command", () => {
         "cursor-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();
@@ -186,7 +187,16 @@ describe("message-channels command", () => {
         syncCursor: "cursor-value",
       });
 
-      await program.parseAsync(["node", "test", "message-channels", "get", "mc-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "message-channels",
+        "get",
+        "mc-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();
       expect(RecordsService).not.toHaveBeenCalled();
@@ -225,6 +235,7 @@ describe("message-channels command", () => {
         '{"isSyncEnabled":false,"excludeGroupEmails":true}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();

@@ -80,6 +80,7 @@ describe("mcp command", () => {
       "catalog",
       "-o",
       "json",
+      "--full",
       "--query",
       "categories",
     ]);
@@ -108,6 +109,7 @@ describe("mcp command", () => {
       "create_person",
       "-o",
       "json",
+      "--full",
     ]);
 
     expect(mockServices.mcp.callTool).toHaveBeenCalledWith("learn_tools", {
@@ -151,7 +153,7 @@ describe("mcp command", () => {
     expect(mockServices.output.render).toHaveBeenCalledWith(
       { ok: true },
       expect.objectContaining({
-        format: "text",
+        format: "json",
       }),
     );
   });
@@ -227,7 +229,7 @@ describe("mcp command", () => {
     expect(mockServices.output.render).toHaveBeenCalledWith(
       { ok: true },
       expect.objectContaining({
-        format: "text",
+        format: "json",
       }),
     );
   });
@@ -243,7 +245,7 @@ describe("mcp command", () => {
     expect(mockServices.output.render).toHaveBeenCalledWith(
       { loaded: true },
       expect.objectContaining({
-        format: "text",
+        format: "json",
       }),
     );
   });
@@ -255,7 +257,7 @@ describe("mcp command", () => {
         "No skills found with names: xlsx. Available skills: workflow-building, data-manipulation, xlsx, pdf.",
     });
 
-    await program.parseAsync(["node", "test", "mcp", "skills", "xlsx", "-o", "json"]);
+    await program.parseAsync(["node", "test", "mcp", "skills", "xlsx", "-o", "json", "--full"]);
 
     expect(mockServices.output.render).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -285,7 +287,7 @@ describe("mcp command", () => {
     expect(mockServices.output.render).toHaveBeenCalledWith(
       { matches: [] },
       expect.objectContaining({
-        format: "text",
+        format: "json",
       }),
     );
   });

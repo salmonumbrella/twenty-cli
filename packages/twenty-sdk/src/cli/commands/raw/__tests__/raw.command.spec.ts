@@ -8,7 +8,7 @@ describe("raw command namespace", () => {
 
     expect(program.commands.some((command) => command.name() === "raw")).toBe(true);
     expect(program.commands.some((command) => command.name() === "rest")).toBe(false);
-    expect(program.commands.some((command) => command.name() === "graphql")).toBe(false);
+    expect(program.commands.some((command) => command.name() === "graphql")).toBe(true);
 
     const help = buildHelpJson(program, ["raw", "--help-json"]);
 

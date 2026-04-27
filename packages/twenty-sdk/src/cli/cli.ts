@@ -5,14 +5,14 @@ import { maybeHandleInlineHelp } from "./help";
 import { buildProgram } from "./program";
 
 export async function main(argv: string[] = process.argv): Promise<void> {
-  const program = buildProgram();
-
   try {
+    loadCliEnvironment({ argv, cwd: process.cwd() });
+    const program = buildProgram();
+
     if (await maybeHandleInlineHelp(program, argv.slice(2))) {
       return;
     }
 
-    loadCliEnvironment({ argv, cwd: process.cwd() });
     await program.parseAsync(argv);
   } catch (error) {
     const messages = formatError(error);

@@ -118,7 +118,7 @@ describe("applications command", () => {
       ];
       mockPost.mockResolvedValue({ data: { data: { findManyApplications: applications } } });
 
-      await program.parseAsync(["node", "test", "applications", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "applications", "list", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("findManyApplications"),
@@ -160,7 +160,7 @@ describe("applications command", () => {
         };
       });
 
-      await program.parseAsync(["node", "test", "applications", "list", "-o", "json"]);
+      await program.parseAsync(["node", "test", "applications", "list", "-o", "json", "--full"]);
 
       expect(mockPost).toHaveBeenCalledWith(
         "/metadata",
@@ -193,7 +193,16 @@ describe("applications command", () => {
       };
       mockPost.mockResolvedValue({ data: { data: { findOneApplication: application } } });
 
-      await program.parseAsync(["node", "test", "applications", "get", "app-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "applications",
+        "get",
+        "app-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("findOneApplication"),
@@ -228,7 +237,16 @@ describe("applications command", () => {
           },
         });
 
-      await program.parseAsync(["node", "test", "applications", "get", "app-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "applications",
+        "get",
+        "app-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenNthCalledWith(
         1,
@@ -292,6 +310,7 @@ describe("applications command", () => {
         "manifest.json",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -351,6 +370,7 @@ describe("applications command", () => {
         "yarn.lock",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenNthCalledWith(2, "/graphql", {
@@ -403,6 +423,7 @@ describe("applications command", () => {
         "Widget Dev",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -447,6 +468,7 @@ describe("applications command", () => {
         "app-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -482,6 +504,7 @@ describe("applications command", () => {
         "--yes",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -525,6 +548,7 @@ describe("applications command", () => {
         "secret",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {

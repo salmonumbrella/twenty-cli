@@ -112,6 +112,7 @@ describe("routes command", () => {
         "dryRun=true",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();
@@ -155,6 +156,7 @@ describe("routes command", () => {
         "--no-retry",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalledTimes(1);
@@ -187,6 +189,7 @@ describe("routes command", () => {
         "x-trace-id=trace-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPublicHttpRequest).toHaveBeenCalledWith({
@@ -211,7 +214,16 @@ describe("routes command", () => {
         },
       } as never);
 
-      await program.parseAsync(["node", "test", "routes", "invoke", "public/ping", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "routes",
+        "invoke",
+        "public/ping",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPublicHttpRequest).toHaveBeenCalledWith({
         authMode: "optional",

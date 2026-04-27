@@ -1,6 +1,7 @@
 import { Command } from "commander";
 import { CliError } from "../../errors/cli-error";
 import { applyGlobalOptions } from "../../shared/global-options";
+import { resolveOperationAlias } from "../../shared/command-aliases";
 import { createCommandContext } from "../../shared/context";
 import { parseBody } from "../../shared/body";
 
@@ -19,6 +20,8 @@ interface RegisterRecordResourceCommandOptions {
   operationHelp?: string;
   sanitizeOutput?: (value: unknown) => unknown;
 }
+
+const RECORD_RESOURCE_OPERATIONS = ["list", "get", "update"] as const;
 
 export function registerRecordResourceCommand(
   program: Command,
@@ -45,7 +48,7 @@ export function registerRecordResourceCommand(
       command: Command,
     ) => {
       const { globalOptions, services } = createCommandContext(command);
-      const op = operation.toLowerCase();
+      const op = resolveOperationAlias(operation, RECORD_RESOURCE_OPERATIONS);
 
       switch (op) {
         case "list": {

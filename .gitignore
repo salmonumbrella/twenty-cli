@@ -12,6 +12,7 @@ CLAUDE.md
 .dm/
 .private-journal/
 .worktrees/
+.playwright-mcp/
 
 # Documentation (plans/drafts)
 docs/

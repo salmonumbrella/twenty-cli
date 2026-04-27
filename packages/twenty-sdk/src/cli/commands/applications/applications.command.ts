@@ -7,6 +7,7 @@ import {
 import { applyGlobalOptions, resolveGlobalOptions } from "../../utilities/shared/global-options";
 import { createServices } from "../../utilities/shared/services";
 import { CliError } from "../../utilities/errors/cli-error";
+import { resolveOperationAlias } from "../../utilities/shared/command-aliases";
 import { readFileOrStdin, readJsonInput } from "../../utilities/shared/io";
 import { requireYes } from "../../utilities/shared/confirmation";
 
@@ -24,6 +25,16 @@ interface ApplicationsOptions {
 
 const endpoint = "/metadata";
 const legacyEndpoint = "/graphql";
+
+const APPLICATION_OPERATIONS = [
+  "list",
+  "get",
+  "sync",
+  "uninstall",
+  "create-development",
+  "generate-token",
+  "update-variable",
+] as const;
 
 const CURRENT_APPLICATION_FIELDS = `
   id
@@ -92,7 +103,7 @@ export function registerApplicationsCommand(program: Command): void {
     ) => {
       const globalOptions = resolveGlobalOptions(command);
       const services = createServices(globalOptions);
-      const op = operation.toLowerCase();
+      const op = resolveOperationAlias(operation, APPLICATION_OPERATIONS);
 
       switch (op) {
         case "list": {

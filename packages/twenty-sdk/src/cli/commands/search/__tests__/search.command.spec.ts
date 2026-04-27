@@ -147,7 +147,7 @@ describe("search command", () => {
     it("performs search with default limit", async () => {
       mockSearch.mockResolvedValue({ data: [buildSearchResult("1", "John")] });
 
-      await program.parseAsync(["node", "test", "search", "john", "-o", "json"]);
+      await program.parseAsync(["node", "test", "search", "john", "-o", "json", "--full"]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();
       expect(SearchService).not.toHaveBeenCalled();
@@ -164,7 +164,17 @@ describe("search command", () => {
     it("performs search with custom limit", async () => {
       mockSearch.mockResolvedValue({ data: [] });
 
-      await program.parseAsync(["node", "test", "search", "test", "--limit", "50", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "search",
+        "test",
+        "--limit",
+        "50",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockSearch).toHaveBeenCalledWith({
         query: "test",
@@ -188,6 +198,7 @@ describe("search command", () => {
         "person,company",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockSearch).toHaveBeenCalledWith({
@@ -212,6 +223,7 @@ describe("search command", () => {
         " companies , people ",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockSearch).toHaveBeenCalledWith({
@@ -236,6 +248,7 @@ describe("search command", () => {
         "note,task",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockSearch).toHaveBeenCalledWith({
@@ -260,6 +273,7 @@ describe("search command", () => {
         " notes , tasks ",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockSearch).toHaveBeenCalledWith({
@@ -288,6 +302,7 @@ describe("search command", () => {
         "company",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockSearch).toHaveBeenCalledWith({
@@ -317,6 +332,7 @@ describe("search command", () => {
         '{"id":{"eq":"rec-1"}}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(readJsonInput).toHaveBeenCalledWith('{"id":{"eq":"rec-1"}}', undefined);
@@ -347,6 +363,7 @@ describe("search command", () => {
         "filters.json",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(readJsonInput).toHaveBeenCalledWith(undefined, "filters.json");
@@ -372,7 +389,7 @@ describe("search command", () => {
         pageInfo: { hasNextPage: true, endCursor: "cursor-2" },
       });
 
-      await program.parseAsync(["node", "test", "search", "a", "-o", "json"]);
+      await program.parseAsync(["node", "test", "search", "a", "-o", "json", "--full"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -401,6 +418,7 @@ describe("search command", () => {
         "--include-page-info",
         "-o",
         "json",
+        "--full",
       ]);
 
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -410,7 +428,7 @@ describe("search command", () => {
     it("handles empty results", async () => {
       mockSearch.mockResolvedValue({ data: [] });
 
-      await program.parseAsync(["node", "test", "search", "nonexistent", "-o", "json"]);
+      await program.parseAsync(["node", "test", "search", "nonexistent", "-o", "json", "--full"]);
 
       expect(consoleSpy).toHaveBeenCalled();
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -481,7 +499,17 @@ describe("search command", () => {
       vi.mocked(readJsonInput).mockResolvedValue([]);
 
       await expect(
-        program.parseAsync(["node", "test", "search", "hello", "--filter", "[]", "-o", "json"]),
+        program.parseAsync([
+          "node",
+          "test",
+          "search",
+          "hello",
+          "--filter",
+          "[]",
+          "-o",
+          "json",
+          "--full",
+        ]),
       ).rejects.toThrow(CliError);
     });
   });

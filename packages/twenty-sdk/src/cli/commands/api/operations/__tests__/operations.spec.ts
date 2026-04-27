@@ -16,7 +16,6 @@ import { runBatchUpdateOperation } from "../batch-update.operation";
 import { runBatchDeleteOperation } from "../batch-delete.operation";
 import { CliError } from "../../../../utilities/errors/cli-error";
 import { ApiOperationContext } from "../types";
-import { readJsonInput } from "../../../../utilities/shared/io";
 
 const mockCreateCommandContext = vi.hoisted(() => vi.fn());
 

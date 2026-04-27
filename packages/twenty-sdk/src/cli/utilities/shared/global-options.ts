@@ -1,15 +1,21 @@
 import { Command } from "commander";
 import { loadCliEnvironment } from "../config/services/environment.service";
+import { CliError } from "../errors/cli-error";
 import { parseBooleanEnv } from "./parse";
 
+export type OutputFormat = "json" | "jsonl" | "csv" | "text";
+
 export interface GlobalOptions {
-  output?: string;
+  output?: OutputFormat;
   query?: string;
   workspace?: string;
   debug?: boolean;
   noRetry?: boolean;
   envFile?: string;
   outputKind?: string;
+  light?: boolean;
+  full?: boolean;
+  agentMode?: boolean;
 }
 
 export interface GlobalOptionSettings {
@@ -27,7 +33,7 @@ const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
   {
     name: "output",
     flags: "-o, --output <format>",
-    description: "Output format: text, json, jsonl, agent, csv",
+    description: "Output format: json, jsonl, csv, text",
     takesValue: true,
   },
   {
@@ -58,6 +64,36 @@ const GLOBAL_OPTION_DEFINITIONS: GlobalOptionDefinition[] = [
     name: "no-retry",
     flags: "--no-retry",
     description: "Disable automatic retry",
+    takesValue: false,
+  },
+  {
+    name: "light",
+    flags: "--light",
+    description: "Render compact short-key JSON",
+    takesValue: false,
+  },
+  {
+    name: "li",
+    flags: "--li",
+    description: "Alias for --light",
+    takesValue: false,
+  },
+  {
+    name: "full",
+    flags: "--full",
+    description: "Render canonical full JSON",
+    takesValue: false,
+  },
+  {
+    name: "agent-mode",
+    flags: "--agent-mode",
+    description: "Agent mode: JSON output with light payloads by default",
+    takesValue: false,
+  },
+  {
+    name: "ai",
+    flags: "--ai",
+    description: "Alias for --agent-mode",
     takesValue: false,
   },
 ];
@@ -108,9 +144,20 @@ export function resolveGlobalOptions(
     explicitEnvFile: envFile,
   });
 
+  const agentMode = Boolean(opts.agentMode || opts.ai || parseBooleanEnv(process.env.TWENTY_AGENT));
   const rawOutput =
-    typeof opts.output === "string" ? opts.output : (process.env.TWENTY_OUTPUT ?? "text");
-  const output = isValidOutputFormat(rawOutput) ? rawOutput : "text";
+    typeof opts.output === "string" ? opts.output : (process.env.TWENTY_OUTPUT ?? "json");
+  let output = parseOutputFormat(rawOutput);
+  if (agentMode) {
+    output = "json";
+  }
+  const full = Boolean(opts.full);
+  const explicitLight = Boolean(opts.light || opts.li);
+  if (explicitLight && full) {
+    throw new CliError("--light and --full cannot be used together.", "INVALID_ARGUMENTS");
+  }
+  const defaultsToLight = output === "json" || output === "jsonl";
+  const light = full ? false : explicitLight || defaultsToLight;
   const query =
     overrides?.outputQuery ??
     (typeof opts.query === "string" ? opts.query : undefined) ??
@@ -134,6 +181,9 @@ export function resolveGlobalOptions(
     noRetry,
     envFile,
     outputKind: deriveCommandKind(command),
+    light,
+    full,
+    agentMode,
   };
 }
 
@@ -145,13 +195,20 @@ function getCommandOptions(command: Command): Record<string, unknown> {
   return command.opts();
 }
 
-function isValidOutputFormat(value: unknown): value is string {
-  return (
-    value === "text" ||
-    value === "json" ||
-    value === "jsonl" ||
-    value === "agent" ||
-    value === "csv"
+function parseOutputFormat(value: unknown): OutputFormat {
+  if (value === "agent") {
+    throw new CliError(
+      'Output format "agent" has been removed; use --agent-mode and optionally --li or --full.',
+      "INVALID_ARGUMENTS",
+    );
+  }
+  if (value === "json" || value === "jsonl" || value === "csv" || value === "text") {
+    return value;
+  }
+
+  throw new CliError(
+    `Unsupported output format ${JSON.stringify(value)}. Valid formats: json, jsonl, csv, text.`,
+    "INVALID_ARGUMENTS",
   );
 }
 

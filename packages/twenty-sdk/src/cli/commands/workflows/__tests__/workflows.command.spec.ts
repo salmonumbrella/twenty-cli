@@ -188,6 +188,7 @@ describe("workflows command", () => {
         '{"hello":"world"}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();
@@ -231,6 +232,7 @@ describe("workflows command", () => {
         "--no-retry",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalledTimes(1);
@@ -265,6 +267,7 @@ describe("workflows command", () => {
         "dryRun=true",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPublicHttpRequest).toHaveBeenCalledWith({
@@ -306,6 +309,7 @@ describe("workflows command", () => {
         "workflow-3",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPublicHttpRequest).toHaveBeenNthCalledWith(
@@ -401,6 +405,7 @@ describe("workflows command", () => {
         "workflow-version-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockGraphqlPost).toHaveBeenCalledWith("/graphql", {
@@ -432,6 +437,7 @@ describe("workflows command", () => {
         "workflow-version-2",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockGraphqlPost).toHaveBeenCalledWith("/graphql", {
@@ -469,6 +475,7 @@ describe("workflows command", () => {
         '{"source":"cli"}',
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockGraphqlPost).toHaveBeenCalledWith("/graphql", {
@@ -500,7 +507,16 @@ describe("workflows command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "workflows", "stop-run", "run-456", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "workflows",
+        "stop-run",
+        "run-456",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockGraphqlPost).toHaveBeenCalledWith("/graphql", {
         query: expect.stringContaining("stopWorkflowRun"),

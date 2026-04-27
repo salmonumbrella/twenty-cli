@@ -140,6 +140,21 @@ export function registerApiKeysCommand(program: Command): void {
     );
   });
 
+  const deleteCmd = cmd
+    .command("delete")
+    .description("Delete an API key")
+    .argument("[id]", "API key ID");
+  applyGlobalOptions(deleteCmd);
+  deleteCmd.action(async (id: string | undefined, _options: unknown, command: Command) => {
+    const { globalOptions, services } = createCommandContext(command);
+    if (!id) throw new CliError("Missing API key ID.", "INVALID_ARGUMENTS");
+    const response = await services.api.delete(`/rest/metadata/apiKeys/${id}`);
+    await services.output.render(response.data ?? { id, deleted: true }, {
+      format: globalOptions.output,
+      query: globalOptions.query,
+    });
+  });
+
   const revokeCmd = cmd
     .command("revoke")
     .description("Revoke an API key")

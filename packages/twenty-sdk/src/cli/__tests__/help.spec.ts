@@ -15,7 +15,9 @@ describe("CLI help contracts", () => {
     expect(help.aliases).toEqual([]);
     expect(help.subcommands.some((command) => command.name === "raw")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "rest")).toBe(false);
-    expect(help.subcommands.some((command) => command.name === "graphql")).toBe(false);
+    expect(help.subcommands.some((command) => command.name === "graphql")).toBe(true);
+    expect(help.subcommands.some((command) => command.name === "records")).toBe(true);
+    expect(help.subcommands.some((command) => command.name === "metadata")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "skills")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "auth")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "dashboards")).toBe(true);
@@ -27,6 +29,12 @@ describe("CLI help contracts", () => {
     expect(help.subcommands.some((command) => command.name === "routes")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "mcp")).toBe(true);
     expect(help.subcommands.some((command) => command.name === "db")).toBe(true);
+    expect(help.subcommands.some((command) => command.name === "coverage")).toBe(true);
+    expect(help.subcommands.some((command) => command.name === "schema")).toBe(true);
+    expect(help.examples).toContain("twenty coverage compare --upstream /path/to/twenty -o json");
+    expect(help.examples).toContain("twenty schema refresh -o json");
+    expect(help.examples).toContain("twenty records people list -o json");
+    expect(help.examples).toContain("twenty metadata views list -o json");
     expect(help.exit_codes).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ code: 0 }),
@@ -39,6 +47,21 @@ describe("CLI help contracts", () => {
     const help = buildHelpJson(buildProgram(), []);
 
     expect(help.subcommands.some((command) => command.name === "mcp")).toBe(true);
+  });
+
+  it("resolves short aliases to canonical command help", () => {
+    const program = buildProgram();
+
+    const recordsHelp = buildHelpJson(program, ["r", "--help-json"]);
+    const apiKeysHelp = buildHelpJson(program, ["ak", "--help-json"]);
+    const apiKeyListHelp = buildHelpJson(program, ["ak", "ls", "--help-json"]);
+
+    expect(recordsHelp.path).toEqual(["twenty", "records"]);
+    expect(recordsHelp.aliases).toContain("r");
+    expect(apiKeysHelp.path).toEqual(["twenty", "api-keys"]);
+    expect(apiKeysHelp.aliases).toContain("ak");
+    expect(apiKeyListHelp.path).toEqual(["twenty", "api-keys", "list"]);
+    expect(apiKeyListHelp.aliases).toContain("ls");
   });
 
   it("registers a root version flag", () => {
@@ -62,6 +85,41 @@ describe("CLI help contracts", () => {
         "twenty raw rest GET /health",
       ]),
     );
+  });
+
+  it("builds command help JSON for dynamic GraphQL operation execution", () => {
+    const help = buildHelpJson(buildProgram(), ["graphql", "--help-json"]);
+
+    expect(help.kind).toBe("command");
+    expect(help.path).toEqual(["twenty", "graphql"]);
+    expect(help.args.map((argument) => argument.name)).toEqual(["operation"]);
+    expect(help.options).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "kind", global: false }),
+        expect.objectContaining({ name: "args", global: false }),
+        expect.objectContaining({ name: "variable-defs", global: false }),
+        expect.objectContaining({ name: "variables", global: false }),
+        expect.objectContaining({ name: "variables-file", global: false }),
+        expect.objectContaining({ name: "selection", global: false }),
+        expect.objectContaining({ name: "endpoint", global: false }),
+        expect.objectContaining({ name: "output", global: true }),
+        expect.objectContaining({ name: "query", global: true }),
+      ]),
+    );
+    expect(help.examples).toContain("twenty graphql currentUser --selection 'id email'");
+  });
+
+  it("builds command help JSON for cache-backed dynamic command namespaces", () => {
+    const recordsHelp = buildHelpJson(buildProgram(), ["records", "--help-json"]);
+    const metadataHelp = buildHelpJson(buildProgram(), ["metadata", "--help-json"]);
+
+    expect(recordsHelp.kind).toBe("command");
+    expect(recordsHelp.path).toEqual(["twenty", "records"]);
+    expect(recordsHelp.examples).toContain("twenty records people list -o json");
+
+    expect(metadataHelp.kind).toBe("command");
+    expect(metadataHelp.path).toEqual(["twenty", "metadata"]);
+    expect(metadataHelp.examples).toContain("twenty metadata views list -o json");
   });
 
   it("builds command help JSON for operation-style commands", () => {
@@ -103,10 +161,13 @@ describe("CLI help contracts", () => {
         query_language: "JMESPath",
         query_applies_before_format: true,
         formats: expect.arrayContaining([
+          expect.objectContaining({ name: "json" }),
           expect.objectContaining({ name: "jsonl" }),
-          expect.objectContaining({ name: "agent" }),
         ]),
       }),
+    );
+    expect(help.output_contract?.formats).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: "agent" })]),
     );
   });
 
@@ -131,6 +192,71 @@ describe("CLI help contracts", () => {
         summary: "Execute a Twenty MCP tool",
         mutates: true,
       }),
+    );
+  });
+
+  it("builds command help JSON for coverage compare", () => {
+    const coverageHelp = buildHelpJson(buildProgram(), ["coverage", "--help-json"]);
+
+    expect(coverageHelp.kind).toBe("command");
+    expect(coverageHelp.path).toEqual(["twenty", "coverage"]);
+    expect(coverageHelp.operations).toEqual([
+      expect.objectContaining({
+        name: "compare",
+        summary: "Compare CLI coverage against upstream",
+        mutates: false,
+      }),
+    ]);
+    expect(coverageHelp.examples).toContain(
+      "twenty coverage compare --upstream /path/to/twenty -o json",
+    );
+
+    const compareHelp = buildHelpJson(buildProgram(), ["coverage", "compare", "--help-json"]);
+
+    expect(compareHelp.kind).toBe("command");
+    expect(compareHelp.path).toEqual(["twenty", "coverage", "compare"]);
+    expect(compareHelp.options).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "upstream", required: true, global: false }),
+        expect.objectContaining({ name: "baseline", global: false }),
+        expect.objectContaining({ name: "fail-on-unexpected", global: false }),
+        expect.objectContaining({ name: "output", global: true }),
+        expect.objectContaining({ name: "query", global: true }),
+      ]),
+    );
+    expect(compareHelp.output_contract).toEqual(
+      expect.objectContaining({
+        query_language: "JMESPath",
+        query_applies_before_format: true,
+      }),
+    );
+  });
+
+  it("builds command help JSON for schema cache commands", () => {
+    const schemaHelp = buildHelpJson(buildProgram(), ["schema", "--help-json"]);
+
+    expect(schemaHelp.kind).toBe("command");
+    expect(schemaHelp.path).toEqual(["twenty", "schema"]);
+    expect(schemaHelp.subcommands.map((command) => command.name)).toEqual([
+      "refresh",
+      "status",
+      "clear",
+    ]);
+    expect(schemaHelp.operations).toEqual([
+      expect.objectContaining({ name: "refresh", mutates: true }),
+      expect.objectContaining({ name: "status", mutates: false }),
+      expect.objectContaining({ name: "clear", mutates: true }),
+    ]);
+    expect(schemaHelp.examples).toContain("twenty schema refresh -o json");
+
+    const statusHelp = buildHelpJson(buildProgram(), ["schema", "status", "--help-json"]);
+    expect(statusHelp.args.map((argument) => argument.name)).toEqual(["kind"]);
+    expect(statusHelp.options).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: "ttl-hours", global: false }),
+        expect.objectContaining({ name: "output", global: true }),
+        expect.objectContaining({ name: "query", global: true }),
+      ]),
     );
   });
 
@@ -525,7 +651,7 @@ describe("CLI help contracts", () => {
   it("renders root help text when global option values precede --help", async () => {
     for (const args of [
       ["--env-file", ".env.test", "--help"],
-      ["-o", "json", "--help"],
+      ["-o", "json", "--full", "--help"],
       ["--output=json", "--help"],
       ["--query", "items[0]", "--help"],
     ]) {
@@ -552,7 +678,7 @@ describe("CLI help contracts", () => {
       expect(handled).toBe(true);
       expect(write).toHaveBeenCalledTimes(1);
       expect(write.mock.calls[0][0]).toContain(
-        "Command names are canonical; only --help-json also has the short --hj alias.",
+        "Canonical command names and short aliases are both supported; inspect aliases with --help-json.",
       );
       expect(write.mock.calls[0][0]).toContain(
         "Stable JSON fields: path, args, options, operations, capabilities, exit_codes, output_contract.",

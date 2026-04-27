@@ -4,6 +4,7 @@ import { registerDbCommand } from "./commands/db/db.command";
 import { registerApprovedAccessDomainsCommand } from "./commands/approved-access-domains/approved-access-domains.command";
 import { registerApiMetadataCommand } from "./commands/api-metadata/api-metadata.command";
 import { registerRawCommand } from "./commands/raw/raw.command";
+import { registerGraphqlCommand } from "./commands/graphql/graphql.command";
 import { registerAuthCommand } from "./commands/auth/auth.command";
 import { registerSearchCommand } from "./commands/search/search.command";
 import { registerWebhooksCommand } from "./commands/webhooks/webhooks.command";
@@ -28,6 +29,10 @@ import { registerMarketplaceAppsCommand } from "./commands/marketplace-apps/mark
 import { registerMcpCommand } from "./commands/mcp/mcp.command";
 import { registerWorkflowsCommand } from "./commands/workflows/workflows.command";
 import { registerOpenApiCommand } from "./commands/openapi/openapi.command";
+import { registerCoverageCommand } from "./commands/coverage/coverage.command";
+import { registerSchemaCommand } from "./commands/schema/schema.command";
+import { registerCachedSchemaCommands } from "./utilities/schema/schema-command-materializer";
+import { applyCommandAliases } from "./utilities/shared/command-aliases";
 import { CLI_VERSION } from "./version";
 
 export function buildProgram(): Command {
@@ -43,6 +48,7 @@ export function buildProgram(): Command {
   registerApprovedAccessDomainsCommand(program);
   registerApiMetadataCommand(program);
   registerRawCommand(program);
+  registerGraphqlCommand(program);
   registerAuthCommand(program);
   registerSearchCommand(program);
   registerWebhooksCommand(program);
@@ -55,6 +61,9 @@ export function buildProgram(): Command {
   registerFilesCommand(program);
   registerMessageChannelsCommand(program);
   registerOpenApiCommand(program);
+  registerCoverageCommand(program);
+  registerSchemaCommand(program);
+  registerCachedSchemaCommands(program);
   registerPostgresProxyCommand(program);
   registerPublicDomainsCommand(program);
   registerRolesCommand(program);
@@ -67,6 +76,7 @@ export function buildProgram(): Command {
   registerMcpCommand(program);
   registerSkillsCommand(program);
   registerWorkflowsCommand(program);
+  applyCommandAliases(program);
 
   return program;
 }

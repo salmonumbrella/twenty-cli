@@ -98,7 +98,15 @@ describe("approved-access-domains command", () => {
         },
       });
 
-      await program.parseAsync(["node", "test", "approved-access-domains", "list", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "approved-access-domains",
+        "list",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
         query: expect.stringContaining("getApprovedAccessDomains"),
@@ -135,6 +143,7 @@ describe("approved-access-domains command", () => {
         "--yes",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {
@@ -194,6 +203,7 @@ describe("approved-access-domains command", () => {
         "token-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/metadata", {

@@ -44,7 +44,7 @@ export interface HelpOutputContract {
   query_language: "JMESPath";
   query_applies_before_format: boolean;
   formats: Array<{
-    name: "agent" | "csv" | "json" | "jsonl" | "text";
+    name: "csv" | "json" | "jsonl" | "text";
     summary: string;
   }>;
 }

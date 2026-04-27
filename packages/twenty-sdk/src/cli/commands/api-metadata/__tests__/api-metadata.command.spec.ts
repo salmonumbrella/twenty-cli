@@ -121,6 +121,7 @@ describe("api-metadata command", () => {
         "person",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockServices.metadata.getObject).toHaveBeenCalledWith("person");
@@ -144,6 +145,7 @@ describe("api-metadata command", () => {
         "view-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockServices.metadata.listViewSorts).toHaveBeenCalledWith({
@@ -163,6 +165,7 @@ describe("api-metadata command", () => {
         "layout-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockServices.metadata.listPageLayoutTabs).toHaveBeenCalledWith({
@@ -181,6 +184,7 @@ describe("api-metadata command", () => {
         "tab-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockServices.metadata.listPageLayoutWidgets).toHaveBeenCalledWith({
@@ -197,6 +201,7 @@ describe("api-metadata command", () => {
         "list",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockServices.metadata.listCommandMenuItems).toHaveBeenCalledWith();
@@ -212,6 +217,7 @@ describe("api-metadata command", () => {
         "list",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockServices.metadata.listFrontComponents).toHaveBeenCalledWith();
@@ -227,6 +233,7 @@ describe("api-metadata command", () => {
         "list",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockServices.metadata.listNavigationMenuItems).toHaveBeenCalledWith();
@@ -247,6 +254,7 @@ describe("api-metadata command", () => {
           "RECORD_PAGE",
           "-o",
           "json",
+          "--full",
         ]),
       ).rejects.toThrow(CliError);
     });

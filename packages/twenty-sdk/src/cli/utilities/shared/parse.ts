@@ -120,6 +120,10 @@ export function splitOnce(input: string, delimiter: string): [string, string] {
 }
 
 export function chunkArray<T>(items: T[], size: number): T[][] {
+  if (!Number.isInteger(size) || size <= 0) {
+    throw new Error("Chunk size must be a positive integer.");
+  }
+
   const chunks: T[][] = [];
   for (let i = 0; i < items.length; i += size) {
     chunks.push(items.slice(i, i + size));

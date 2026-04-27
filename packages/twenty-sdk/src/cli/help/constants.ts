@@ -8,7 +8,7 @@ Discovery:
   twenty CMD --help-json
   twenty CMD --hj
   twenty CMD --help
-  Command names are canonical; only --help-json also has the short --hj alias.
+  Canonical command names and short aliases are both supported; inspect aliases with --help-json.
 
 Agent Use:
   Prefer twenty CMD --help-json before executing mutations.
@@ -31,6 +31,7 @@ Records:
 
 Raw Access:
   twenty openapi core
+  twenty graphql currentUser --selection 'id email'
   twenty raw graphql query --document 'query { currentWorkspace { id } }'
   twenty raw graphql schema --output-file schema.json
   twenty raw rest GET /health
@@ -70,24 +71,21 @@ export const OUTPUT_CONTRACT: HelpOutputContract = {
   query_applies_before_format: true,
   formats: [
     {
-      name: "text",
-      summary: "Best-effort table rendering for objects and arrays.",
-    },
-    {
       name: "json",
-      summary: "Pretty-printed JSON with 2-space indentation.",
+      summary:
+        "Compact JSON. Default no-flag output; --li uses short keys and --full preserves canonical keys.",
     },
     {
       name: "jsonl",
       summary: "Newline-delimited JSON, one record per line for arrays.",
     },
     {
-      name: "agent",
-      summary: "Stable agent envelopes: arrays as items, objects as item, primitives as data.",
-    },
-    {
       name: "csv",
       summary: "Wraps singleton values as one record and JSON-encodes nested values.",
+    },
+    {
+      name: "text",
+      summary: "Best-effort table rendering for objects and arrays.",
     },
   ],
 };
@@ -97,6 +95,8 @@ export const METADATA: Record<string, HelpMetadata> = {
     examples: [
       "twenty auth status",
       "twenty api list people -o json",
+      "twenty records people list -o json",
+      "twenty metadata views list -o json",
       "twenty dashboards duplicate <dashboard-id>",
       "twenty public-domains list",
       "twenty emailing-domains list",
@@ -105,8 +105,12 @@ export const METADATA: Record<string, HelpMetadata> = {
       "twenty roles list --include-targets",
       "twenty skills list",
       "twenty openapi core",
+      "twenty graphql currentUser --selection 'id email'",
+      "twenty schema refresh -o json",
+      "twenty schema status",
       "twenty serverless list",
       "twenty routes invoke public/ping",
+      "twenty coverage compare --upstream /path/to/twenty -o json",
       "twenty workflows invoke-webhook <workflow-id>",
       "twenty mcp status",
       "twenty mcp catalog -o json",
@@ -170,6 +174,20 @@ export const METADATA: Record<string, HelpMetadata> = {
       'twenty api create notes --data \'{"title":"Hello"}\'',
     ],
   },
+  "twenty records": {
+    examples: [
+      "twenty schema refresh core",
+      "twenty records people list -o json",
+      "twenty records people get <record-id>",
+    ],
+  },
+  "twenty metadata": {
+    examples: [
+      "twenty schema refresh metadata",
+      "twenty metadata views list -o json",
+      "twenty metadata views get <metadata-id>",
+    ],
+  },
   "twenty raw": {
     examples: [
       "twenty raw graphql query --document 'query { currentWorkspace { id } }'",
@@ -187,10 +205,51 @@ export const METADATA: Record<string, HelpMetadata> = {
       { name: "schema", summary: "Inspect the GraphQL schema", mutates: false },
     ],
   },
+  "twenty graphql": {
+    mutates: true,
+    examples: [
+      "twenty graphql currentUser --selection 'id email'",
+      'twenty graphql updateWorkspace --kind mutation --variable-defs "$input: UpdateWorkspaceInput!" --args "input: $input" --variables \'{"input":{"displayName":"Acme"}}\' --selection "id displayName"',
+    ],
+  },
   "twenty routes": {
     examples: [
       "twenty routes invoke public/ping",
       'twenty routes invoke hooks/import --method post --data \'{"source":"cli"}\'',
+    ],
+  },
+  "twenty coverage": {
+    operations: [
+      {
+        name: "compare",
+        summary: "Compare CLI coverage against upstream",
+        mutates: false,
+      },
+    ],
+    examples: ["twenty coverage compare --upstream /path/to/twenty -o json"],
+  },
+  "twenty schema": {
+    operations: [
+      {
+        name: "refresh",
+        summary: "Fetch and cache discovery schemas",
+        mutates: true,
+      },
+      {
+        name: "status",
+        summary: "Show cached discovery schema status",
+        mutates: false,
+      },
+      {
+        name: "clear",
+        summary: "Clear cached discovery schemas",
+        mutates: true,
+      },
+    ],
+    examples: [
+      "twenty schema refresh -o json",
+      "twenty schema status",
+      "twenty schema clear graphql",
     ],
   },
   "twenty mcp": {

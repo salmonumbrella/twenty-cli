@@ -156,6 +156,7 @@ describe("connected-accounts command", () => {
         "5",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();
@@ -195,6 +196,7 @@ describe("connected-accounts command", () => {
         "--show-secrets",
         "-o",
         "json",
+        "--full",
       ]);
 
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -211,7 +213,16 @@ describe("connected-accounts command", () => {
         connectionParameters: { SMTP: { password: "smtp-password" } },
       });
 
-      await program.parseAsync(["node", "test", "connected-accounts", "get", "ca-1", "-o", "json"]);
+      await program.parseAsync([
+        "node",
+        "test",
+        "connected-accounts",
+        "get",
+        "ca-1",
+        "-o",
+        "json",
+        "--full",
+      ]);
 
       expect(mockCreateCommandContext).toHaveBeenCalled();
       expect(RecordsService).not.toHaveBeenCalled();
@@ -246,6 +257,7 @@ describe("connected-accounts command", () => {
         "ca-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/graphql", {
@@ -296,6 +308,7 @@ describe("connected-accounts command", () => {
         "ca-1",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/graphql", {
@@ -353,6 +366,7 @@ describe("connected-accounts command", () => {
         "--show-secrets",
         "-o",
         "json",
+        "--full",
       ]);
 
       const output = consoleSpy.mock.calls[0][0] as string;
@@ -406,6 +420,7 @@ describe("connected-accounts command", () => {
         "IMAP.secure=true",
         "-o",
         "json",
+        "--full",
       ]);
 
       expect(mockPost).toHaveBeenCalledWith("/graphql", {
@@ -452,6 +467,7 @@ describe("connected-accounts command", () => {
           "ca-1",
           "-o",
           "json",
+          "--full",
         ]),
       ).rejects.toThrow(
         "IMAP/SMTP/CALDAV account management is not available on this workspace because it does not expose getConnectedImapSmtpCaldavAccount.",
