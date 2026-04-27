@@ -1,18 +1,10 @@
 # Twenty CLI
 
-Scriptable command-line access to Twenty CRM. Use it to manage records, metadata,
-auth profiles, workflows, applications, files, and admin surfaces from a terminal
-or automation agent.
-
-The CLI is JSON-first: commands emit compact JSON by default, support JMESPath
-queries, and expose machine-readable help contracts through `--help-json`.
+CLI access to Twenty CRM. Use it to manage records, metadata, auth profiles, workflows, applications, files, and admin surfaces from a terminal or automation agent.
 
 ## Agent Mode
 
-Use `--agent-mode` (or `--ai`, or `TWENTY_AGENT=true`) when an automation agent
-or script will consume the output. Agent mode forces JSON, defaults to compact
-light fields, still applies `--query` before output projection, and can be
-expanded with `--full` when canonical field names matter.
+Use `--agent-mode` when an automation agentor script will consume the output. Agent mode forces JSON, defaults to compact light fields, still applies `--query` before output projection, and can be expanded with `--full` when canonical field names matter.
 
 <!-- GENERATED:INSTALL_AND_AGENT_CONTRACT:START -->
 
