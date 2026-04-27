@@ -1,12 +1,14 @@
 # @salmonumbrella/twenty-cli
 
-CLI for Twenty CRM.
+Package workspace for the `twenty` CLI.
 
-Install the published package globally and run the `twenty` binary:
+When the scoped npm package is published, install it globally and run the
+`twenty` binary:
 
 ```bash
 npm install -g @salmonumbrella/twenty-cli
 twenty --help
 ```
 
-Source repository: https://github.com/salmonumbrella/twenty-cli
+For current release archives, source, and full usage docs, see
+https://github.com/salmonumbrella/twenty-cli.

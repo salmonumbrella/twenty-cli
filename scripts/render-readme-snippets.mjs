@@ -64,7 +64,20 @@ function renderSnippet() {
   return [
     "## Installation",
     "",
-    "Tagged releases publish standalone `twenty` archives for macOS and Linux, update the maintained Homebrew formula, and can publish the scoped npm package `@salmonumbrella/twenty-cli` when `NPM_TOKEN` is configured.",
+    "Install a standalone release archive, use the Homebrew formula if your account has tap access, or build from source.",
+    "",
+    "```bash",
+    "# Latest macOS ARM64 archive; use linux_amd64, linux_arm64, or darwin_amd64 as needed",
+    "gh release download --repo salmonumbrella/twenty-cli --pattern 'twenty_*_darwin_arm64.tar.gz'",
+    "tar -xzf twenty_*_darwin_arm64.tar.gz",
+    "mkdir -p ~/.local/bin",
+    "install -m 0755 twenty ~/.local/bin/twenty",
+    "",
+    "# Homebrew formula, updated by tagged releases; tap access required",
+    "brew install salmonumbrella/tap/twenty-cli",
+    "```",
+    "",
+    "Tagged releases publish standalone `twenty` archives for macOS and Linux and update the maintained Homebrew formula. When `NPM_TOKEN` is configured, releases also publish the scoped npm package.",
     "",
     "```bash",
     "# Build from source",
@@ -98,7 +111,7 @@ function renderSnippet() {
 }
 
 const readme = readFileSync(README_PATH, "utf8");
-const snippet = `${START_MARKER}\n${renderSnippet()}\n${END_MARKER}`;
+const snippet = `${START_MARKER}\n\n${renderSnippet()}\n\n${END_MARKER}`;
 
 if (!readme.includes(START_MARKER) || !readme.includes(END_MARKER)) {
   throw new Error(`README is missing ${START_MARKER} / ${END_MARKER} markers.`);
