@@ -7,6 +7,13 @@ or automation agent.
 The CLI is JSON-first: commands emit compact JSON by default, support JMESPath
 queries, and expose machine-readable help contracts through `--help-json`.
 
+## Agent Mode
+
+Use `--agent-mode` (or `--ai`, or `TWENTY_AGENT=true`) when an automation agent
+or script will consume the output. Agent mode forces JSON, defaults to compact
+light fields, still applies `--query` before output projection, and can be
+expanded with `--full` when canonical field names matter.
+
 <!-- GENERATED:INSTALL_AND_AGENT_CONTRACT:START -->
 
 ## Installation
@@ -33,9 +40,9 @@ pnpm build
 node packages/twenty-sdk/dist/cli/cli.js --help
 ```
 
-## Agent Discovery
+## Agents
 
-The CLI ships with a curated root help contract plus machine-readable help output for agents and automation.
+The CLI ships with agent-mode output plus a curated root help contract and machine-readable help for automation.
 
 ```bash
 twenty --help
@@ -46,6 +53,8 @@ twenty routes invoke --hj
 twenty auth list --help-json
 ```
 
+- Use `--agent-mode`, `--ai`, or `TWENTY_AGENT=true` to force JSON output and default to light fields
+- Add `--full` when an agent or script needs canonical field names instead of compact light keys
 - Prefer twenty CMD --help-json before executing mutations
 - Stable JSON fields: path, args, options, operations, capabilities, exit_codes, output_contract
 
