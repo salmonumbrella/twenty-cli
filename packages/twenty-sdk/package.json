@@ -37,10 +37,10 @@
     "test:e2e:live": "pnpm run build && TWENTY_LIVE_SMOKE=true vitest run -c vitest.e2e.config.ts src/cli/__tests__/e2e/helpers/live-config.spec.ts src/cli/__tests__/e2e/live-smoke.e2e.spec.ts"
   },
   "dependencies": {
-    "axios": "^1.14.0",
+    "axios": "^1.15.2",
     "axios-retry": "^4.1.0",
     "commander": "^14.0.3",
-    "dotenv": "^17.4.0",
+    "dotenv": "^17.4.2",
     "form-data": "^4.0.5",
     "fs-extra": "^11.2.0",
     "jmespath": "^0.16.0",
@@ -50,11 +50,11 @@
   "devDependencies": {
     "@types/fs-extra": "^11.0.4",
     "@types/jmespath": "^0.15.2",
-    "@types/node": "^25.5.2",
+    "@types/node": "^25.6.0",
     "@types/papaparse": "^5.3.14",
     "@types/pg": "^8.20.0",
-    "typescript": "^6.0.2",
-    "vitest": "^4.1.2"
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
   },
   "engines": {
     "node": ">=20"
